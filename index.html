@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade de Omar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            text-align: center;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            color: #4ade80;
+            text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+            margin-bottom: 40px;
+            font-size: 2rem;
+            line-height: 1.5;
+        }
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+            width: 90%;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            transition: transform 0.2s, background 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #4ade80;
+        }
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        h2 { margin: 0 0 10px 0; font-size: 1.2rem; }
+        p { margin: 0; font-size: 0.9rem; color: #aaa; }
+    </style>
+</head>
+<body>
+
+    <h1>👾 ARCADE DE OMAR 👾</h1>
+
+    <div class="game-grid">
+        <a href="MisJuegos/puzzlerompecabeza/" class="card">
+            <div class="icon">🧩</div>
+            <h2>Master Puzzle</h2>
+            <p>Multijugador P2P • IOS Ready</p>
+        </a>
+
+        <a href="MisJuegos/tanque/" class="card">
+            <div class="icon">🚜</div>
+            <h2>Tanques Destructores</h2>
+            <p>Batalla Explosiva</p>
+        </a>
+
+        <a href="MisJuegos/dual/" class="card">
+            <div class="icon">⚔️</div>
+            <h2>Dual Web</h2>
+            <p>Duelo 1vs1</p>
+        </a>
+
+        <a href="MisJuegos/puzzledeslizante/" class="card">
+            <div class="icon">🔢</div>
+            <h2>Puzzle Deslizante</h2>
+            <p>Clásico Mental</p>
+        </a>
+    </div>
+
+</body>
+</html>
