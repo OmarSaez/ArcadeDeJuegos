@@ -409,8 +409,8 @@
             function e(e, t, n, r) { Object.defineProperty(e, t, { get: n, set: r, enumerable: !0, configurable: !0 }) } function t(e) { return e && e.__esModule ? e.default : e } class n {
                 constructor() {
                     this.chunkedMTU = 16300// The original 60000 bytes setting does not work when sending data from Firefox to Chrome, which is "cut off" after 16384 bytes and delivered individually.
-                    ,// Binary stuff
-                    this._dataCount = 1, this.chunk = e => { let t = [], n = e.byteLength, r = Math.ceil(n / this.chunkedMTU), i = 0, o = 0; for (; o < n;) { let s = Math.min(n, o + this.chunkedMTU), a = e.slice(o, s), c = { __peerData: this._dataCount, n: i, data: a, total: r }; t.push(c), o = s, i++ } return this._dataCount++, t }
+                        ,// Binary stuff
+                        this._dataCount = 1, this.chunk = e => { let t = [], n = e.byteLength, r = Math.ceil(n / this.chunkedMTU), i = 0, o = 0; for (; o < n;) { let s = Math.min(n, o + this.chunkedMTU), a = e.slice(o, s), c = { __peerData: this._dataCount, n: i, data: a, total: r }; t.push(c), o = s, i++ } return this._dataCount++, t }
                 }
             } class r { append_buffer(e) { this.flush(), this._parts.push(e) } append(e) { this._pieces.push(e) } flush() { if (this._pieces.length > 0) { let e = new Uint8Array(this._pieces); this._parts.push(e), this._pieces = [] } } toArrayBuffer() { let e = []; for (let t of this._parts) e.push(t); return function (e) { let t = 0; for (let n of e) t += n.byteLength; let n = new Uint8Array(t), r = 0; for (let t of e) { let e = new Uint8Array(t.buffer, t.byteOffset, t.byteLength); n.set(e, r), r += t.byteLength } return n }(e).buffer } constructor() { this.encoder = new TextEncoder, this._pieces = [], this._parts = [] } } function i(e) { let t = new s(e); return t.unpack() } function o(e) { let t = new a; return t.pack(e), t.getBuffer() } class s {
                 unpack() { let e; let t = this.unpack_uint8(); if (t < 128) return t; if ((224 ^ t) < 32) return (224 ^ t) - 32; if ((e = 160 ^ t) <= 15) return this.unpack_raw(e); if ((e = 176 ^ t) <= 15) return this.unpack_string(e); if ((e = 144 ^ t) <= 15) return this.unpack_array(e); if ((e = 128 ^ t) <= 15) return this.unpack_map(e); switch (t) { case 192: return null; case 193: case 212: case 213: case 214: case 215: return; case 194: return !1; case 195: return !0; case 202: return this.unpack_float(); case 203: return this.unpack_double(); case 204: return this.unpack_uint8(); case 205: return this.unpack_uint16(); case 206: return this.unpack_uint32(); case 207: return this.unpack_uint64(); case 208: return this.unpack_int8(); case 209: return this.unpack_int16(); case 210: return this.unpack_int32(); case 211: return this.unpack_int64(); case 216: return e = this.unpack_uint16(), this.unpack_string(e); case 217: return e = this.unpack_uint32(), this.unpack_string(e); case 218: return e = this.unpack_uint16(), this.unpack_raw(e); case 219: return e = this.unpack_uint32(), this.unpack_raw(e); case 220: return e = this.unpack_uint16(), this.unpack_array(e); case 221: return e = this.unpack_uint32(), this.unpack_array(e); case 222: return e = this.unpack_uint16(), this.unpack_map(e); case 223: return e = this.unpack_uint32(), this.unpack_map(e) } } unpack_uint8() { let e = 255 & this.dataView[this.index]; return this.index++, e } unpack_uint16() { let e = this.read(2), t = (255 & e[0]) * 256 + (255 & e[1]); return this.index += 2, t } unpack_uint32() { let e = this.read(4), t = ((256 * e[0] + e[1]) * 256 + e[2]) * 256 + e[3]; return this.index += 4, t } unpack_uint64() { let e = this.read(8), t = ((((((256 * e[0] + e[1]) * 256 + e[2]) * 256 + e[3]) * 256 + e[4]) * 256 + e[5]) * 256 + e[6]) * 256 + e[7]; return this.index += 8, t } unpack_int8() { let e = this.unpack_uint8(); return e < 128 ? e : e - 256 } unpack_int16() { let e = this.unpack_uint16(); return e < 32768 ? e : e - 65536 } unpack_int32() { let e = this.unpack_uint32(); return e < 2147483648 ? e : e - 4294967296 } unpack_int64() { let e = this.unpack_uint64(); return e < 0x7fffffffffffffff ? e : e - 18446744073709552e3 } unpack_raw(e) { if (this.length < this.index + e) throw Error(`BinaryPackFailure: index is out of range ${this.index} ${e} ${this.length}`); let t = this.dataBuffer.slice(this.index, this.index + e); return this.index += e, t } unpack_string(e) {
@@ -443,12 +443,12 @@
                 if ("object" != typeof e || !e.RTCPeerConnection || "ontrack" in e.RTCPeerConnection.prototype)// emitted in unified-plan. Unfortunately this means we need
                     // to unconditionally wrap the event.
                     d(e, "track", e => (e.transceiver || Object.defineProperty(e, "transceiver", { value: { receiver: e.receiver } }), e)); else {
-                        Object.defineProperty(e.RTCPeerConnection.prototype, "ontrack", { get() { return this._ontrack }, set(e) { this._ontrack && this.removeEventListener("track", this._ontrack), this.addEventListener("track", this._ontrack = e) }, enumerable: !0, configurable: !0 }); let t = e.RTCPeerConnection.prototype.setRemoteDescription; e.RTCPeerConnection.prototype.setRemoteDescription = function () {
-                            return this._ontrackpoly || (this._ontrackpoly = t => {// onaddstream does not fire when a track is added to an existing
-                                // stream. But stream.onaddtrack is implemented so we use that.
-                                t.stream.addEventListener("addtrack", n => { let r; r = e.RTCPeerConnection.prototype.getReceivers ? this.getReceivers().find(e => e.track && e.track.id === n.track.id) : { track: n.track }; let i = new Event("track"); i.track = n.track, i.receiver = r, i.transceiver = { receiver: r }, i.streams = [t.stream], this.dispatchEvent(i) }), t.stream.getTracks().forEach(n => { let r; r = e.RTCPeerConnection.prototype.getReceivers ? this.getReceivers().find(e => e.track && e.track.id === n.id) : { track: n }; let i = new Event("track"); i.track = n, i.receiver = r, i.transceiver = { receiver: r }, i.streams = [t.stream], this.dispatchEvent(i) })
-                            }, this.addEventListener("addstream", this._ontrackpoly)), t.apply(this, arguments)
-                        }
+                    Object.defineProperty(e.RTCPeerConnection.prototype, "ontrack", { get() { return this._ontrack }, set(e) { this._ontrack && this.removeEventListener("track", this._ontrack), this.addEventListener("track", this._ontrack = e) }, enumerable: !0, configurable: !0 }); let t = e.RTCPeerConnection.prototype.setRemoteDescription; e.RTCPeerConnection.prototype.setRemoteDescription = function () {
+                        return this._ontrackpoly || (this._ontrackpoly = t => {// onaddstream does not fire when a track is added to an existing
+                            // stream. But stream.onaddtrack is implemented so we use that.
+                            t.stream.addEventListener("addtrack", n => { let r; r = e.RTCPeerConnection.prototype.getReceivers ? this.getReceivers().find(e => e.track && e.track.id === n.track.id) : { track: n.track }; let i = new Event("track"); i.track = n.track, i.receiver = r, i.transceiver = { receiver: r }, i.streams = [t.stream], this.dispatchEvent(i) }), t.stream.getTracks().forEach(n => { let r; r = e.RTCPeerConnection.prototype.getReceivers ? this.getReceivers().find(e => e.track && e.track.id === n.id) : { track: n }; let i = new Event("track"); i.track = n, i.receiver = r, i.transceiver = { receiver: r }, i.streams = [t.stream], this.dispatchEvent(i) })
+                        }, this.addEventListener("addstream", this._ontrackpoly)), t.apply(this, arguments)
+                    }
                 }
             } function z(e) {// Overrides addTrack/removeTrack, depends on shimAddTrackRemoveTrack.
                 if ("object" == typeof e && e.RTCPeerConnection && !("getSenders" in e.RTCPeerConnection.prototype) && "createDTMFSender" in e.RTCPeerConnection.prototype) {
@@ -562,8 +562,8 @@
                     if ("getLocalStreams" in e.RTCPeerConnection.prototype || (e.RTCPeerConnection.prototype.getLocalStreams = function () { return this._localStreams || (this._localStreams = []), this._localStreams }), !("addStream" in e.RTCPeerConnection.prototype)) {
                         let t = e.RTCPeerConnection.prototype.addTrack; e.RTCPeerConnection.prototype.addStream = function (e) {
                             this._localStreams || (this._localStreams = []), this._localStreams.includes(e) || this._localStreams.push(e),// Try to emulate Chrome's behaviour of adding in audio-video order.
-                            // Safari orders by track id.
-                            e.getAudioTracks().forEach(n => t.call(this, n, e)), e.getVideoTracks().forEach(n => t.call(this, n, e))
+                                // Safari orders by track id.
+                                e.getAudioTracks().forEach(n => t.call(this, n, e)), e.getVideoTracks().forEach(n => t.call(this, n, e))
                         }, e.RTCPeerConnection.prototype.addTrack = function (e, ...n) { return n && n.forEach(e => { this._localStreams ? this._localStreams.includes(e) || this._localStreams.push(e) : this._localStreams = [e] }), t.apply(this, arguments) }
                     } "removeStream" in e.RTCPeerConnection.prototype || (e.RTCPeerConnection.prototype.removeStream = function (e) { this._localStreams || (this._localStreams = []); let t = this._localStreams.indexOf(e); if (-1 === t) return; this._localStreams.splice(t, 1); let n = e.getTracks(); this.getSenders().forEach(e => { n.includes(e.track) && this.removeTrack(e) }) })
                 }
@@ -595,13 +595,13 @@
                     d(e, "icecandidate", t => (t.candidate && Object.defineProperty(t, "candidate", { value: new e.RTCIceCandidate(t.candidate), writable: "false" }), t))
             } function eC(e) {
                 !e.RTCIceCandidate || e.RTCIceCandidate && "relayProtocol" in e.RTCIceCandidate.prototype ||// Hook up the augmented candidate in onicecandidate and
-                // addEventListener('icecandidate', ...)
-                d(e, "icecandidate", e => {
-                    if (e.candidate) {
-                        let n =/*@__PURE__*/t(eg).parseCandidate(e.candidate.candidate); "relay" === n.type &&// to relayProtocol.
-                            (e.candidate.relayProtocol = ({ 0: "tls", 1: "tcp", 2: "udp" })[n.priority >> 24])
-                    } return e
-                })
+                    // addEventListener('icecandidate', ...)
+                    d(e, "icecandidate", e => {
+                        if (e.candidate) {
+                            let n =/*@__PURE__*/t(eg).parseCandidate(e.candidate.candidate); "relay" === n.type &&// to relayProtocol.
+                                (e.candidate.relayProtocol = ({ 0: "tls", 1: "tcp", 2: "udp" })[n.priority >> 24])
+                        } return e
+                    })
             } function ev(e, n) {
                 if (!e.RTCPeerConnection) return; "sctp" in e.RTCPeerConnection.prototype || Object.defineProperty(e.RTCPeerConnection.prototype, "sctp", { get() { return void 0 === this._sctp ? null : this._sctp } }); let r = function (e) { if (!e || !e.sdp) return !1; let n =/*@__PURE__*/t(eg).splitSections(e.sdp); return n.shift(), n.some(e => { let n =/*@__PURE__*/t(eg).parseMLine(e); return n && "application" === n.kind && -1 !== n.protocol.indexOf("SCTP") }) }, i = function (e) {// TODO: Is there a better solution for detecting Firefox?
                     let t = e.sdp.match(/mozilla...THIS_IS_SDPARTA-(\d+)/); if (null === t || t.length < 2) return -1; let n = parseInt(t[1], 10);// Test for NaN (yes, this is ugly)
@@ -801,22 +801,22 @@
                 }, eD = e => !e || /^[A-Za-z0-9]+(?:[ _-][A-Za-z0-9]+)*$/.test(e), ex = () => Math.random().toString(36).slice(2), eI = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: ["turn:eu-0.turn.peerjs.com:3478", "turn:us-0.turn.peerjs.com:3478"], username: "peerjs", credential: "peerjsp" }], sdpSemantics: "unified-plan" }, eM = new class extends n {
                     noop() { } blobToArrayBuffer(e, t) { let n = new FileReader; return n.onload = function (e) { e.target && t(e.target.result) }, n.readAsArrayBuffer(e), n } binaryStringToArrayBuffer(e) { let t = new Uint8Array(e.length); for (let n = 0; n < e.length; n++)t[n] = 255 & e.charCodeAt(n); return t.buffer } isSecure() { return "https:" === location.protocol } constructor(...e) {
                         super(...e), this.CLOUD_HOST = "0.peerjs.com", this.CLOUD_PORT = 443,// Browsers that need chunking:
-                        this.chunkedBrowsers = { Chrome: 1, chrome: 1 },// Returns browser-agnostic default config
-                        this.defaultConfig = eI, this.browser = eE.getBrowser(), this.browserVersion = eE.getVersion(), this.pack = o, this.unpack = i,/**
+                            this.chunkedBrowsers = { Chrome: 1, chrome: 1 },// Returns browser-agnostic default config
+                            this.defaultConfig = eI, this.browser = eE.getBrowser(), this.browserVersion = eE.getVersion(), this.pack = o, this.unpack = i,/**
 	 * A hash of WebRTC features mapped to booleans that correspond to whether the feature is supported by the current browser.
 	 *
 	 * :::caution
 	 * Only the properties documented here are guaranteed to be present on `util.supports`
 	 * :::
 	 */this.supports = function () {
-                            let e; let t = { browser: eE.isBrowserSupported(), webRTC: eE.isWebRTCSupported(), audioVideo: !1, data: !1, binaryBlob: !1, reliable: !1 }; if (!t.webRTC) return t; try {
-                                let n; e = new RTCPeerConnection(eI), t.audioVideo = !0; try {
-                                    n = e.createDataChannel("_PEERJSTEST", { ordered: !0 }), t.data = !0, t.reliable = !!n.ordered;// Binary test
-                                    try { n.binaryType = "blob", t.binaryBlob = !eE.isIOS } catch (e) { }
-                                } catch (e) { } finally { n && n.close() }
-                            } catch (e) { } finally { e && e.close() } return t
-                        }(),// Ensure alphanumeric ids
-                        this.validateId = eD, this.randomToken = ex
+                                let e; let t = { browser: eE.isBrowserSupported(), webRTC: eE.isWebRTCSupported(), audioVideo: !1, data: !1, binaryBlob: !1, reliable: !1 }; if (!t.webRTC) return t; try {
+                                    let n; e = new RTCPeerConnection(eI), t.audioVideo = !0; try {
+                                        n = e.createDataChannel("_PEERJSTEST", { ordered: !0 }), t.data = !0, t.reliable = !!n.ordered;// Binary test
+                                        try { n.binaryType = "blob", t.binaryBlob = !eE.isIOS } catch (e) { }
+                                    } catch (e) { } finally { n && n.close() }
+                                } catch (e) { } finally { e && e.close() } return t
+                            }(),// Ensure alphanumeric ids
+                            this.validateId = eD, this.randomToken = ex
                     }
                 }; (_ = w || (w = {}))[_./**
 	 * Prints no logs.
@@ -1000,7 +1000,7 @@
 	 * @internal
 	 */emitError(e, t) {
                     eO.error("Error:", t),// @ts-ignore
-                    this.emit("error", new eW(`${e}`, t))
+                        this.emit("error", new eW(`${e}`, t))
                 }
             } class eW extends Error {/**
 	 * @internal
@@ -1389,14 +1389,14 @@
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     let w = img.width, h = img.height;
-                    const max = 800; // 800px es seguro para WebRTC data channel
+                    const max = 2560; // 2K para mejor detalle, WebRTC moderno lo aguanta bien en chunks
                     if (w > max || h > max) {
                         if (w > h) { h *= max / w; w = max; } else { w *= max / h; h = max; }
                     }
                     canvas.width = w; canvas.height = h;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, w, h);
-                    callback(canvas.toDataURL('image/jpeg', 0.6)); // Calidad media para reducir peso
+                    callback(canvas.toDataURL('image/jpeg', 0.8)); // Calidad alta (0.8)
                 };
                 img.src = e.target.result;
             };
