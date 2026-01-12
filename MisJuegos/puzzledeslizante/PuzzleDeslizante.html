@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle USACH Pro</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background: #ececec;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        #grid {
+            display: grid;
+            border: 4px solid #444;
+            background: #fff;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .tile {
+            border: 0.5px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            background-size: cover;
+            touch-action: none;
+            transition: transform 0.1s;
+        }
+
+        .empty {
+            background: #444 !important;
+            cursor: default;
+        }
+
+        .preview-container {
+            text-align: center;
+        }
+
+        #preview {
+            width: 150px;
+            height: auto;
+            border: 2px solid #888;
+            border-radius: 8px;
+            display: none;
+            margin-top: 10px;
+        }
+
+        .controls {
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            padding: 8px 15px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="controls">
+        <h2>🧩 Puzzle Deslizante</h2>
+        <input type="file" id="upload" accept="image/*">
+        <select id="size">
+            <option value="3">3x3</option>
+            <option value="4">4x4</option>
+            <option value="5">5x5</option>
+        </select>
+        <button onclick="initGame()">Nuevo Juego</button>
+        <button onclick="resetGame()">Reiniciar</button>
+        <p id="timer">Tiempo: 0s</p>
+    </div>
+
+    <div class="main-container">
+        <div id="grid"></div>
+
+        <div class="preview-container">
+            <p><strong>Referencia:</strong></p>
+            <img id="preview" src="" alt="Referencia">
+        </div>
+    </div>
+
+    <script>
+        let size, tiles = [], emptyPos, seconds = 0, timerInterval, imgUrl;
+
+        function initGame() {
+            const file = document.getElementById('upload').files[0];
+            if (!file) return alert("Por favor, sube una imagen");
+
+            size = parseInt(document.getElementById('size').value);
+            const reader = new FileReader();
+            reader.onload = e => {
+                imgUrl = e.target.result;
+                const previewImg = document.getElementById('preview');
+                previewImg.src = imgUrl;
+                previewImg.style.display = 'block';
+                startGame();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function startGame() {
+            clearInterval(timerInterval);
+            seconds = 0;
+            document.getElementById('timer').innerText = `Tiempo: 0s`;
+            timerInterval = setInterval(() => {
+                seconds++;
+                document.getElementById('timer').innerText = `Tiempo: ${seconds}s`;
+            }, 1000);
+
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+
+            const tileSize = window.innerWidth < 500 ? 70 : 100;
+            grid.style.gridTemplateColumns = `repeat(${size}, ${tileSize}px)`;
+
+            // 1. Crear el puzzle ordenado
+            tiles = [...Array(size * size).keys()];
+            emptyPos = size * size - 1;
+
+            // 2. Desordenar mediante movimientos válidos (simulación)
+            // Hacemos suficientes movimientos para que quede bien mezclado
+            for (let i = 0; i < size * size * 20; i++) {
+                const neighbors = getNeighbors(emptyPos, size);
+                const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                [tiles[emptyPos], tiles[randomNeighbor]] = [tiles[randomNeighbor], tiles[emptyPos]];
+                emptyPos = randomNeighbor;
+            }
+
+            render(tileSize);
+        }
+
+        // Función auxiliar para saber qué piezas pueden moverse
+        function getNeighbors(pos, size) {
+            const neighbors = [];
+            const x = Math.floor(pos / size);
+            const y = pos % size;
+
+            if (x > 0) neighbors.push(pos - size); // Arriba
+            if (x < size - 1) neighbors.push(pos + size); // Abajo
+            if (y > 0) neighbors.push(pos - 1); // Izquierda
+            if (y < size - 1) neighbors.push(pos + 1); // Derecha
+
+            return neighbors;
+        }
+
+        function render(tileSize) {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            tiles.forEach((tileIdx, i) => {
+                const div = document.createElement('div');
+                div.className = `tile ${tileIdx === size * size - 1 ? 'empty' : ''}`;
+                div.style.width = `${tileSize}px`;
+                div.style.height = `${tileSize}px`;
+
+                if (tileIdx !== size * size - 1) {
+                    const row = Math.floor(tileIdx / size);
+                    const col = tileIdx % size;
+                    div.style.backgroundImage = `url(${imgUrl})`;
+                    div.style.backgroundSize = `${size * tileSize}px ${size * tileSize}px`;
+                    div.style.backgroundPosition = `-${col * tileSize}px -${row * tileSize}px`;
+                }
+
+                div.onclick = () => move(i, tileSize);
+                div.ontouchstart = (e) => { e.preventDefault(); move(i, tileSize); };
+                grid.appendChild(div);
+            });
+        }
+
+        function move(i, tileSize) {
+            const x1 = Math.floor(i / size), y1 = i % size;
+            const x2 = Math.floor(emptyPos / size), y2 = emptyPos % size;
+            if (Math.abs(x1 - x2) + Math.abs(y1 - y2) === 1) {
+                [tiles[i], tiles[emptyPos]] = [tiles[emptyPos], tiles[i]];
+                emptyPos = i;
+                render(tileSize);
+                checkWin();
+            }
+        }
+
+        function checkWin() {
+            const isWin = tiles.every((tile, i) => tile === i);
+            if (isWin) {
+                clearInterval(timerInterval);
+                setTimeout(() => alert(`¡Ganaste en ${seconds} segundos!`), 100);
+            }
+        }
+
+        function resetGame() { if (imgUrl) startGame(); }
+    </script>
+</body>
+
+</html>

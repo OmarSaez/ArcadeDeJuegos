@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no user-select=none">
+    <title>Tanques Destructores: Team Wars</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap');
+
+        body {
+            margin: 0;
+            background-color: #202028;
+            color: white;
+            font-family: 'Black Ops One', cursive;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .menu-screen {
+            pointer-events: auto;
+            background: rgba(16, 16, 20, 0.95);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 30px;
+            border: 2px solid #555;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            min-width: 400px;
+        }
+
+        h1 {
+            color: #4caf50;
+            font-size: 2.5rem;
+            margin: 0 0 20px 0;
+            letter-spacing: 3px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin: 10px 0;
+            color: #ddd;
+        }
+
+        button {
+            background: #444;
+            color: white;
+            border: 1px solid #fff;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Black Ops One', cursive;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #666;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.btn-green {
+            background: #388e3c;
+            border-color: #4caf50;
+        }
+
+        button.btn-blue {
+            background: #1976d2;
+            border-color: #2196f3;
+        }
+
+        button.btn-red {
+            background: #d32f2f;
+            border-color: #f44336;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: default;
+            transform: none;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 1.2rem;
+            text-align: center;
+            font-family: monospace;
+            border: 1px solid #555;
+            background: #222;
+            color: #fff;
+            margin-bottom: 20px;
+            width: 250px;
+        }
+
+        /* LOBBY STYLES */
+        .team-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .team-box {
+            width: 45%;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            min-height: 200px;
+        }
+
+        .team-header {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            text-decoration: underline;
+        }
+
+        .red-team {
+            border: 2px solid #f44336;
+            color: #f44336;
+        }
+
+        .blue-team {
+            border: 2px solid #2196f3;
+            color: #2196f3;
+        }
+
+        .player-slot {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: monospace;
+            font-size: 1rem;
+        }
+
+        .ready-status {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #333;
+            border: 1px solid #777;
+        }
+
+        .is-ready {
+            background: #0f0;
+            box-shadow: 0 0 5px #0f0;
+        }
+
+        .color-dot {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            cursor: pointer;
+            border: 2px solid white;
+            margin-right: 10px;
+        }
+
+        #color-picker-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 20;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .palette {
+            display: flex;
+            gap: 10px;
+            padding: 20px;
+            background: #222;
+            border: 2px solid white;
+            flex-wrap: wrap;
+            max-width: 270px;
+            justify-content: center;
+        }
+
+        .palette div {
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .palette div:hover {
+            border-color: white;
+            transform: scale(1.1);
+        }
+
+        #main-hud {
+            display: none;
+        }
+
+        .turn-banner {
+            position: absolute;
+            top: 80px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            font-size: 1.2rem;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        #weapon-display {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            color: #ffeb3b;
+            text-shadow: 0 0 5px #000;
+        }
+
+        #fire-power-bar {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 20px;
+            background: #333;
+            border: 2px solid white;
+            display: none;
+        }
+
+        #fire-power-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ffeb3b, #f44336);
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI LAYER -->
+    <div id="ui-layer">
+        <!-- LOGIN -->
+        <div id="login-screen" class="menu-screen">
+            <h1>TANK TEAM WARS</h1>
+            <input type="text" id="player-name" placeholder="TU NOMBRE (Max 10 chars)" maxlength="10">
+            <br>
+            <button class="btn-green" onclick="createRoom()">CREAR SALA</button>
+            <br>
+            <div style="margin: 10px 0; color: #aaa;">- O -</div>
+            <input type="text" id="room-code-input" placeholder="CÓDIGO DE SALA">
+            <button class="btn-blue" onclick="joinRoomUI()">UNIRSE A SALA</button>
+        </div>
+
+        <!-- LOBBY -->
+        <div id="lobby-screen" class="menu-screen" style="display:none; min-width: 600px;">
+            <h2 id="lobby-title">SALA DE ESPERA</h2>
+            <div style="font-size: 0.8rem; color: #81c784; margin-bottom: 8px;">💡 Tip: Clickea tu nombre o color para
+                personalizarlo</div>
+            <div style="font-size: 0.9rem; color: #aaa;">CÓDIGO: <span id="lobby-code-display"
+                    style="color:white; font-size:1.2rem; user-select: text;">---</span></div>
+
+            <div class="team-container">
+                <!-- RED TEAM -->
+                <div class="team-box red-team">
+                    <div class="team-header">EQUIPO CALIDO</div>
+                    <div id="red-list"></div>
+                    <button onclick="requestTeam('RED')">UNIRSE AL ROJO</button>
+                </div>
+                <!-- BLUE TEAM -->
+                <div class="team-box blue-team">
+                    <div class="team-header">EQUIPO FRIO</div>
+                    <div id="blue-list"></div>
+                    <button onclick="requestTeam('BLUE')">UNIRSE AL AZUL</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn-green" id="btn-ready" onclick="toggleReady()">ESTOY LISTO</button>
+            </div>
+            <div id="start-timer" style="font-size: 2rem; color: #0f0; min-height: 40px;"></div>
+        </div>
+
+        <!-- GAME OVER -->
+        <div id="game-over-screen" class="menu-screen" style="display:none;">
+            <h1 id="winner-text">GANADOR</h1>
+            <button onclick="location.reload()">VOLVER AL MENÚ</button>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="ui-layer" style="pointer-events:none;">
+        <div id="main-hud">
+            <div class="info-panel">
+                <span id="p-name-disp" style="color:#fff">JUGADOR</span>
+                <span id="turn-timer-disp">--</span>
+            </div>
+            <div class="turn-banner" id="turn-banner">ESPERANDO...</div>
+            <div id="weapon-display"></div>
+            <div id="fire-power-bar">
+                <div id="fire-power-fill"></div>
+            </div>
+            <div id="stats-panel"
+                style="position:absolute; bottom:20px; left:20px; text-align:left; font-size:1.5rem; text-shadow:2px 2px 2px #000; font-family: 'Black Ops One', cursive;">
+                <div style="color:#4caf50; margin-bottom:5px;">❤️ <span id="hp-disp">100</span>%</div>
+                <div style="color:#ff9800;">⛽ <span id="fuel-disp">100</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COLOR PICKER -->
+    <div id="color-picker-modal">
+        <div class="palette" id="palette-container"></div>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script>
+        // --- CONSTANTES & CONFIG ---
+        const RED_PALETTE = [
+            '#ef5350', '#c62828', '#ff1744', '#d50000', '#b71c1c', // Rojos
+            '#ff9800', '#ef6c00', '#ffb74d', '#fb8c00', '#ffe0b2', // Naranjas
+            '#fdd835', '#f9a825', '#ffeb3b', '#fff176', '#fff59d'  // Amarillos
+        ];
+        const BLUE_PALETTE = [
+            '#42a5f5', '#1565c0', '#0d47a1', '#82b1ff', '#2962ff', // Azules
+            '#ab47bc', '#6a1b9a', '#d500f9', '#e1bee7', '#aa00ff', // Morados
+            '#66bb6a', '#1b5e20', '#00e676', '#69f0ae', '#b9f6ca'  // Verdes
+        ];
+
+        const CANVAS = document.getElementById('gameCanvas');
+        const CTX = CANVAS.getContext('2d');
+        let WIDTH = window.innerWidth;
+        let HEIGHT = window.innerHeight;
+        CANVAS.width = WIDTH; CANVAS.height = HEIGHT;
+
+        const GRAVITY = 0.4;
+        const TURN_TIME = 40;
+
+        // --- ESTADO GLOBAL ---
+        let myName = "Invitado";
+        let myPeerId = null;
+        let isHost = false;
+
+        // Lobby State
+        let players = []; // { id, name, team, color, ready, peerConn (host only) }
+        let myPlayer = null;
+
+        // Game State
+        let gameState = 'MENU'; // MENU, LOBBY, PLAYING, GAMEOVER
+        let terrain = [];
+        let tanks = []; // { id, x, y, hp, fuel, angle, team, color, name, dead, specialWeapon }
+        let projectiles = [];
+        let items = [];
+        let explosions = [];
+        let floatTexts = [];
+
+        let turnIndex = 0; // Index in 'tanks' array
+        let turnTimer = TURN_TIME;
+        let timerInterval = null;
+        let isCharging = false;
+        let chargePower = 0;
+        let chargeDir = 1;
+        let keys = {};
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
+
+        // --- NETWORKING START ---
+        let peer;
+        let hostConn = null; // Client -> Host
+        let clientConns = {}; // Host -> Clients { peerId: conn }
+
+        function createRoom() {
+            myName = document.getElementById('player-name').value || "Host";
+            isHost = true;
+            initPeer();
+        }
+
+        function joinRoomUI() {
+            const input = document.getElementById('room-code-input');
+            const code = input.value.toUpperCase().trim();
+            if (!code) return alert("Ingresa un código");
+
+            myName = document.getElementById('player-name').value || "Invitado";
+            isHost = false;
+            initPeer(code);
+        }
+
+        // --- FUNCIONES AUXILIARES ---
+        // Force Uppercase on Input
+        window.addEventListener('DOMContentLoaded', () => {
+            const codeInp = document.getElementById('room-code-input');
+            if (codeInp) {
+                codeInp.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.toUpperCase();
+                });
+            }
+        });
+
+        function generateTerrain() {
+            terrain = new Array(WIDTH).fill(0);
+            for (let x = 0; x < WIDTH; x++) {
+                const h1 = Math.sin(x * 0.005) * 100;
+                const h2 = Math.sin(x * 0.02) * 20;
+                const noise = Math.random() * 2;
+                terrain[x] = (HEIGHT * 0.7) + h1 + h2 + noise;
+                if (x < 10 || x > WIDTH - 10) terrain[x] = HEIGHT * 0.2;
+            }
+        }
+
+        let countdownInterval = null;
+
+        function checkStartGame() {
+            if (!isHost) return;
+            if (players.length < 1) return;
+
+            const distinctReady = players.every(p => p.ready);
+
+            if (distinctReady) {
+                if (countdownInterval) return; // Ya está contando
+
+                let sec = 2;
+                broadcast({ type: 'GAME_START_COUNTDOWN', sec: 3 });
+                document.getElementById('start-timer').innerText = "INICIANDO EN " + 3;
+
+                countdownInterval = setInterval(() => {
+                    broadcast({ type: 'GAME_START_COUNTDOWN', sec: sec });
+                    document.getElementById('start-timer').innerText = "INICIANDO EN " + sec;
+
+                    if (sec <= 0) {
+                        clearInterval(countdownInterval);
+                        countdownInterval = null;
+                        try {
+                            startHostGame();
+                        } catch (e) {
+                            alert("Error iniciando: " + e);
+                            console.error(e);
+                        }
+                    }
+                    sec--;
+                }, 1000);
+            } else {
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                    broadcast({ type: 'GAME_START_COUNTDOWN', sec: "CANCELADO" });
+                    document.getElementById('start-timer').innerText = "";
+                }
+                document.getElementById('start-timer').innerText = "";
+            }
+        }
+
+        function initPeer(targetId = null) {
+            let configId = undefined; // Por defecto undefined para que PeerJS genere UUID si somos clientes
+
+            if (isHost) {
+                // SOMOS EL SERVER: Imponemos nuestro ID de 4 caracteres
+                // Si ya teníamos uno (reintento), úsalo, si no, genera uno nuevo.
+                if (!myPeerId) {
+                    // Generar ID sin 0 ni O para evitar confusión
+                    const chars = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789";
+                    let id = "";
+                    for (let i = 0; i < 4; i++) id += chars.charAt(Math.floor(Math.random() * chars.length));
+                    myPeerId = id;
+                }
+                configId = myPeerId;
+                console.log("Intentando registrar Host con ID:", configId);
+            }
+
+            peer = new Peer(configId);
+
+            peer.on('open', (id) => {
+                myPeerId = id;
+                console.log('Mi Peer ID:', id);
+                if (isHost) {
+                    document.getElementById('lobby-code-display').innerText = id;
+                    showScreen('lobby-screen');
+                    // Auto-add host
+                    players = [{ id: id, name: myName, team: 'RED', color: RED_PALETTE[0], ready: false }];
+                    updateLobbyUI();
+                } else {
+                    // Connect to host
+                    console.log("Conectando a:", targetId);
+                    hostConn = peer.connect(targetId);
+
+                    hostConn.on('open', () => {
+                        console.log("Conectado al Host!");
+                        showScreen('lobby-screen');
+                        hostConn.send({ type: 'HELLO', name: myName });
+                    });
+                    hostConn.on('data', (data) => handleData(data, hostConn));
+                    hostConn.on('error', (err) => alert("Error Conexión Host: " + err));
+                }
+            });
+
+            peer.on('connection', (conn) => {
+                if (!isHost) { conn.close(); return; } // Client rejects incoming?
+                // Host logic
+                console.log("Nueva conexión:", conn.peer);
+                clientConns[conn.peer] = conn;
+                conn.on('data', (data) => handleData(data, conn));
+                conn.on('close', () => {
+                    console.log("Cliente desconectado:", conn.peer);
+                    delete clientConns[conn.peer];
+                    players = players.filter(p => p.id !== conn.peer);
+                    broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() });
+                    updateLobbyUI();
+                });
+            });
+
+            peer.on('error', (err) => {
+                console.error("Peer Error:", err);
+                if (err.type === 'peer-unavailable') {
+                    alert("Sala no encontrada o llena.");
+                    location.reload();
+                }
+            });
+        }
+
+        function broadcast(data) {
+            if (!isHost) return;
+            Object.values(clientConns).forEach(c => c.send(data));
+        }
+
+        function send(data) {
+            if (isHost) return;
+            if (hostConn && hostConn.open) hostConn.send(data);
+        }
+
+        function sanitizedPlayers() {
+            return players.map(p => ({ id: p.id, name: p.name, team: p.team, color: p.color, ready: p.ready }));
+        }
+
+        // --- LOBBY LOGIC ---
+        function showScreen(id) {
+            document.querySelectorAll('.menu-screen').forEach(el => el.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
+        }
+
+        function updateLobbyUI() {
+            if (gameState === 'PLAYING') return; // Ignore if game started
+
+            showScreen('lobby-screen');
+            myPlayer = players.find(p => p.id === myPeerId);
+            if (!myPlayer) return;
+
+            // Render Lists
+            const redDiv = document.getElementById('red-list');
+            const blueDiv = document.getElementById('blue-list');
+            redDiv.innerHTML = ''; blueDiv.innerHTML = '';
+
+            players.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'player-slot';
+
+                // Color Circle (Clickable if me)
+                const dot = document.createElement('div');
+                dot.className = 'color-dot';
+                dot.style.backgroundColor = p.color;
+                if (p.id === myPeerId) {
+                    dot.onclick = () => openColorPicker();
+                    dot.title = "Cambiar Color";
+                }
+
+                // Name & Ready
+                const nameSpan = document.createElement('span');
+                nameSpan.innerText = `${p.name} ${p.id === myPeerId ? '(TÚ)' : ''}`;
+                if (p.id === myPeerId) {
+                    nameSpan.style.cursor = 'pointer';
+                    nameSpan.onclick = () => openColorPicker();
+                    nameSpan.title = "Cambiar Color";
+                    nameSpan.style.borderBottom = "1px dotted #fff";
+                }
+                div.appendChild(dot);
+                div.appendChild(nameSpan);
+
+                const ready = document.createElement('div');
+                ready.className = 'ready-status ' + (p.ready ? 'is-ready' : '');
+                div.appendChild(ready);
+
+                if (p.team === 'RED') redDiv.appendChild(div);
+                else blueDiv.appendChild(div);
+            });
+
+            // Button State
+            const readyBtn = document.getElementById('btn-ready');
+            if (myPlayer.ready) {
+                readyBtn.innerText = "CANCELAR";
+                readyBtn.style.background = "#d32f2f";
+            } else {
+                readyBtn.innerText = "ESTOY LISTO";
+                readyBtn.style.background = "#388e3c";
+            }
+        }
+
+        function requestTeam(team) {
+            if (!isHost) send({ type: 'REQ_TEAM', team: team });
+            else {
+                players.find(p => p.id === myPeerId).team = team;
+                players.find(p => p.id === myPeerId).color = (team === 'RED' ? RED_PALETTE[0] : BLUE_PALETTE[0]);
+                broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() });
+                updateLobbyUI();
+            }
+        }
+
+        function toggleReady() {
+            if (!isHost) send({ type: 'REQ_READY' });
+            else {
+                const me = players.find(p => p.id === myPeerId);
+                me.ready = !me.ready;
+                broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() });
+                updateLobbyUI();
+                checkStartGame();
+            }
+        }
+
+        function openColorPicker() {
+            const modal = document.getElementById('color-picker-modal');
+            const pal = document.getElementById('palette-container');
+            pal.innerHTML = '';
+            modal.style.display = 'flex';
+
+            const myTeamColors = myPlayer.team === 'RED' ? RED_PALETTE : BLUE_PALETTE;
+
+            myTeamColors.forEach(c => {
+                const d = document.createElement('div');
+                d.style.backgroundColor = c;
+                d.onclick = () => {
+                    if (isHost) {
+                        players.find(p => p.id === myPeerId).color = c;
+                        broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() });
+                        updateLobbyUI();
+                    } else {
+                        send({ type: 'REQ_COLOR', color: c });
+                    }
+                    modal.style.display = 'none';
+                };
+                pal.appendChild(d);
+            });
+
+            // Close on click outside
+            modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+        }
+
+        function checkStartGame() {
+            if (!isHost) return;
+            if (players.length < 1) return; // Need at least 1?
+            if (players.every(p => p.ready)) {
+                // COUNTDOWN
+                let sec = 2;
+                const intt = setInterval(() => {
+                    broadcast({ type: 'GAME_START_COUNTDOWN', sec: sec }); // Broadcast countdown
+                    document.getElementById('start-timer').innerText = "INICIANDO EN " + sec;
+                    sec--;
+                    if (sec < 0) {
+                        clearInterval(intt);
+                        startHostGame();
+                    }
+                }, 1000);
+            } else {
+                document.getElementById('start-timer').innerText = "";
+            }
+        }
+
+
+        // Input State (Host tracks inputs for all players)
+        const playerInputs = {}; // { peerId: { up, down, left, right, space, charging, power, pDir } }
+
+        function startHostGame() {
+            // 1. Setup Terrain & Tanks
+            generateTerrain();
+            tanks = [];
+            const shuffled = [...players].sort(() => Math.random() - 0.5);
+
+            shuffled.forEach(p => {
+                const isRed = p.team === 'RED';
+                // Spawn areas: Red (10-35%), Blue (65-90%)
+                let minX = isRed ? WIDTH * 0.1 : WIDTH * 0.65;
+                let maxX = isRed ? WIDTH * 0.35 : WIDTH * 0.9;
+                let tx = Math.random() * (maxX - minX) + minX;
+
+                // Initialize clean input state for p
+                playerInputs[p.id] = { up: false, down: false, left: false, right: false, space: false, charging: false, power: 0, pDir: 1 };
+
+                tanks.push({
+                    id: p.id, name: p.name, team: p.team, color: p.color,
+                    x: tx, y: 0, hp: 100, fuel: 100,
+                    angle: isRed ? -Math.PI / 4 : -Math.PI * 0.75,
+                    dead: false, specialWeapon: null
+                });
+            });
+
+            // 2. Reset Global State
+            projectiles = [];
+            items = [];
+            explosions = [];
+            floatTexts = [];
+            turnIndex = -1; // NextTurn will bump to 0
+            gameState = 'PLAYING';
+
+            // 3. Notify Everyone
+            const startPacket = { type: 'GAME_START', terrain: terrain, tanks: tanks };
+            broadcast(startPacket);
+            initGameClient(startPacket);
+
+            // 4. Start Host Loops
+            nextTurn(); // Start first turn
+            requestAnimationFrame(hostLoop);
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(hostGameTick, 1000);
+        }
+
+        function initGameClient(data) {
+            gameState = 'PLAYING';
+            terrain = data.terrain || terrain;
+
+            // SYNC DIMENSIONS with Host
+            if (terrain.length > 0) {
+                WIDTH = terrain.length;
+                CANVAS.width = WIDTH;
+                // Height? Host doesn't send HEIGHT explicitly but terrain values depend on it.
+                // We'll assume local HEIGHT is OK or we should sync it too?
+                // For now, sync WIDTH is most important for array indexing.
+            }
+
+            tanks = data.tanks;
+            projectiles = [];
+            items = [];
+            explosions = [];
+            floatTexts = [];
+
+            // UI Switch
+            document.getElementById('ui-layer').style.pointerEvents = 'none';
+            document.getElementById('lobby-screen').style.display = 'none';
+            document.getElementById('main-hud').style.display = 'block';
+
+            requestAnimationFrame(clientRenderLoop);
+        }
+
+        // --- HOST AUTHORITATIVE LOOP ---
+        let lastTime = 0;
+        function hostLoop(timestamp) {
+            if (gameState !== 'PLAYING') return;
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            updatePhysics();
+
+            // Broadcast State (Snapshot)
+            broadcast({
+                type: 'SNAPSHOT',
+                tanks: tanks.map(t => ({
+                    id: t.id, x: t.x, y: t.y, angle: t.angle, hp: t.hp, fuel: t.fuel, dead: t.dead, sw: t.specialWeapon
+                })),
+                projectiles: projectiles.map(p => ({ x: p.x, y: p.y, type: p.type })),
+                turnIndex: turnIndex,
+                timer: turnTimer
+            });
+
+            requestAnimationFrame(hostLoop);
+        }
+
+        function hostGameTick() {
+            if (gameState !== 'PLAYING') return;
+            // Countdown only if no projectiles are active (Turn Waiting)
+            if (projectiles.length === 0) {
+                turnTimer--;
+                if (turnTimer <= 0) nextTurn();
+            }
+        }
+
+        function updatePhysics() {
+            const activeTank = tanks[turnIndex];
+
+            // 1. Process Active Player Input
+            if (activeTank && !activeTank.dead && projectiles.length === 0) {
+                const inp = playerInputs[activeTank.id];
+
+                // Detect Input Logs (Removed to prevent spam)
+                // if (Math.random() < 0.05) { ... } // Removed
+
+                if (inp) {
+                    if (inp.left && activeTank.fuel > 0) {
+                        activeTank.x -= 2; activeTank.fuel -= 0.5;
+                    }
+                    if (inp.right && activeTank.fuel > 0) {
+                        activeTank.x += 2; activeTank.fuel -= 0.5;
+                    }
+                    // ... (rest of movement)
+                    activeTank.x = Math.max(10, Math.min(WIDTH - 10, activeTank.x)); // Clamp
+
+                    if (inp.up) activeTank.angle = Math.max(-Math.PI, activeTank.angle - 0.03);
+                    if (inp.down) activeTank.angle = Math.min(0, activeTank.angle + 0.03);
+
+                    // Charging Logic
+                    if (inp.space) {
+                        if (!inp.charging) { inp.charging = true; inp.power = 0; inp.pDir = 1; }
+                        inp.power += 0.5 * inp.pDir;
+                        if (inp.power > 25) inp.pDir = -1;
+                        if (inp.power < 5) inp.pDir = 1;
+                    } else if (!inp.space && inp.charging) {
+                        fireWeapon(activeTank, inp.power);
+                        inp.charging = false;
+                        inp.power = 0;
+                    }
+                }
+            }
+
+            // ... (rest of physics loop)
+            tanks.forEach(t => {
+                const groundY = terrain[Math.floor(t.x)] || HEIGHT;
+                t.y = groundY - 20;
+
+                if (!t.dead) {
+                    for (let i = items.length - 1; i >= 0; i--) {
+                        const it = items[i];
+                        const dx = t.x - it.x;
+                        const dy = (t.y + 10) - (terrain[Math.floor(it.x)] - 15);
+                        if (Math.hypot(dx, dy) < 45) {
+                            collectItemHost(t, i);
+                        }
+                    }
+                }
+            });
+
+            // 3. Projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.x += p.vx; p.y += p.vy; p.vy += 0.4;
+
+                let hitResult = null;
+                if (p.x < -100 || p.x > WIDTH + 100 || p.y > HEIGHT) hitResult = 'OUT';
+                else if (p.y >= terrain[Math.floor(p.x)]) hitResult = 'TERRAIN';
+                else {
+                    for (let t of tanks) {
+                        if (!t.dead && Math.hypot(p.x - t.x, p.y - (t.y + 10)) < 20) {
+                            hitResult = 'TANK'; break;
+                        }
+                    }
+                    if (!hitResult) {
+                        for (let k = items.length - 1; k >= 0; k--) {
+                            const it = items[k];
+                            const dy = (terrain[Math.floor(it.x)] - 15);
+                            if (p.ownerId === activeTank.id && Math.hypot(p.x - it.x, p.y - dy) < 30) {
+                                projectiles.splice(i, 1);
+                                collectItemHost(tanks.find(z => z.id === p.ownerId), k);
+                                broadcast({ type: 'FLOAT_TEXT', x: it.x, y: dy - 50, text: "¡SNIPER!", color: '#0ff' });
+                                checkTurnEnd();
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                if (hitResult) {
+                    if (hitResult !== 'OUT') explode(p.x, p.y, p.type);
+                    projectiles.splice(i, 1);
+                    checkTurnEnd();
+                }
+            }
+        }
+
+        function explode(x, y, type) {
+            const r = type === 'BIG' ? 80 : 40;
+
+            // Apply visual/physics changes to terrain locally
+            applyTerrainExplosion(x, y, r, type);
+
+            // Damage Logic (Host only)
+            if (type !== 'MOUNTAIN') {
+                tanks.forEach(t => {
+                    const d = Math.hypot(t.x - x, (t.y + 10) - y);
+                    if (d < r + 20) {
+                        let dmg = 40 * (1 - d / (r + 20));
+                        if (type === 'BIG') dmg *= 2;
+                        t.hp = Math.max(0, t.hp - dmg);
+                        if (t.hp <= 0 && !t.dead) {
+                            t.dead = true;
+                            broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "¡BAJA!", color: '#f00' });
+                        }
+                    }
+                });
+            }
+            // FIX: Use expType to avoid overwriting 'type'
+            broadcast({ type: 'EXPLOSION', x, y, r, expType: type });
+        }
+
+        function applyTerrainExplosion(x, y, r, type) {
+            if (type === 'MOUNTAIN') {
+                for (let i = Math.floor(x - 30); i < x + 30; i++)
+                    if (i >= 0 && i < WIDTH) terrain[i] -= Math.sqrt(900 - (i - x) ** 2);
+            } else {
+                for (let i = Math.floor(x - r); i < x + r; i++)
+                    if (i >= 0 && i < WIDTH) terrain[i] += Math.sqrt(r * r - (i - x) ** 2);
+            }
+        }
+
+
+
+
+
+        function fireWeapon(tank, power) {
+            const type = tank.specialWeapon;
+            tank.specialWeapon = null; // Consume
+            const spawn = (off) => projectiles.push({
+                x: tank.x + Math.cos(tank.angle + off) * 30,
+                y: (tank.y - 15) + Math.sin(tank.angle + off) * 30,
+                vx: Math.cos(tank.angle + off) * power,
+                vy: Math.sin(tank.angle + off) * power,
+                type: type, ownerId: tank.id
+            });
+
+            if (type === 'TRIPLE') { spawn(-0.2); spawn(0); spawn(0.2); }
+            else spawn(0);
+        }
+
+        function explode(x, y, type) {
+            const r = type === 'BIG' ? 80 : 40;
+
+            // Apply visual/physics changes to terrain locally
+            applyTerrainExplosion(x, y, r, type);
+
+            // Damage Logic (Host only)
+            if (type !== 'MOUNTAIN') {
+                tanks.forEach(t => {
+                    const d = Math.hypot(t.x - x, (t.y + 10) - y);
+                    if (d < r + 20) {
+                        let dmg = 40 * (1 - d / (r + 20));
+                        if (type === 'BIG') dmg *= 2;
+                        t.hp = Math.max(0, t.hp - dmg);
+                        if (t.hp <= 0 && !t.dead) {
+                            t.dead = true;
+                            broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "¡BAJA!", color: '#f00' });
+                        }
+                    }
+                });
+            }
+            broadcast({ type: 'EXPLOSION', x, y, r, expType: type }); // removed 'terrain' to save bandwidth, client calculates it
+        }
+
+        function applyTerrainExplosion(x, y, r, type) {
+            if (type === 'MOUNTAIN') {
+                for (let i = Math.floor(x - 30); i < x + 30; i++)
+                    if (i >= 0 && i < WIDTH) terrain[i] -= Math.sqrt(900 - (i - x) ** 2);
+            } else {
+                for (let i = Math.floor(x - r); i < x + r; i++)
+                    if (i >= 0 && i < WIDTH) terrain[i] += Math.sqrt(r * r - (i - x) ** 2);
+            }
+        }
+
+        function collectItemHost(tank, idx) {
+            const it = items[idx];
+            items.splice(idx, 1);
+            let txt = it.type; let col = '#ffeb3b';
+            if (it.type === 'HEALTH') { tank.hp = Math.min(100, tank.hp + 25); txt = "+25 HP"; col = '#0f0'; }
+            else { tank.specialWeapon = it.type; }
+            broadcast({ type: 'ITEM_COLLECT', items: items, tankId: tank.id, hp: tank.hp, sw: tank.specialWeapon });
+            broadcast({ type: 'FLOAT_TEXT', x: tank.x, y: tank.y - 50, text: txt, color: col });
+        }
+
+        function checkTurnEnd() {
+            if (projectiles.length === 0) setTimeout(nextTurn, 1000);
+        }
+
+        function nextTurn() {
+            let loops = 0;
+            do { turnIndex = (turnIndex + 1) % tanks.length; loops++; } while (tanks[turnIndex].dead && loops < tanks.length);
+            if (tanks[turnIndex]) tanks[turnIndex].fuel = 100; // Refill Fuel
+
+            // Check Win
+            const red = tanks.filter(t => t.team === 'RED' && !t.dead).length;
+            const blue = tanks.filter(t => t.team === 'BLUE' && !t.dead).length;
+            if (red === 0 || blue === 0) {
+                const w = red > 0 ? "EQUIPO ROJO" : "EQUIPO AZUL";
+                broadcast({ type: 'GAMEOVER', winner: w });
+                gameState = 'GAMEOVER'; gameOver(w); return;
+            }
+
+            turnTimer = TURN_TIME;
+            if (Math.random() < 0.3) spawnItemHost();
+        }
+
+        function spawnItemHost() {
+            const types = ['HEALTH', 'TRIPLE', 'BIG', 'MOUNTAIN'];
+            let x, valid = false, attempts = 0;
+
+            while (!valid && attempts < 10) {
+                x = Math.random() * (WIDTH - 100) + 50;
+                valid = true;
+                for (let t of tanks) {
+                    if (!t.dead && Math.abs(t.x - x) < 60) {
+                        valid = false;
+                        break;
+                    }
+                }
+                attempts++;
+            }
+
+            if (valid) {
+                items.push({ x: x, type: types[Math.floor(Math.random() * types.length)] });
+                broadcast({ type: 'SYNC_ITEMS', items: items });
+            } else {
+                console.log("Item spawn skipped: No safe space found.");
+            }
+        }
+
+        // --- CLIENT DRAW & INPUT ---
+        function clientRenderLoop() {
+            if (gameState !== 'PLAYING') return;
+
+            // Update HUD Stats
+            const me = tanks.find(t => t.id === myPeerId);
+            if (me) {
+                document.getElementById('hp-disp').innerText = Math.ceil(me.hp);
+                document.getElementById('fuel-disp').innerText = Math.ceil(me.fuel);
+            }
+
+            // Send Input
+            const active = tanks[turnIndex];
+
+            if (me && !me.dead && active && active.id === me.id) {
+                const inp = {
+                    left: !!(keys['ArrowLeft'] || keys['a']),
+                    right: !!(keys['ArrowRight'] || keys['d']),
+                    up: !!(keys['ArrowUp'] || keys['w']),
+                    down: !!(keys['ArrowDown'] || keys['s']),
+                    space: !!(keys[' '])
+                };
+
+                if (isHost) {
+                    // Host Self-Inject Input
+                    if (!playerInputs[myPeerId]) {
+                        playerInputs[myPeerId] = { ...inp, charging: false, power: 0, pDir: 1 };
+                    } else {
+                        playerInputs[myPeerId] = { ...playerInputs[myPeerId], ...inp };
+                    }
+                } else {
+                    send({ type: 'INPUT', inputs: inp });
+                }
+
+                // Local charging visual
+                if (inp.space) {
+                    if (!isCharging) { isCharging = true; chargePower = 0; chargeDir = 1; }
+                    chargePower += 0.5 * chargeDir;
+                    if (chargePower > 25) chargeDir = -1; else if (chargePower < 5) chargeDir = 1;
+                    document.getElementById('fire-power-bar').style.display = 'block';
+                    document.getElementById('fire-power-fill').style.width = (chargePower / 25 * 100) + '%';
+                } else {
+                    isCharging = false;
+                    document.getElementById('fire-power-bar').style.display = 'none';
+                }
+            }
+
+            drawGame();
+            requestAnimationFrame(clientRenderLoop);
+        }
+
+        function drawGame() {
+            CTX.fillStyle = '#222'; CTX.fillRect(0, 0, WIDTH, HEIGHT);
+            // Terrain
+            CTX.fillStyle = '#5d4037'; CTX.beginPath(); CTX.moveTo(0, HEIGHT);
+            for (let x = 0; x < WIDTH; x++) CTX.lineTo(x, terrain[x]);
+            CTX.lineTo(WIDTH, HEIGHT); CTX.fill();
+            CTX.strokeStyle = '#4caf50'; CTX.lineWidth = 4; CTX.stroke();
+
+            // Items
+            items.forEach(it => {
+                const y = terrain[Math.floor(it.x)];
+                CTX.fillStyle = '#ff9800'; CTX.fillRect(it.x - 15, y - 30, 30, 30);
+                CTX.fillStyle = '#000'; CTX.font = '20px Arial'; CTX.textAlign = 'center';
+                let s = '?'; if (it.type === 'HEALTH') s = '+'; else if (it.type === 'TRIPLE') s = 'iii'; else if (it.type === 'BIG') s = '☢'; else if (it.type === 'MOUNTAIN') s = '▲';
+                CTX.fillText(s, it.x, y - 8);
+            });
+
+            // Tanks
+            tanks.forEach(t => {
+                if (t.dead) return;
+                CTX.save(); CTX.translate(t.x, t.y + 10);
+                CTX.fillStyle = t.color; CTX.fillRect(-15, -10, 30, 15);
+                CTX.rotate(t.angle); CTX.fillStyle = '#333'; CTX.fillRect(0, -3, 30, 6);
+                CTX.restore();
+                // HUD tags
+                CTX.fillStyle = '#fff'; CTX.font = '10px monospace'; CTX.textAlign = 'center'; CTX.fillText(t.name, t.x, t.y - 35);
+                CTX.fillStyle = 'red'; CTX.fillRect(t.x - 20, t.y - 25, 40, 4);
+                CTX.fillStyle = '#0f0'; CTX.fillRect(t.x - 20, t.y - 25, 40 * (t.hp / 100), 4);
+                if (t.specialWeapon) { CTX.fillStyle = '#ffeb3b'; CTX.fillText(`[${t.specialWeapon}]`, t.x, t.y - 45); }
+                // Aim line (local)
+                if (t.id === myPeerId && isCharging) {
+                    let px = t.x, py = t.y, vx = Math.cos(t.angle) * chargePower, vy = Math.sin(t.angle) * chargePower;
+                    CTX.fillStyle = 'rgba(255,255,255,0.5)';
+                    for (let k = 0; k < 15; k++) { px += vx; py += vy; vy += 0.4; CTX.beginPath(); CTX.arc(px, py, 2, 0, 6.28); CTX.fill(); }
+                }
+            });
+            // Projectiles
+            projectiles.forEach(p => { CTX.beginPath(); CTX.arc(p.x, p.y, p.type === 'BIG' ? 10 : 4, 0, 6.28); CTX.fillStyle = '#ff5252'; CTX.fill(); });
+            // Explosions
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const e = explosions[i];
+                CTX.beginPath(); CTX.arc(e.x, e.y, e.r, 0, 6.28);
+                CTX.fillStyle = `rgba(255,100,0,${e.life / 30})`; CTX.fill();
+                e.life--; if (e.life <= 0) explosions.splice(i, 1);
+            }
+            // FloatText
+            for (let i = floatTexts.length - 1; i >= 0; i--) {
+                const f = floatTexts[i];
+                CTX.fillStyle = f.color; CTX.font = 'bold 20px Arial'; CTX.textAlign = 'center'; CTX.fillText(f.text, f.x, f.y);
+                f.y -= 1; f.life--; if (f.life <= 0) floatTexts.splice(i, 1);
+            }
+            // HUD
+            const active = tanks[turnIndex];
+            if (active) {
+                document.getElementById('turn-banner').innerText = `TURNO DE ${active.name.toUpperCase()}`;
+                document.getElementById('turn-banner').style.color = active.team === 'RED' ? RED_PALETTE[0] : BLUE_PALETTE[0];
+                document.getElementById('turn-timer-disp').innerText = turnTimer;
+            }
+        }
+
+        // --- DATA DISPATCHER ---
+        function handleData(data, conn) {
+            if (isHost) {
+                if (data.type === 'INPUT') {
+                    // FIX: Merge inputs to preserve host-side state (charging, etc.)
+                    if (playerInputs[conn.peer]) {
+                        playerInputs[conn.peer] = { ...playerInputs[conn.peer], ...data.inputs };
+                    } else {
+                        playerInputs[conn.peer] = data.inputs;
+                    }
+                }
+                else if (data.type === 'HELLO') { const np = { id: conn.peer, name: data.name, team: 'BLUE', color: BLUE_PALETTE[0], ready: false }; players.push(np); broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() }); updateLobbyUI(); }
+                else if (data.type === 'REQ_TEAM') { const p = players.find(x => x.id === conn.peer); if (p) { p.team = data.team; p.color = p.team === 'RED' ? RED_PALETTE[0] : BLUE_PALETTE[0]; broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() }); updateLobbyUI(); } }
+                else if (data.type === 'REQ_COLOR') { const p = players.find(x => x.id === conn.peer); if (p) { p.color = data.color; broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() }); updateLobbyUI(); } }
+                else if (data.type === 'REQ_READY') { const p = players.find(x => x.id === conn.peer); if (p) { p.ready = !p.ready; broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() }); updateLobbyUI(); checkStartGame(); } }
+            } else {
+                if (data.type === 'SNAPSHOT') {
+                    data.tanks.forEach(s => { const l = tanks.find(t => t.id === s.id); if (l) { l.x = s.x; l.y = s.y; l.angle = s.angle; l.hp = s.hp; l.fuel = s.fuel; l.dead = s.dead; l.specialWeapon = s.sw; } });
+                    projectiles = data.projectiles; turnIndex = data.turnIndex; turnTimer = data.timer;
+                }
+                else if (data.type === 'EXPLOSION') {
+                    console.log("[CLIENT] EXP Received:", data);
+                    applyTerrainExplosion(data.x, data.y, data.r, data.expType);
+                    explosions.push({ x: data.x, y: data.y, r: data.r, life: 30 });
+                }
+                else if (data.type === 'FLOAT_TEXT') { floatTexts.push({ x: data.x, y: data.y, text: data.text, color: data.color, life: 60 }); }
+                else if (data.type === 'SYNC_ITEMS' || data.type === 'ITEM_COLLECT') { items = data.items; if (data.tankId) { const t = tanks.find(x => x.id === data.tankId); if (t) { t.hp = data.hp; t.specialWeapon = data.sw; } } }
+                else if (data.type === 'GAME_START') { initGameClient(data); }
+                else if (data.type === 'LOBBY_UPDATE') { players = data.players; updateLobbyUI(); }
+                else if (data.type === 'GAME_START_COUNTDOWN') { document.getElementById('start-timer').innerText = data.sec === "CANCELADO" ? "" : "INICIANDO EN " + data.sec; }
+                else if (data.type === 'GAMEOVER') { gameState = 'GAMEOVER'; gameOver(data.winner); }
+            }
+        }
+    </script>
+</body>
+
+</html>
