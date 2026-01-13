@@ -1840,19 +1840,38 @@
             selectShip(e, dragEl);
 
             const rect = dragEl.getBoundingClientRect();
+
+            // Calculate relative offset ratio to preserve grab point across resize
+            const ratioX = (e.clientX - rect.left) / rect.width;
+            const ratioY = (e.clientY - rect.top) / rect.height;
+
             originData = {
                 parent: dragEl.parentElement,
                 location: dragEl.dataset.location,
                 shipObj: dragEl.dataset.location === 'board' ?
                     placedShips.find(s => s.id === dragEl.dataset.id) : null,
-                offsetX: e.clientX - rect.left,
-                offsetY: e.clientY - rect.top
+                originalWidth: rect.width, // Backup for inventory restoration
+                ratioX: ratioX,
+                ratioY: ratioY
             };
+
+            // Force resize to Board TileSize immediately for accurate visual
+            updateShipVisual(dragEl, dragEl.matrix, tileSize);
+
+            // Re-calc offset based on NEW size
+            const newW = dragEl.scrollWidth; // or clientWidth
+            const newH = dragEl.scrollHeight;
+
+            const realOffsetX = newW * ratioX;
+            const realOffsetY = newH * ratioY;
+
+            originData.offsetX = realOffsetX;
+            originData.offsetY = realOffsetY;
 
             dragEl.style.position = 'fixed';
             dragEl.style.zIndex = 1000;
-            dragEl.style.left = (e.clientX - originData.offsetX) + 'px';
-            dragEl.style.top = (e.clientY - originData.offsetY) + 'px';
+            dragEl.style.left = (e.clientX - realOffsetX) + 'px';
+            dragEl.style.top = (e.clientY - realOffsetY) + 'px';
             document.body.appendChild(dragEl);
 
             dragEl.setPointerCapture(e.pointerId);
@@ -1879,17 +1898,30 @@
             const board = document.getElementById('setup-board');
             const bRect = board.getBoundingClientRect();
 
-            if (rect.left + rect.width > bRect.left && rect.left < bRect.right &&
-                rect.top + rect.height > bRect.top && rect.top < bRect.bottom) {
+            // Check center point or just strict overlap? 
+            // Let's use Top-Left + minimal tolerance
+            // Ideally we want to map the Top-Left of the ship to grid
 
-                const gx = Math.round((rect.left - bRect.left) / tileSize);
-                const gy = Math.round((rect.top - bRect.top) / tileSize);
+            // Calculate tentative grid pos
+            const gx = Math.round((rect.left - bRect.left) / tileSize);
+            const gy = Math.round((rect.top - bRect.top) / tileSize);
 
+            if (rect.left + 10 > bRect.left && rect.right - 10 < bRect.right &&
+                rect.top + 10 > bRect.top && rect.bottom - 10 < bRect.bottom) {
+
+                // It is largely inside the board area
+                if (validatePlacementMatrix(gx, gy, dragEl.matrix, dragEl.dataset.id)) {
+                    placeShipOnBoard(dragEl, gx, gy, dragEl.matrix, dragEl.dataset.id);
+                    return;
+                }
+            } else if (gx >= 0 && gy >= 0 && gx < gridSize && gy < gridSize) {
+                // It is partial, try to snap if valid
                 if (validatePlacementMatrix(gx, gy, dragEl.matrix, dragEl.dataset.id)) {
                     placeShipOnBoard(dragEl, gx, gy, dragEl.matrix, dragEl.dataset.id);
                     return;
                 }
             }
+
             returnToOrigin();
         }
 
@@ -1900,10 +1932,12 @@
             dragEl.style.zIndex = '';
 
             if (originData.location === 'inventory') {
+                // Restore Inventory Appearance (Size 30)
                 updateShipVisual(dragEl, dragEl.matrix, 30);
                 originData.parent.appendChild(dragEl);
             } else {
                 const s = originData.shipObj;
+                // It was on board, so it stays Board Size
                 placeShipOnBoard(dragEl, s.gx, s.gy, s.matrix, s.id);
             }
             dragEl = null;
@@ -2131,4 +2165,5 @@
 
     </script>
 </body>
+
 </html>
