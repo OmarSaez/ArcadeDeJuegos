@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arcade de Omar</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600&display=swap"
+        rel="stylesheet">
     <style>
         body {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -18,6 +20,7 @@
             align-items: center;
             justify-content: center;
         }
+
         h1 {
             font-family: 'Press Start 2P', cursive;
             color: #4ade80;
@@ -26,6 +29,7 @@
             font-size: 2rem;
             line-height: 1.5;
         }
+
         .game-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -33,6 +37,7 @@
             max-width: 800px;
             width: 90%;
         }
+
         .card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -46,24 +51,42 @@
             flex-direction: column;
             align-items: center;
         }
+
         .card:hover {
             transform: translateY(-5px);
             background: rgba(255, 255, 255, 0.1);
             border-color: #4ade80;
         }
+
         .icon {
             font-size: 3rem;
             margin-bottom: 15px;
         }
-        h2 { margin: 0 0 10px 0; font-size: 1.2rem; }
-        p { margin: 0; font-size: 0.9rem; color: #aaa; }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+        }
+
+        p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
     </style>
 </head>
+
 <body>
 
     <h1>👾 ARCADE DE OMAR 👾</h1>
 
     <div class="game-grid">
+        <a href="MisJuegos/batalla_naval/" class="card">
+            <div class="icon">⚓</div>
+            <h2>Batalla Naval</h2>
+            <p>Estrategia P2P</p>
+        </a>
+
         <a href="MisJuegos/puzzlerompecabeza/" class="card">
             <div class="icon">🧩</div>
             <h2>Master Puzzle</h2>
@@ -90,4 +113,5 @@
     </div>
 
 </body>
+
 </html>

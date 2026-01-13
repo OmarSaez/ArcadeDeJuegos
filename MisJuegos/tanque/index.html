@@ -262,6 +262,89 @@
             width: 0%;
             background: linear-gradient(90deg, #ffeb3b, #f44336);
         }
+
+        /* TOUCH CONTROLS */
+        #touch-controls {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Show in landscape on mobile-ish screens */
+        @media (max-width: 1024px) and (orientation: landscape) {
+            #touch-controls {
+                display: block;
+            }
+        }
+
+        .touch-group {
+            position: absolute;
+            bottom: 20px;
+            pointer-events: auto;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .touch-left {
+            left: 30px;
+            bottom: 30px;
+        }
+
+        .touch-right {
+            right: 30px;
+            bottom: 30px;
+            align-items: flex-end;
+        }
+
+        .touch-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            user-select: none;
+            backdrop-filter: blur(2px);
+            transition: all 0.1s;
+        }
+
+        .touch-btn:active,
+        .touch-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(0.95);
+            border-color: white;
+            color: white;
+        }
+
+        .btn-fire {
+            width: 80px;
+            height: 80px;
+            background: rgba(244, 67, 54, 0.2);
+            border-color: #f44336;
+            margin-left: 15px;
+            font-size: 2rem;
+        }
+
+        .btn-fire:active,
+        .btn-fire.active {
+            background: rgba(244, 67, 54, 0.5);
+        }
+
+        .column-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
     </style>
 </head>
 
@@ -317,6 +400,25 @@
             <h1 id="winner-text">GANADOR</h1>
             <button onclick="location.reload()">VOLVER AL MENÚ</button>
         </div>
+
+        <!-- TOUCH CONTROLS (Only visible on mobile landscape) -->
+        <div id="touch-controls">
+            <!-- MOVE (Left/Right) -->
+            <div class="touch-group touch-left">
+                <div class="touch-btn" data-key="ArrowLeft">⬅️</div>
+                <div class="touch-btn" data-key="ArrowRight">➡️</div>
+            </div>
+
+            <!-- ACTIONS (Up/Down + Fire) -->
+            <div class="touch-group touch-right">
+                <div class="column-btns">
+                    <div class="touch-btn" data-key="ArrowUp">⬆️</div>
+                    <div class="touch-btn" data-key="ArrowDown">⬇️</div>
+                </div>
+                <!-- FIRE (Space) -->
+                <div class="touch-btn btn-fire" data-key=" ">🔥</div>
+            </div>
+        </div>
     </div>
 
     <!-- HUD -->
@@ -366,6 +468,12 @@
 
         const GRAVITY = 0.4;
         const TURN_TIME = 40;
+
+        // --- CAMERA STATE ---
+        const camera = { x: 0, y: 0, zoom: 1 };
+        let isDraggingRaw = false;
+        let lastTouch = { x: 0, y: 0 };
+        let WORLD_HEIGHT = HEIGHT; // Synced from host
 
         // --- ESTADO GLOBAL ---
         let myName = "Invitado";
@@ -729,7 +837,7 @@
             gameState = 'PLAYING';
 
             // 3. Notify Everyone
-            const startPacket = { type: 'GAME_START', terrain: terrain, tanks: tanks };
+            const startPacket = { type: 'GAME_START', terrain: terrain, tanks: tanks, width: WIDTH, height: HEIGHT };
             broadcast(startPacket);
             initGameClient(startPacket);
 
@@ -745,14 +853,15 @@
             gameState = 'PLAYING';
             terrain = data.terrain || terrain;
 
-            // SYNC DIMENSIONS with Host
-            if (terrain.length > 0) {
-                WIDTH = terrain.length;
-                CANVAS.width = WIDTH;
-                // Height? Host doesn't send HEIGHT explicitly but terrain values depend on it.
-                // We'll assume local HEIGHT is OK or we should sync it too?
-                // For now, sync WIDTH is most important for array indexing.
-            }
+            // Sync logic: Host sends 'width' and 'height' used for generation.
+            // If data.width/height are missing, infer from terrain or defaults.
+            WIDTH = data.width || (terrain.length > 0 ? terrain.length : window.innerWidth);
+            HEIGHT = data.height || window.innerHeight;
+            WORLD_HEIGHT = HEIGHT;
+
+            // Responsive Canvas: Canvas is Viewport, not World
+            CANVAS.width = window.innerWidth;
+            CANVAS.height = window.innerHeight;
 
             tanks = data.tanks;
             projectiles = [];
@@ -764,6 +873,36 @@
             document.getElementById('ui-layer').style.pointerEvents = 'none';
             document.getElementById('lobby-screen').style.display = 'none';
             document.getElementById('main-hud').style.display = 'block';
+
+            // Detect Mobile for initial Zoom
+            const isMobile = window.innerWidth <= 1024 || window.innerHeight <= 500;
+            camera.zoom = isMobile ? 0.6 : 1.0;
+
+            // INITIAL CAMERA SETUP
+            const me = tanks.find(t => t.id === myPeerId);
+            const target = me || tanks[0];
+            if (target) {
+                // Determine screen center in world units
+                // CenterX = (TargetX - CamX) * Zoom
+                // WinWidth/2 = (TargetX - CamX) * Zoom
+                // CamX = TargetX - (WinWidth / (2 * Zoom))
+                camera.x = target.x - (CANVAS.width / (2 * camera.zoom));
+
+                // Align Y slightly above (look ahead) or center
+                camera.y = target.y - (CANVAS.height / (2 * camera.zoom));
+
+                // Clamp immediately so we don't start in void
+                // (Optional, drawGame loop will also clamp but good for clean start)
+                const vw = CANVAS.width / camera.zoom;
+                if (WIDTH < vw) camera.x = (WIDTH - vw) / 2;
+                else camera.x = Math.max(0, Math.min(camera.x, WIDTH - vw));
+            }
+
+            // Sync Resize
+            window.addEventListener('resize', () => {
+                CANVAS.width = window.innerWidth;
+                CANVAS.height = window.innerHeight;
+            });
 
             requestAnimationFrame(clientRenderLoop);
         }
@@ -1086,12 +1225,30 @@
             requestAnimationFrame(clientRenderLoop);
         }
 
+
+        function clampCamera() {
+            const vw = CANVAS.width / camera.zoom;
+            if (WIDTH < vw) camera.x = (WIDTH - vw) / 2;
+            else camera.x = Math.max(0, Math.min(camera.x, WIDTH - vw));
+            if (camera.y > WORLD_HEIGHT) camera.y = WORLD_HEIGHT;
+        }
+
         function drawGame() {
-            CTX.fillStyle = '#222'; CTX.fillRect(0, 0, WIDTH, HEIGHT);
+            CTX.fillStyle = '#202028';
+            CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
+
+            clampCamera();
+
+            CTX.save();
+            CTX.translate(-camera.x, -camera.y);
+            CTX.scale(camera.zoom, camera.zoom);
+
             // Terrain
-            CTX.fillStyle = '#5d4037'; CTX.beginPath(); CTX.moveTo(0, HEIGHT);
+            CTX.fillStyle = '#5d4037'; CTX.beginPath();
+            // Draw way below world height to fill screen
+            CTX.moveTo(0, WORLD_HEIGHT + 2000);
             for (let x = 0; x < WIDTH; x++) CTX.lineTo(x, terrain[x]);
-            CTX.lineTo(WIDTH, HEIGHT); CTX.fill();
+            CTX.lineTo(WIDTH, WORLD_HEIGHT + 2000); CTX.fill();
             CTX.strokeStyle = '#4caf50'; CTX.lineWidth = 4; CTX.stroke();
 
             // Items
@@ -1137,6 +1294,9 @@
                 CTX.fillStyle = f.color; CTX.font = 'bold 20px Arial'; CTX.textAlign = 'center'; CTX.fillText(f.text, f.x, f.y);
                 f.y -= 1; f.life--; if (f.life <= 0) floatTexts.splice(i, 1);
             }
+
+            CTX.restore(); // Restore camera fix
+
             // HUD
             const active = tanks[turnIndex];
             if (active) {
@@ -1179,6 +1339,115 @@
                 else if (data.type === 'GAMEOVER') { gameState = 'GAMEOVER'; gameOver(data.winner); }
             }
         }
+
+        // --- TOUCH INPUT HANDLER ---
+        document.querySelectorAll('.touch-btn').forEach(btn => {
+            const k = btn.getAttribute('data-key');
+
+            const activate = (e) => {
+                if (e.cancelable) e.preventDefault();
+                keys[k] = true;
+                btn.classList.add('active');
+            };
+
+            const deactivate = (e) => {
+                if (e.cancelable) e.preventDefault();
+                keys[k] = false;
+                btn.classList.remove('active');
+            };
+
+            btn.addEventListener('touchstart', activate, { passive: false });
+            btn.addEventListener('touchend', deactivate);
+            btn.addEventListener('touchcancel', deactivate);
+
+            // Mouse fallbacks for testing
+            btn.addEventListener('mouseup', deactivate);
+            btn.addEventListener('mouseleave', deactivate);
+        });
+
+        // --- CAMERA PAN HANDLER (TOUCH) ---
+        // Basic drag logic for the camera
+        window.addEventListener('touchstart', e => {
+            // If touching a control, ignore drag
+            if (e.target.closest('#touch-controls') || e.target.closest('#ui-layer')) return;
+
+            // Only consider single touch for dragging
+            if (e.touches.length === 1) {
+                isDraggingRaw = true;
+                lastTouch.x = e.touches[0].clientX;
+                lastTouch.y = e.touches[0].clientY;
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', e => {
+            if (!isDraggingRaw) return;
+            // Prevent scrolling page
+            if (e.cancelable) e.preventDefault();
+
+            const tx = e.touches[0].clientX;
+            const ty = e.touches[0].clientY;
+
+            const dx = tx - lastTouch.x;
+            const dy = ty - lastTouch.y;
+
+            camera.x -= dx; // Dragging moves camera opposite
+            camera.y -= dy;
+
+            lastTouch.x = tx;
+            lastTouch.y = ty;
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            isDraggingRaw = false;
+        });
+        window.addEventListener('touchcancel', () => {
+            isDraggingRaw = false;
+        });
+
+
+        // --- PC MOUSE CONTROLS (Right/Middle drag to pan, Wheel to zoom) ---
+        let isMouseDragging = false;
+        let lastMouse = { x: 0, y: 0 };
+
+        window.addEventListener('mousedown', e => {
+            // Right click (2) or Middle click (1) for panning
+            if (e.button === 2 || e.button === 1) {
+                isMouseDragging = true;
+                lastMouse.x = e.clientX;
+                lastMouse.y = e.clientY;
+            }
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (isMouseDragging) {
+                const dx = e.clientX - lastMouse.x;
+                const dy = e.clientY - lastMouse.y;
+
+                // Adjust sensitivity logic if needed, but 1:1 is standard
+                // Divide by zoom if you want screen-pixels to match world-movement exactly?
+                // Actually if we translate, then scale:
+                // View = (World - Cam) * Zoom
+                // dView = -dCam * Zoom
+                // dCam = -dView / Zoom
+                camera.x -= dx / camera.zoom;
+                camera.y -= dy / camera.zoom;
+
+                lastMouse.x = e.clientX;
+                lastMouse.y = e.clientY;
+            }
+        });
+
+        window.addEventListener('mouseup', () => isMouseDragging = false);
+        window.addEventListener('contextmenu', e => e.preventDefault()); // Block context menu
+
+        window.addEventListener('wheel', e => {
+            if (gameState !== 'PLAYING') return;
+            e.preventDefault();
+            const zoomSpeed = 0.1;
+            const newZoom = camera.zoom - Math.sign(e.deltaY) * zoomSpeed;
+            camera.zoom = Math.max(0.2, Math.min(2.0, newZoom));
+        }, { passive: false });
+
     </script>
 </body>
 
