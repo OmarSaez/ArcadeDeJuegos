@@ -888,34 +888,74 @@
             border-radius: 4px;
         }
 
-        /* --- GAME BOARDS --- */
+        /* --- GAME LAYOUT UPDATED --- */
         .game-layout {
             display: flex;
             flex-direction: column;
+            align-items: center;
+            /* Center everything vertically */
             width: 100%;
             height: 100%;
-            max-width: 1000px;
+            max-width: 600px;
+            /* Limit width for cleaner look */
             padding: 10px;
             box-sizing: border-box;
+            gap: 15px;
+            /* Spacing between blocks */
         }
 
-        /* Responsive Layout: Mobile = Column, Desktop = Row */
+        /* Responsive Layout: Keep vertical stack even on desktop, just cleaner */
         @media (min-width: 800px) {
             .game-layout {
-                flex-direction: row;
-                justify-content: center;
-                align-items: flex-start;
-                gap: 20px;
-                padding-top: 50px;
+                max-width: 800px;
+                padding-top: 20px;
             }
         }
 
-        .board-wrapper {
-            position: relative;
-            background: var(--sea-color);
-            border: 2px solid #334155;
-            margin: 0 auto;
-            touch-action: none;
+        /* Board Sections */
+        .board-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* --- ENEMY STATUS (HORIZONTAL SCROLL) --- */
+        #enemy-fleet-panel {
+            width: 100%;
+            height: auto;
+            min-height: 60px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 10px;
+
+            /* Horizontal Scroll Logic */
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-start;
+            /* Items start from left */
+
+            /* Scrollbar styling */
+            scrollbar-width: thin;
+            scrollbar-color: var(--radar-green) #1e293b;
+        }
+
+        .enemy-ship-entry {
+            background: #0f172a;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0.9;
+            border: 1px solid #334155;
+            flex-shrink: 0;
+            /* Don't shrink items */
+            min-width: 60px;
         }
 
         .grid-layer {
@@ -1213,8 +1253,8 @@
         </div>
 
         <div class="game-layout">
-            <!-- ENEMY MAP -->
-            <div style="display:flex; flex-direction:column; align-items:center;">
+            <!-- ENEMY MAP (RADAR) -->
+            <div class="board-section">
                 <span style="margin-bottom:5px; color:#ef4444; font-weight:bold;">RADAR (ENEMIGO)</span>
                 <div id="enemy-board" class="board-wrapper">
                     <div class="grid-layer" id="enemy-grid"></div>
@@ -1222,13 +1262,13 @@
                 </div>
             </div>
 
-            <!-- ENEMY STATUS (RIGHT OR MIDDLE) -->
+            <!-- ENEMY STATUS (MIDDLE - SCROLLABLE) -->
             <div id="enemy-fleet-panel">
                 <!-- List of enemy ships -->
             </div>
 
-            <!-- MY MAP -->
-            <div style="display:flex; flex-direction:column; align-items:center; opacity:0.8;">
+            <!-- MY MAP (BOTTOM) -->
+            <div class="board-section" style="opacity:0.9;">
                 <span style="margin-bottom:5px; color:#3b82f6; font-weight:bold;">MI FLOTA</span>
                 <div id="my-board" class="board-wrapper" style="pointer-events:none;">
                     <div class="grid-layer" id="my-grid"></div>
