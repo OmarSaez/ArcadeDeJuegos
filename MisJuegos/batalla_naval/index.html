@@ -2162,545 +2162,317 @@
             el.addEventListener('pointerdown', (e) => selectShip(e, el));
         }
 
-        function selectShip(e, el) {
-            // Deselect Prev
-            if (selectedShipRef) selectedShipRef.classList.remove('selected');
-            selectedShipRef = el;
-            el.classList.add('selected');
+    </script>
+</body>
 
-            document.getElementById('btn-rotate').disabled = false;
-            e.stopPropagation();
+</html>
+const gx = Math.round((shipLeft - boardRect.left) / tileSize);
+const gy = Math.round((shipTop - boardRect.top) / tileSize);
+
+const size = parseInt(dragEl.dataset.size);
+// Inherit orientation
+const vertical = dragEl.dataset.vertical === 'true';
+const existingObj = originData.shipObj; // Identify if we are moving an existing one
+
+if (validatePlacement(gx, gy, size, vertical, existingObj)) {
+placeShipOnBoard(dragEl, gx, gy, size, vertical, existingObj);
+return;
+}
+}
+
+// If invalid drop, return to origin
+returnToOrigin();
+}
+
+function returnToOrigin() {
+dragEl.style.position = '';
+dragEl.style.zIndex = '';
+dragEl.style.left = '';
+dragEl.style.top = '';
+dragEl.style.width = ''; // Reset visual sizing to inventory/css defaults
+dragEl.style.height = '';
+
+if (originData.location === 'board') {
+// Snap back to old board pos
+document.getElementById('setup-ships').appendChild(dragEl);
+updateShipVisual(originData.shipObj);
+} else {
+// Back to inventory wrapper
+originData.parent.appendChild(dragEl);
+// Force Inventory Style
+const size = parseInt(dragEl.dataset.size);
+dragEl.style.width = `${30 * size}px`;
+dragEl.style.height = `30px`;
+dragEl.style.backgroundSize = `30px 30px`;
+dragEl.dataset.vertical = 'false';
+dragEl.dataset.location = 'inventory';
+dragEl.classList.remove('vertical');
+}
+}
+
+function validatePlacement(x, y, size, vertical, ignoreShip = null) {
+// Bounds
+if (x < 0 || y < 0) return false; if (vertical) { if (y + size> gridSize) return false;
+    } else {
+    if (x + size > gridSize) return false;
+    }
+
+    // Collision
+    // Generate occupied cells
+    const occupied = new Set();
+    placedShips.forEach(s => {
+    if (s === ignoreShip) return; // Don't collide with self (if moving)
+    for (let i = 0; i < s.size; i++) { const ox=s.vertical ? s.x : s.x + i; const oy=s.vertical ? s.y + i : s.y;
+        occupied.add(`${ox},${oy}`); } }); for (let i=0; i < size; i++) { const cx=vertical ? x : x + i; const
+        cy=vertical ? y + i : y; if (occupied.has(`${cx},${cy}`)) return false; } return true; } function
+        placeShipOnBoard(el, x, y, size, vertical, existingObj) { // Remove from inventory parent if coming from
+        inventory if (el.parentElement !==document.getElementById('setup-ships')) {
+        document.getElementById('setup-ships').appendChild(el); } // Update styles for board scale
+        el.dataset.location='board' ; if (existingObj) { // Update existing existingObj.x=x; existingObj.y=y;
+        updateShipVisual(existingObj); } else { // New obj const obj={ id: el.dataset.id, element: el, size: size, x: x,
+        y: y, vertical: vertical, hits: 0 }; placedShips.push(obj); updateShipVisual(obj); } checkAllPlaced(); }
+        function checkAllPlaced() { // Count ships in config const totalRequired=fleetConfig.reduce((acc, c)=> acc +
+        c.count, 0);
+        if (placedShips.length === totalRequired) {
+        document.getElementById('btn-ready').classList.remove('hidden');
         }
-
-        // Background click deselects
-        document.getElementById('screen-setup').addEventListener('click', (e) => {
-            if (!clickedOnShip) {
-                if (selectedShipRef) selectedShipRef.classList.remove('selected');
-                selectedShipRef = null;
-                document.getElementById('btn-rotate').disabled = true;
-            }
-            clickedOnShip = false;
-        });
-        let clickedOnShip = false; // Flag to bubble prevention
-
-        function rotateSelected() {
-            if (!selectedShipRef) return;
-            if (selectedShipRef.dataset.location !== 'board') return; // Only rotate on board
-
-            const ship = placedShips.find(s => s.element === selectedShipRef);
-            if (!ship) return;
-
-            // Remove from logical grid to test new orientation
-            const oldV = ship.vertical;
-            const newV = !oldV;
-
-            if (validatePlacement(ship.x, ship.y, ship.size, newV, ship)) {
-                ship.vertical = newV;
-                updateShipVisual(ship);
-            } else {
-                // Shake effect?
-                selectedShipRef.style.borderColor = 'red';
-                setTimeout(() => selectedShipRef.style.borderColor = '', 200);
-            }
-        }
-
-        function updateShipVisual(shipObj) {
-            const el = shipObj.element;
-            const size = shipObj.size;
-            el.dataset.vertical = shipObj.vertical;
-
-            if (shipObj.vertical) {
-                el.classList.add('vertical');
-                el.style.width = `${tileSize}px`;
-                el.style.height = `${tileSize * size}px`;
-                el.style.backgroundSize = `${tileSize}px ${tileSize}px`;
-            } else {
-                el.classList.remove('vertical');
-                el.style.width = `${tileSize * size}px`;
-                el.style.height = `${tileSize}px`;
-                el.style.backgroundSize = `${tileSize}px ${tileSize}px`;
-            }
-
-            el.style.left = `${shipObj.x * tileSize}px`;
-            el.style.top = `${shipObj.y * tileSize}px`;
-            el.style.position = 'absolute';
-        }
-
-        // --- DRAG AND DROP LOGIC ---
-        let dragEl = null;
-        let dragOffset = { x: 0, y: 0 };
-        let isDragging = false;
-        let originData = null; // {x, y, parent, location}
-
-        function setupDrag(el) {
-            el.addEventListener('pointerdown', startDrag);
-        }
-
-        function startDrag(e) {
-            clickedOnShip = true;
-            dragEl = e.currentTarget;
-            isDragging = true;
-
-            // Capture init state
-            const rect = dragEl.getBoundingClientRect();
-            dragOffset.x = e.clientX - rect.left;
-            dragOffset.y = e.clientY - rect.top;
-
-            // Determine Origin
-            const isBoard = dragEl.dataset.location === 'board';
-            originData = {
-                location: isBoard ? 'board' : 'inventory',
-                parent: dragEl.parentElement,
-                shipObj: isBoard ? placedShips.find(s => s.element === dragEl) : null
-            };
-
-            // Pop out to body for unconstrained dragging
-            dragEl.style.position = 'fixed';
-            dragEl.style.zIndex = 1000;
-            dragEl.style.width = originData.shipObj ? (originData.shipObj.vertical ? tileSize : tileSize * originData.shipObj.size) + 'px' : rect.width + 'px';
-            dragEl.style.height = originData.shipObj ? (originData.shipObj.vertical ? tileSize * originData.shipObj.size : tileSize) + 'px' : rect.height + 'px';
-            document.body.appendChild(dragEl); // Move to body
-
-            moveDrag(e);
-
-            dragEl.setPointerCapture(e.pointerId);
-            dragEl.classList.add('dragging');
-
-            dragEl.addEventListener('pointermove', moveDrag);
-            dragEl.addEventListener('pointerup', endDrag);
-        }
-
-        function moveDrag(e) {
-            if (!isDragging) return;
-            dragEl.style.left = (e.clientX - dragOffset.x) + 'px';
-            dragEl.style.top = (e.clientY - dragOffset.y) + 'px';
-        }
-
-        function endDrag(e) {
-            isDragging = false;
-            dragEl.classList.remove('dragging');
-            dragEl.removeEventListener('pointermove', moveDrag);
-            dragEl.removeEventListener('pointerup', endDrag);
-            dragEl.releasePointerCapture(e.pointerId);
-
-            // Hit Test based on TOP-LEFT corner for intuitive snapping
-            // (Previous center-based logic caused long ships to jump forward)
-            const rect = dragEl.getBoundingClientRect();
-            const shipLeft = rect.left;
-            const shipTop = rect.top;
-
-            const board = document.getElementById('setup-board');
-            const boardRect = board.getBoundingClientRect();
-
-            // Check if at least ONE pixel is overlapping to consider it a drop attempt (Loose collision)
-            // But for calculation, we project the top-left relative to grid
-            if (shipLeft + rect.width > boardRect.left && shipLeft < boardRect.right &&
-                shipTop + rect.height > boardRect.top && shipTop < boardRect.bottom) {
-
-                // Calc Grid Coords using rounding to nearest tile edge
-                const gx = Math.round((shipLeft - boardRect.left) / tileSize);
-                const gy = Math.round((shipTop - boardRect.top) / tileSize);
-
-                const size = parseInt(dragEl.dataset.size);
-                // Inherit orientation
-                const vertical = dragEl.dataset.vertical === 'true';
-                const existingObj = originData.shipObj; // Identify if we are moving an existing one
-
-                if (validatePlacement(gx, gy, size, vertical, existingObj)) {
-                    placeShipOnBoard(dragEl, gx, gy, size, vertical, existingObj);
-                    return;
-                }
-            }
-
-            // If invalid drop, return to origin
-            returnToOrigin();
-        }
-
-        function returnToOrigin() {
-            dragEl.style.position = '';
-            dragEl.style.zIndex = '';
-            dragEl.style.left = '';
-            dragEl.style.top = '';
-            dragEl.style.width = ''; // Reset visual sizing to inventory/css defaults
-            dragEl.style.height = '';
-
-            if (originData.location === 'board') {
-                // Snap back to old board pos
-                document.getElementById('setup-ships').appendChild(dragEl);
-                updateShipVisual(originData.shipObj);
-            } else {
-                // Back to inventory wrapper
-                originData.parent.appendChild(dragEl);
-                // Force Inventory Style
-                const size = parseInt(dragEl.dataset.size);
-                dragEl.style.width = `${30 * size}px`;
-                dragEl.style.height = `30px`;
-                dragEl.style.backgroundSize = `30px 30px`;
-                dragEl.dataset.vertical = 'false';
-                dragEl.dataset.location = 'inventory';
-                dragEl.classList.remove('vertical');
-            }
-        }
-
-        function validatePlacement(x, y, size, vertical, ignoreShip = null) {
-            // Bounds
-            if (x < 0 || y < 0) return false;
-            if (vertical) {
-                if (y + size > gridSize) return false;
-            } else {
-                if (x + size > gridSize) return false;
-            }
-
-            // Collision
-            // Generate occupied cells
-            const occupied = new Set();
-            placedShips.forEach(s => {
-                if (s === ignoreShip) return; // Don't collide with self (if moving)
-                for (let i = 0; i < s.size; i++) {
-                    const ox = s.vertical ? s.x : s.x + i;
-                    const oy = s.vertical ? s.y + i : s.y;
-                    occupied.add(`${ox},${oy}`);
-                }
-            });
-
-            for (let i = 0; i < size; i++) {
-                const cx = vertical ? x : x + i;
-                const cy = vertical ? y + i : y;
-                if (occupied.has(`${cx},${cy}`)) return false;
-            }
-            return true;
-        }
-
-        function placeShipOnBoard(el, x, y, size, vertical, existingObj) {
-            // Remove from inventory parent if coming from inventory
-            if (el.parentElement !== document.getElementById('setup-ships')) {
-                document.getElementById('setup-ships').appendChild(el);
-            }
-
-            // Update styles for board scale
-            el.dataset.location = 'board';
-
-            if (existingObj) {
-                // Update existing
-                existingObj.x = x;
-                existingObj.y = y;
-                updateShipVisual(existingObj);
-            } else {
-                // New obj
-                const obj = {
-                    id: el.dataset.id,
-                    element: el,
-                    size: size,
-                    x: x, y: y,
-                    vertical: vertical,
-                    hits: 0
-                };
-                placedShips.push(obj);
-                updateShipVisual(obj);
-            }
-
-            checkAllPlaced();
-        }
-
-        function checkAllPlaced() {
-            // Count ships in config
-            const totalRequired = fleetConfig.reduce((acc, c) => acc + c.count, 0);
-            if (placedShips.length === totalRequired) {
-                document.getElementById('btn-ready').classList.remove('hidden');
-            }
         }
 
         function finalizeSetup() {
-            isSetupReady = true;
-            myShips = placedShips.map(s => ({
-                id: s.id, size: s.size, x: s.x, y: s.y, vertical: s.vertical, hits: 0
-            }));
+        isSetupReady = true;
+        myShips = placedShips.map(s => ({
+        id: s.id, size: s.size, x: s.x, y: s.y, vertical: s.vertical, hits: 0
+        }));
 
-            // Prepare manifest for enemy
-            const manifest = myShips.map(s => ({ id: s.id, size: s.size, sunk: false }));
-            conn.send({ type: 'ENEMY_READY', manifest: manifest });
+        // Prepare manifest for enemy
+        const manifest = myShips.map(s => ({ id: s.id, size: s.size, sunk: false }));
+        conn.send({ type: 'ENEMY_READY', manifest: manifest });
 
-            show('screen-game');
-            initGameUI();
-            checkStartGame();
+        show('screen-game');
+        initGameUI();
+        checkStartGame();
         }
 
         // --- GAMEPLAY ---
         let enemyReady = false;
 
         function checkStartGame() {
-            if (isSetupReady && enemyShipsList.length > 0) {
-                enemyReady = true;
-                startGame();
-            } else {
-                document.getElementById('game-info').innerText = "Esperando al rival...";
-            }
+        if (isSetupReady && enemyShipsList.length > 0) {
+        enemyReady = true;
+        startGame();
+        } else {
+        document.getElementById('game-info').innerText = "Esperando al rival...";
+        }
         }
 
         function startGame() {
-            // Render Enemy Fleet List
-            renderEnemyFleetPanel();
+        // Render Enemy Fleet List
+        renderEnemyFleetPanel();
 
-            // Render My Fleet (Final Locked View)
-            const myBoard = document.getElementById('my-board');
-            const myShipsContainer = document.getElementById('my-final-ships');
-            const myGrid = document.getElementById('my-grid');
+        // Render My Fleet (Final Locked View)
+        const myBoard = document.getElementById('my-board');
+        const myShipsContainer = document.getElementById('my-final-ships');
+        const myGrid = document.getElementById('my-grid');
 
-            // Resize my game board
-            myBoard.style.width = `${tileSize * gridSize}px`;
-            myBoard.style.height = `${tileSize * gridSize}px`;
-            myGrid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
-            myGrid.style.backgroundImage = `
-                linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-                linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)
-            `;
+        // Resize my game board
+        myBoard.style.width = `${tileSize * gridSize}px`;
+        myBoard.style.height = `${tileSize * gridSize}px`;
+        myGrid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
+        myGrid.style.backgroundImage = `
+        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)
+        `;
 
-            myShips.forEach(s => {
-                const el = document.createElement('div');
-                el.className = 'ship-visual';
-                if (s.vertical) {
-                    el.classList.add('vertical');
-                    el.style.width = `${tileSize}px`;
-                    el.style.height = `${tileSize * s.size}px`;
-                } else {
-                    el.style.width = `${tileSize * s.size}px`;
-                    el.style.height = `${tileSize}px`;
-                }
-                el.style.left = `${s.x * tileSize}px`;
-                el.style.top = `${s.y * tileSize}px`;
-                el.style.backgroundSize = `${tileSize}px ${tileSize}px`;
-                myShipsContainer.appendChild(el);
-            });
+        myShips.forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'ship-visual';
+        if (s.vertical) {
+        el.classList.add('vertical');
+        el.style.width = `${tileSize}px`;
+        el.style.height = `${tileSize * s.size}px`;
+        } else {
+        el.style.width = `${tileSize * s.size}px`;
+        el.style.height = `${tileSize}px`;
+        }
+        el.style.left = `${s.x * tileSize}px`;
+        el.style.top = `${s.y * tileSize}px`;
+        el.style.backgroundSize = `${tileSize}px ${tileSize}px`;
+        myShipsContainer.appendChild(el);
+        });
 
-            // Enemy Board Setup
-            const eBoard = document.getElementById('enemy-board');
-            eBoard.style.width = `${tileSize * gridSize}px`;
-            eBoard.style.height = `${tileSize * gridSize}px`;
-            const eGrid = document.getElementById('enemy-grid');
-            eGrid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
-            eGrid.style.backgroundImage = `
-                linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-                linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)
-            `;
+        // Enemy Board Setup
+        const eBoard = document.getElementById('enemy-board');
+        eBoard.style.width = `${tileSize * gridSize}px`;
+        eBoard.style.height = `${tileSize * gridSize}px`;
+        const eGrid = document.getElementById('enemy-grid');
+        eGrid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
+        eGrid.style.backgroundImage = `
+        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)
+        `;
 
-            eBoard.addEventListener('click', onEnemyBoardClick);
+        eBoard.addEventListener('click', onEnemyBoardClick);
 
-            // Turn Logic
-            myTurn = isHost;
-            updateTurnUI();
+        // Turn Logic
+        myTurn = isHost;
+        updateTurnUI();
         }
 
         function renderFleetConfig() {
-            const container = document.getElementById('fleet-config-list');
-            container.innerHTML = '';
+        const container = document.getElementById('fleet-config-list');
+        container.innerHTML = '';
 
-            fleetConfig.forEach((cfg, index) => {
-                const row = document.createElement('div');
-                row.className = 'config-row';
-                row.style.display = 'flex';
-                row.style.alignItems = 'center';
-                row.style.justifyContent = 'space-between';
-                row.style.background = '#1e293b';
-                row.style.padding = '8px';
-                row.style.marginBottom = '8px';
-                row.style.borderRadius = '6px';
+        fleetConfig.forEach((cfg, index) => {
+        const row = document.createElement('div');
+        row.className = 'config-row';
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+        row.style.background = '#1e293b';
+        row.style.padding = '8px';
+        row.style.marginBottom = '8px';
+        row.style.borderRadius = '6px';
 
-                // Left: Visual Ship Representation
-                const shipPreview = document.createElement('div');
-                shipPreview.style.display = 'flex';
-                shipPreview.style.gap = '2px';
+        // Left: Visual Ship Representation
+        const shipPreview = document.createElement('div');
+        shipPreview.style.display = 'flex';
+        shipPreview.style.gap = '2px';
 
-                // Create blocks
-                for (let i = 0; i < cfg.size; i++) {
-                    const block = document.createElement('div');
-                    block.style.width = '20px';
-                    block.style.height = '20px';
-                    block.style.backgroundColor = '#94a3b8'; // Ship Color
-                    block.style.border = '1px solid #475569';
-                    shipPreview.appendChild(block);
-                }
+        // Create blocks
+        for (let i = 0; i < cfg.size; i++) { const block=document.createElement('div'); block.style.width='20px' ;
+            block.style.height='20px' ; block.style.backgroundColor='#94a3b8' ; // Ship Color
+            block.style.border='1px solid #475569' ; shipPreview.appendChild(block); } // Small label below or side for
+            explicit size number? // Let's add a small badge with the number const
+            sizeBadge=document.createElement('span'); sizeBadge.innerText=`${cfg.size}`; sizeBadge.style.fontSize='12px'
+            ; sizeBadge.style.color='#cbd5e1' ; sizeBadge.style.marginLeft='10px' ; sizeBadge.style.fontWeight='bold' ;
+            const leftCol=document.createElement('div'); leftCol.style.display='flex' ;
+            leftCol.style.alignItems='center' ; leftCol.appendChild(shipPreview); leftCol.appendChild(sizeBadge); //
+            Right: Controls (- 1 +) and Delete const controls=document.createElement('div');
+            controls.style.display='flex' ; controls.style.alignItems='center' ; controls.style.gap='10px' ;
+            controls.innerHTML=` <button class="btn-small" onclick="updateShipCount(${index}, -1)"
+            style="background:#ef4444;">-</button>
+            <span style="font-weight:bold; min-width:20px; text-align:center;">${cfg.count}</span>
+            <button class="btn-small" onclick="updateShipCount(${index}, 1)" style="background:#22c55e;">+</button>
+            <button class="btn-small" onclick="removeShipType(${index})"
+                style="background:transparent; border:1px solid #ef4444; color:#ef4444; margin-left:5px;">🗑️</button>
+            `;
 
-                // Small label below or side for explicit size number? 
-                // Let's add a small badge with the number
-                const sizeBadge = document.createElement('span');
-                sizeBadge.innerText = `${cfg.size}`;
-                sizeBadge.style.fontSize = '12px';
-                sizeBadge.style.color = '#cbd5e1';
-                sizeBadge.style.marginLeft = '10px';
-                sizeBadge.style.fontWeight = 'bold';
-
-                const leftCol = document.createElement('div');
-                leftCol.style.display = 'flex';
-                leftCol.style.alignItems = 'center';
-                leftCol.appendChild(shipPreview);
-                leftCol.appendChild(sizeBadge);
-
-                // Right: Controls (- 1 +) and Delete
-                const controls = document.createElement('div');
-                controls.style.display = 'flex';
-                controls.style.alignItems = 'center';
-                controls.style.gap = '10px';
-
-                controls.innerHTML = `
-                    <button class="btn-small" onclick="updateShipCount(${index}, -1)" style="background:#ef4444;">-</button>
-                    <span style="font-weight:bold; min-width:20px; text-align:center;">${cfg.count}</span>
-                    <button class="btn-small" onclick="updateShipCount(${index}, 1)" style="background:#22c55e;">+</button>
-                    <button class="btn-small" onclick="removeShipType(${index})" style="background:transparent; border:1px solid #ef4444; color:#ef4444; margin-left:5px;">🗑️</button>
-                `;
-
-                row.appendChild(leftCol);
-                row.appendChild(controls);
-                container.appendChild(row);
+            row.appendChild(leftCol);
+            row.appendChild(controls);
+            container.appendChild(row);
             });
-        }
+            }
 
-        function renderEnemyFleetPanel() {
+            function renderEnemyFleetPanel() {
             const p = document.getElementById('enemy-fleet-panel');
             p.innerHTML = '';
             enemyShipsList.forEach(s => {
-                const entry = document.createElement('div');
-                entry.className = 'enemy-ship-entry';
-                entry.id = `enemy-manifest-${s.id}`;
+            const entry = document.createElement('div');
+            entry.className = 'enemy-ship-entry';
+            entry.id = `enemy-manifest-${s.id}`;
 
-                // Removed text size label, purely visual now
-                const visual = document.createElement('div');
-                visual.className = 'ship-shape-display';
-                visual.style.display = 'flex';
-                visual.style.gap = '2px';
+            // Removed text size label, purely visual now
+            const visual = document.createElement('div');
+            visual.className = 'ship-shape-display';
+            visual.style.display = 'flex';
+            visual.style.gap = '2px';
 
-                for (let i = 0; i < s.size; i++) {
-                    const block = document.createElement('div');
-                    block.className = 'ship-block';
-                    // Inline styling for robustness outside CSS file
-                    block.style.width = '15px';
-                    block.style.height = '15px';
-                    block.style.background = '#94a3b8';
-                    block.style.border = '1px solid #475569';
-                    visual.appendChild(block);
+            for (let i = 0; i < s.size; i++) { const block=document.createElement('div'); block.className='ship-block' ;
+                // Inline styling for robustness outside CSS file block.style.width='15px' ; block.style.height='15px' ;
+                block.style.background='#94a3b8' ; block.style.border='1px solid #475569' ; visual.appendChild(block); }
+                entry.appendChild(visual); p.appendChild(entry); }); } function initGameUI() { // Just layout stuff }
+                function updateTurnUI() { const tb=document.getElementById('turn-badge'); const
+                wb=document.getElementById('wait-badge'); const info=document.getElementById('game-info'); if (myTurn) {
+                tb.style.display='inline-block' ; wb.style.display='none' ; info.innerText="¡Ataca al radar enemigo!" ;
+                } else { tb.style.display='none' ; wb.style.display='inline-block' ;
+                info.innerText="El enemigo está apuntando..." ; } } function onEnemyBoardClick(e) { if (!myTurn) return;
+                const rect=e.currentTarget.getBoundingClientRect(); const x=Math.floor((e.clientX - rect.left) /
+                tileSize); const y=Math.floor((e.clientY - rect.top) / tileSize); if (x < 0 || y < 0 || x>= gridSize ||
+                y >= gridSize) return;
+
+                // Check if already shot (markers)
+                // Ideally we track enemy grid state array, but simpler: check DOM
+                // Actually, let's keep a history set
+                if (shotHistory.has(`${x},${y}`)) return;
+
+                // Send shot
+                conn.send({ type: 'SHOT', x, y });
+                myTurn = false; // Wait result
+                updateTurnUI();
                 }
-                entry.appendChild(visual);
-                p.appendChild(entry);
-            });
-        }
+                let shotHistory = new Set();
 
-        function initGameUI() {
-            // Just layout stuff
-        }
+                function handleIncomingShot(x, y) {
+                let hit = false;
+                let sunkId = null;
 
-        function updateTurnUI() {
-            const tb = document.getElementById('turn-badge');
-            const wb = document.getElementById('wait-badge');
-            const info = document.getElementById('game-info');
-
-            if (myTurn) {
-                tb.style.display = 'inline-block';
-                wb.style.display = 'none';
-                info.innerText = "¡Ataca al radar enemigo!";
-            } else {
-                tb.style.display = 'none';
-                wb.style.display = 'inline-block';
-                info.innerText = "El enemigo está apuntando...";
-            }
-        }
-
-        function onEnemyBoardClick(e) {
-            if (!myTurn) return;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / tileSize);
-            const y = Math.floor((e.clientY - rect.top) / tileSize);
-
-            if (x < 0 || y < 0 || x >= gridSize || y >= gridSize) return;
-
-            // Check if already shot (markers)
-            // Ideally we track enemy grid state array, but simpler: check DOM
-            // Actually, let's keep a history set
-            if (shotHistory.has(`${x},${y}`)) return;
-
-            // Send shot
-            conn.send({ type: 'SHOT', x, y });
-            myTurn = false; // Wait result
-            updateTurnUI();
-        }
-        let shotHistory = new Set();
-
-        function handleIncomingShot(x, y) {
-            let hit = false;
-            let sunkId = null;
-
-            // Check hit
-            const ship = myShips.find(s => {
+                // Check hit
+                const ship = myShips.find(s => {
                 if (s.vertical) {
-                    return x === s.x && y >= s.y && y < s.y + s.size;
-                } else {
-                    return y === s.y && x >= s.x && x < s.x + s.size;
-                }
-            });
+                return x === s.x && y >= s.y && y < s.y + s.size; } else { return y===s.y && x>= s.x && x < s.x +
+                        s.size; } }); if (ship) { hit=true; ship.hits++; addMarker('my-markers', x, y, true); if
+                        (ship.hits>= ship.size) sunkId = ship.id;
+                        } else {
+                        addMarker('my-markers', x, y, false);
+                        }
 
-            if (ship) {
-                hit = true;
-                ship.hits++;
-                addMarker('my-markers', x, y, true);
-                if (ship.hits >= ship.size) sunkId = ship.id;
-            } else {
-                addMarker('my-markers', x, y, false);
-            }
+                        conn.send({ type: 'SHOT_RESULT', x, y, hit, sunkId });
 
-            conn.send({ type: 'SHOT_RESULT', x, y, hit, sunkId });
+                        if (!hit) {
+                        myTurn = true;
+                        updateTurnUI();
+                        } else {
+                        // If hit, enemy keeps turn usually, or swap? Classic battleship = keep turn on hit?
+                        // Let's standard: swap turns. Actually, standard is keep turn.
+                        // Let's do SWAP for fairness/speed in P2P? Or Standard?
+                        // User didn't specify. Let's do SWAP for now to avoid locking.
+                        // Re-reading rules: Usually you shoot again.
+                        // Let's stick to SWAP for simplicity first, or users get bored watching one person destroy
+                        everything.
+                        myTurn = true;
+                        updateTurnUI();
+                        }
 
-            if (!hit) {
-                myTurn = true;
-                updateTurnUI();
-            } else {
-                // If hit, enemy keeps turn usually, or swap? Classic battleship = keep turn on hit?
-                // Let's standard: swap turns. Actually, standard is keep turn. 
-                // Let's do SWAP for fairness/speed in P2P? Or Standard?
-                // User didn't specify. Let's do SWAP for now to avoid locking.
-                // Re-reading rules: Usually you shoot again. 
-                // Let's stick to SWAP for simplicity first, or users get bored watching one person destroy everything.
-                myTurn = true;
-                updateTurnUI();
-            }
+                        checkDefeat();
+                        }
 
-            checkDefeat();
-        }
+                        function handleShotResult(data) {
+                        shotHistory.add(`${data.x},${data.y}`);
+                        addMarker('enemy-markers', data.x, data.y, data.hit);
 
-        function handleShotResult(data) {
-            shotHistory.add(`${data.x},${data.y}`);
-            addMarker('enemy-markers', data.x, data.y, data.hit);
+                        if (data.hit) {
+                        confetti({ particleCount: 30, spread: 20, origin: { y: 0.2 } });
+                        }
 
-            if (data.hit) {
-                confetti({ particleCount: 30, spread: 20, origin: { y: 0.2 } });
-            }
+                        if (data.sunkId) {
+                        // Mark in manifest
+                        const entry = document.getElementById(`enemy-manifest-${data.sunkId}`);
+                        if (entry) entry.classList.add('sunk');
+                        confetti({ particleCount: 100, spread: 60 });
+                        alert("¡BARCO ENEMIGO HUNDIDO!");
+                        }
 
-            if (data.sunkId) {
-                // Mark in manifest
-                const entry = document.getElementById(`enemy-manifest-${data.sunkId}`);
-                if (entry) entry.classList.add('sunk');
-                confetti({ particleCount: 100, spread: 60 });
-                alert("¡BARCO ENEMIGO HUNDIDO!");
-            }
+                        // If we implement "keep turn on hit", logic goes here. Current: swap.
+                        }
 
-            // If we implement "keep turn on hit", logic goes here. Current: swap.
-        }
+                        function addMarker(layerId, x, y, isHit) {
+                        const layer = document.getElementById(layerId);
+                        const m = document.createElement('div');
+                        m.className = `marker ${isHit ? 'hit' : 'miss'}`;
+                        m.style.left = `${x * tileSize}px`;
+                        m.style.top = `${y * tileSize}px`;
+                        m.style.width = `${tileSize}px`;
+                        m.style.height = `${tileSize}px`;
+                        layer.appendChild(m);
+                        }
 
-        function addMarker(layerId, x, y, isHit) {
-            const layer = document.getElementById(layerId);
-            const m = document.createElement('div');
-            m.className = `marker ${isHit ? 'hit' : 'miss'}`;
-            m.style.left = `${x * tileSize}px`;
-            m.style.top = `${y * tileSize}px`;
-            m.style.width = `${tileSize}px`;
-            m.style.height = `${tileSize}px`;
-            layer.appendChild(m);
-        }
+                        function checkDefeat() {
+                        const allSunk = myShips.every(s => s.hits >= s.size);
+                        if (allSunk) {
+                        setTimeout(() => alert("DEJASTE QUE HUNDIERAN TU FLOTA... DERROTA"), 500);
+                        }
+                        }
+                        </script>
+                        </body>
 
-        function checkDefeat() {
-            const allSunk = myShips.every(s => s.hits >= s.size);
-            if (allSunk) {
-                setTimeout(() => alert("DEJASTE QUE HUNDIERAN TU FLOTA... DERROTA"), 500);
-            }
-        }
-    </script>
-</body>
-
-</html>
+                        </html>
