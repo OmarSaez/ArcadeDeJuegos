@@ -1,172 +1,152 @@
-DOCUMENTACIÓN TÉCNICA: SISTEMA MULTIJUGADOR P2P (PeerJS)
-=========================================================
+DOCUMENTACIÓN TÉCNICA: PROTOCOLO P2P "FAST-DUAL" (Estándar Arcade)
+==================================================================
+Versión: 2.0 (Estable/Robusta)
+Fecha: Enero 2026
+Estado: Aprobado y probado en producción (Battleship, DualWeb)
 
-Esta documentación detalla la arquitectura base utilizada en "Arcade de Juegos" para la conectividad multijugador sin servidores centralizados (Serverless), utilizando la librería **PeerJS** sobre tecnología WebRTC.
+1. INTRODUCCIÓN
+---------------
+Este protocolo define el estándar de conectividad multijugador para el proyecto "Arcade de Juegos".
+Su objetivo es lograr una conexión Peer-to-Peer (P2P) extremadamente rápida (< 500ms), confiable y sin necesidad de configurar servidores de señalización propios (backend-less), utilizando la infraestructura pública de PeerJS de manera eficiente.
 
-Esta "plantilla" de conexión es re-utilizable para cualquier futuro juego que desarrolles.
+La clave del éxito de este protocolo (vs versiones anteriores) es la "Generación de ID en Cliente" y el manejo asíncrono robusto.
 
-1. CONCEPTO GENERAL
--------------------
-El sistema funciona bajo una arquitectura **P2P (Peer-to-Peer) Híbrida**:
-- No hay un servidor de lógica de juego (Back-end) que procese las partidas.
-- Uno de los jugadores actúa como **HOST (Servidor)** y los demás como **CLIENTES**.
-- Se utiliza un servidor "Broker" (público de PeerJS) solo para el "saludo inicial" (encontrar al otro jugador), pero una vez conectados, los datos viajan directo de PC a PC.
+2. ARQUITECTURA
+---------------
+- **Librería Core:** PeerJS (v1.5.1 o superior)
+- **Topología:** P2P Directo (Mesh/Star). Los datos viajan navegador-a-navegador.
+- **Broker/Signaling:** Servidor público de PeerJS (solo handshake inicial).
+- **Transporte:** WebRTC (UDP/TCP según disponibilidad).
 
-2. LIBRERÍAS NECESARIAS
------------------------
-Para que funcione, cada `index.html` debe incluir la librería PeerJS.
+3. IMPLEMENTACIÓN BASE (Copiar y Pegar)
+---------------------------------------
+
+### A. Dependencias
+Incluir en el `<head>` o antes del script principal:
 `<script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>`
 
-3. CREACIÓN DE SALA (LÓGICA DEL HOST) - OPTIMIZADA
---------------------------------------------------
-El Host define el "Código de Sala". Utilizamos una estrategia optimizada para **conexión instantánea**: intentamos tomar un ID aleatorio directamente. Si falla (colisión < 0.01%), reintentamos.
-
-### Paso A: Generar ID Corto
-Generamos 4 caracteres (A-Z, 1-9) excluyendo confusos (0, O). Esto da ~1.6 millones de combinaciones, haciendo la colisión extremadamente improbable.
+### B. Inicialización del HOST (Quien crea la partida)
+El Host NO pregunta al servidor por un ID. El Host INVENTA un ID corto aleatorio y le dice al servidor "Este es mi ID". Esto elimina latencia de red.
 
 ```javascript
-function generateRoomId() {
-    const chars = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789"; 
-    let result = "";
-    for(let i=0; i<4; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-    return result;
-}
-```
+let peer;       // Instancia propia (mi identidad)
+let conn;       // La conexión con el rival
+let isHost = false;
 
-### Paso B: Inicialización Directa (Fast Connect)
-En lugar de preguntar si el ID está libre (lento), intentamos ocuparlo directamente. Esto reduce el tiempo de inicio de ~8s a ~200ms.
-
-```javascript
-function startHost() {
-    // 1. Generar ID candidato
-    const id = generateRoomId(); // Ej: "X7K2"
+function initPeer() {
+    // 1. Generamos ID localmente (4 chars es suficiente para evitar colisiones casuales)
+    const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
     
-    // 2. Intentar asignación directa
-    peer = new Peer(id);
+    // 2. Inicializamos Peer forzando este ID
+    peer = new Peer(shortId);
 
-    peer.on('open', (pid) => {
-        // ÉXITO INSTANTÁNEO: El ID es nuestro.
-        console.log("Sala Creada:", pid);
-        mostrarSalaDeEspera(pid);
+    peer.on('open', (id) => {
+        console.log("Sala Creada con ÉXITO. ID:", id);
+        isHost = true;
+        // AQUÍ: Mostrar UI de "Sala de Espera" y mostrar 'id' al usuario
+        document.getElementById('display-code').innerText = id;
+    });
+
+    peer.on('connection', (c) => {
+        // Un rival se ha conectado
+        handleConnection(c);
     });
 
     peer.on('error', (err) => {
-        if(err.type === 'unavailable-id') {
-            // ERROR (Rarísimo): Justo alguien más tomó ese ID milisegundos antes.
-            // Solución: Simplemente reintentamos (Recursión)
-            console.warn("Colisión de ID, reintentando...");
-            setTimeout(() => startHost(), 500); 
+        console.error("Error P2P:", err);
+        // Si el ID ya existe (colisión rara), reintentar recursivamente
+        if (err.type === 'unavailable-id') {
+            initPeer(); 
         } else {
-            console.error("Error crítico P2P:", err);
-            alert("No se pudo iniciar el modo online. Comprueba tu conexión.");
+            alert("Error de red: " + err);
         }
-    });
-
-    peer.on('connection', (conn) => {
-        setupConnection(conn); // Manejar jugador entrante
     });
 }
 ```
 
-4. UNIRSE A SALA (LÓGICA DEL CLIENTE)
--------------------------------------
-El Cliente no necesita un ID bonito, ya que nadie se conectará a él. Él se conecta al Host.
+### C. Inicialización del CLIENTE (Quien se une)
+El Cliente no necesita un ID bonito. Deja que el servidor le asigne uno largo UUID. Solo necesita saber el ID corto del Host.
 
 ```javascript
-function joinGame(hostCode) {
-    // El cliente se inicia sin ID (PeerJS le asignará uno aleatorio invisible)
+function joinGame() {
+    const hostCode = document.getElementById('code-input').value.toUpperCase();
+    if (!hostCode) return;
+
+    isHost = false;
+    
+    // Sin argumentos = ID automático del servidor
     peer = new Peer();
 
     peer.on('open', () => {
-        // Una vez listos, conectamos con el Host usando su código
-        const conn = peer.connect(hostCode.toUpperCase());
-        
-        setupConnection(conn);
+        // Ya tenemos identidad, ahora llamamos al Host
+        const c = peer.connect(hostCode);
+        handleConnection(c);
     });
-    
-    peer.on('error', (err) => {
-        alert("No se pudo conectar a la sala " + hostCode);
-    });
+
+    peer.on('error', (err) => alert("No se pudo conectar: " + err));
 }
 ```
 
-5. GESTIÓN DE LA COMUNICACIÓN (setupConnection)
------------------------------------------------
-Esta función es común para Host y Cliente. Define qué hacer cuando llegan datos.
+### D. Manejo de Conexión (Común)
+Esta función unifica la lógica una vez que el "cable" está tendido entre los dos jugadores.
 
 ```javascript
-let myConnection = null;
-
-function setupConnection(conn) {
-    myConnection = conn;
+function handleConnection(c) {
+    conn = c; // Guardamos referencia global
 
     conn.on('open', () => {
-        console.log("¡Conexión establecida!");
-        // Aquí podrías enviar un saludo o configuración inicial
-        conn.send({ type: 'HOLA', msg: 'Soy un nuevo jugador' });
+        console.log("¡CONEXIÓN ESTABLECIDA!");
+        
+        // Host: Suele enviar la configuración inicial de la partida
+        if (isHost) {
+            conn.send({ type: 'INIT_GAME', config: { level: 1 } });
+        }
+        
+        // AQUÍ: Ocultar Lobby, Mostrar Pantalla de Juego
+        startGameUI();
     });
 
     conn.on('data', (data) => {
-        // Aquí recibes TODOS los paquetes del juego.
-        // Se recomienda usar un 'switch' para manejar acciones.
-        console.log("Recibido:", data);
-        
+        // Router de mensajes
         switch(data.type) {
-            case 'MOVER_FICHAS':
-                actualizarTablero(data.x, data.y);
+            case 'INIT_GAME':
+                // Cliente recibe config
+                setupLevel(data.config);
                 break;
-            case 'ATAQUE':
-                procesarAtaque(data.damage);
+            case 'PLAYER_MOVE':
+                updatePlayerPos(data.x, data.y);
                 break;
+            case 'GAME_OVER':
+                showResult(data.win);
+                break;
+            default:
+                console.log("Paquete desconocido:", data);
         }
     });
 
     conn.on('close', () => {
-        alert("El otro jugador se desconectó");
+        alert("Rival desconectado");
+        resetGame(); // Volver al menú
     });
-}
-```
-
-6. ESCALABILIDAD (MÁS DE 2 JUGADORES)
--------------------------------------
-Para juegos con más de 2 personas (ej: Poker, Ludo), se utiliza una topología de **ESTRELLA**.
-
-- **El HOST** mantiene una lista (Array) de todas las conexiones activas.
-- **Los CLIENTES** solo se conectan con el HOST.
-
-Si un Cliente A quiere enviar un mensaje al Cliente B:
-1. Cliente A envía mensaje al HOST.
-2. HOST recibe el mensaje y lo retransmite (Broadcast) a B (o a todos).
-
-**Ejemplo de Host Multijugador:**
-```javascript
-let allConnections = [];
-
-peer.on('connection', (conn) => {
-    allConnections.push(conn);
     
-    conn.on('data', (data) => {
-        // Si el Host recibe una acción de juego, la replica a todos los demás
-        broadcastData(data, conn); // Reenviar a todos menos al remitente
-    });
-});
-
-function broadcastData(data, senderConn) {
-    allConnections.forEach(c => {
-        if(c !== senderConn) { // No rebotar el mensaje al que lo envió
-            c.send(data);
-        }
-    });
+    conn.on('error', (err) => console.error("Error en túnel de datos:", err));
 }
 ```
 
-7. CONSIDERACIONES IMPORTANTES
-------------------------------
-- **Redes Restrictivas:** En redes corporativas o 4G estricto, WebRTC puede fallar. PeerJS intenta sortearlo, pero no es infalible sin un servidor TURN propio (actualmente usamos el público gratuito).
-- **iPhone/Safari:** Requiere que la página sea HTTPS o localhost. Además, debes asegurar que los objetos `conn` y `peer` estén en el ámbito global o no sean recolectados por el Garbage Collector inadvertidamente.
-- **Datos:** WebRTC soporta enviar Strings (JSON), Números o Archivos binarios (ArrayBuffer).
+4. BUENAS PRÁCTICAS Y NOTAS
+---------------------------
+- **Cierre de Conexiones:** Siempre manejar `conn.on('close')`. Las redes móviles suelen cortar conexiones brevemente.
+- **Reinicio:** Si se quiere reiniciar la partida, enviar un mensaje `{type: 'RESTART'}` en lugar de recargar la página, para mantener el túnel abierto.
+- **Datos:** Enviar objetos JSON simples es lo mejor. Para juegos de acción (tiempo real), enviar solo los inputs o posiciones clave, no todo el estado del juego cada frame.
+- **Colisiones:** La probabilidad de colisión con un ID de 4 caracteres alfanuméricos es baja para un uso casual, pero el código del Host maneja el error `unavailable-id` reintentando automáticamente por seguridad.
 
-=========================================================
-Este documento reside en /MisJuegos/ para referencia futura.
-Creado por: Antigravity AI
-Fecha: Enero 2026
+5. EJEMPLO DE FLUJO DE MENSAJES (BATTLESHIP)
+--------------------------------------------
+1. **Host** > `INIT` (GridSize, Configuración de Flota)
+2. **Cliente** > `READY_FLEET` (Mi flota ya ubicada)
+3. **Host** > `START_GAME` (O simplemente inicia el turno)
+4. (Durante el juego) > `SHOT` {x, y}
+5. (Respuesta) > `SHOT_RESULT` {x, y, hit: true/false, sunkId: null/id}
+
+==================================================================
+Este documento es la referencia oficial para el sistema "Arcade de Juegos".
