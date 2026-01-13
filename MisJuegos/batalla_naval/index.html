@@ -1241,12 +1241,26 @@
             </div>
 
             <h3 style="margin-top:20px; font-size:1rem;">Flota</h3>
-            <div id="fleet-config-list" style="max-height: 300px; overflow-y: auto;">
+            <div id="fleet-config-list" style="max-height: 250px; overflow-y: auto;">
                 <!-- Dynamically filled -->
             </div>
 
+            <!-- Standard Quick Add -->
             <div style="margin-top:10px; border-top:1px solid #334155; padding-top:10px;">
-                <button class="btn small style-accent" onclick="openShipCreator()">🛠️ Diseñar Nuevo Barco</button>
+                <label style="font-size:0.8rem; color:#94a3b8;">Añadir Estándar:</label>
+                <div style="display:flex; gap:5px; margin-top:5px; flex-wrap:wrap;">
+                    <button class="btn small secondary" onclick="addStandardShip(1)">1️⃣</button>
+                    <button class="btn small secondary" onclick="addStandardShip(2)">2️⃣</button>
+                    <button class="btn small secondary" onclick="addStandardShip(3)">3️⃣</button>
+                    <button class="btn small secondary" onclick="addStandardShip(4)">4️⃣</button>
+                    <button class="btn small secondary" onclick="addStandardShip(5)">5️⃣</button>
+                </div>
+            </div>
+
+            <!-- Custom Creator -->
+            <div style="margin-top:10px;">
+                <button class="btn small style-accent" style="width:100%;" onclick="openShipCreator()">🛠️ Diseñar
+                    Especial</button>
             </div>
         </div>
         <div style="margin-top:20px;">
@@ -1485,17 +1499,111 @@
             return found === targetCount;
         }
 
-        // --- HOST CONFIGURATION ---
-        function changeGridSize(d) {
-            let n = gridSize + d;
-            if (n < 7) n = 7; if (n > 20) n = 20;
-            gridSize = n;
-            document.getElementById('cfg-grid-size').innerText = n;
-            document.getElementById('cfg-grid-size-2').innerText = n;
+        // --- CONFIG UI RENDERING ---
+        function renderFleetConfig() {
+            const container = document.getElementById('fleet-config-list');
+            container.innerHTML = '';
+
+            fleetConfig.forEach((cfg, index) => {
+                const row = document.createElement('div');
+                row.className = 'config-row';
+                row.style.background = '#1e293b';
+                row.style.padding = '8px';
+                row.style.marginBottom = '8px';
+                row.style.borderRadius = '6px';
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.justifyContent = 'space-between';
+
+                // Matrix Visual
+                // If matrix is missing (legacy data), fallback or skip
+                if (!cfg.matrix) return;
+
+                const visual = generateMatrixVisual(cfg.matrix, 15);
+
+                const leftCol = document.createElement('div');
+                leftCol.style.display = 'flex';
+                leftCol.style.alignItems = 'center';
+                leftCol.appendChild(visual);
+
+                // Add size count label
+                let blockCount = 0;
+                cfg.matrix.forEach(r => r.forEach(c => blockCount += c));
+                const sizeBadge = document.createElement('span');
+                sizeBadge.innerText = `${blockCount} blq`;
+                sizeBadge.style.fontSize = '10px';
+                sizeBadge.style.color = '#64748b';
+                sizeBadge.style.marginLeft = '8px';
+                leftCol.appendChild(sizeBadge);
+
+                // Controls
+                const controls = document.createElement('div');
+                controls.style.display = 'flex';
+                controls.style.alignItems = 'center';
+                controls.style.gap = '10px';
+                controls.innerHTML = `
+                    <button class="btn secondary small" onclick="updateShipCount(${index}, -1)">-</button>
+                    <span style="font-weight:bold; min-width:20px; text-align:center;">${cfg.count}</span>
+                    <button class="btn secondary small" onclick="updateShipCount(${index}, 1)">+</button>
+                    <button class="btn danger small" onclick="removeShipType(${index})">🗑️</button>
+                `;
+
+                row.appendChild(leftCol);
+                row.appendChild(controls);
+                container.appendChild(row);
+            });
+
+            // Re-inject the "Add Buttons" area at the bottom of the list or outside?
+            // Let's modify the HTML structure instead of injecting buttons here.
         }
 
-        function renderConfigList() {
-            // Deprecated, see renderFleetConfig
+        function generateMatrixVisual(matrix, blockSize = 20) {
+            const rows = matrix.length;
+            const cols = matrix[0].length;
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'grid';
+            wrapper.style.gridTemplateColumns = `repeat(${cols}, ${blockSize}px)`;
+            wrapper.style.gridTemplateRows = `repeat(${rows}, ${blockSize}px)`;
+            wrapper.style.gap = '1px';
+
+            // Limit max visual size to prevent UI overflow for big ships
+            // wrapper.style.maxHeight = '60px'; 
+            // wrapper.style.overflow = 'hidden';
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    if (matrix[r][c] === 1) {
+                        cell.style.background = '#94a3b8';
+                        cell.style.border = '1px solid #475569';
+                        cell.style.width = '100%';
+                        cell.style.height = '100%';
+                    }
+                    wrapper.appendChild(cell);
+                }
+            }
+            return wrapper;
+        }
+
+        // --- ADD STANDARD SHIPS ---
+        function addStandardShip(size) {
+            // Create linear matrix
+            const matrix = [];
+            for (let i = 0; i < size; i++) matrix.push([1]); // Vertical stack by default (or horizontal [[1,1,1]])?
+            // Let's make them horizontal [[1,1,1...]] as it looks better in list
+            const horizMatrix = [Array(size).fill(1)];
+
+            // Check if already exists exactly
+            // Simple JSON stringify compare for now
+            const json = JSON.stringify(horizMatrix);
+            const existingIdx = fleetConfig.findIndex(c => JSON.stringify(c.matrix) === json);
+
+            if (existingIdx >= 0) {
+                fleetConfig[existingIdx].count++;
+            } else {
+                fleetConfig.push({ matrix: horizMatrix, count: 1 });
+            }
+            renderFleetConfig();
         }
         // --- END CONFIG ---
         function addShipConfig() {
