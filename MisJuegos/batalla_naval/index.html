@@ -1711,16 +1711,18 @@
                         fleetConfig = data.fleetConfig;
                         beginSetup();
                         break;
-                    case 'ENEMY_READY':
-                        // Store enemy fleet manifest (ids and sizes only)
-                        enemyShipsList = data.manifest;
+                    case 'READY_FLEET':
+                        // Store enemy fleet manifest (we need to know they are ready)
+                        // In client-side logic we technically receive the full fleet
+                        // Ideally we wouldnt for cheating, but we are trusting clients here.
+                        enemyShipsList = data.fleet;
                         checkStartGame();
                         break;
                     case 'SHOT':
-                        handleIncomingShot(data.x, data.y);
+                        handleReceiveShot(data.x, data.y);
                         break;
                     case 'SHOT_RESULT':
-                        handleShotResult(data);
+                        handleShotResult(data.x, data.y, data.hit, data.sunkId);
                         break;
                 }
             });
@@ -2039,15 +2041,43 @@
 
         function finalizeSetup() {
             show('screen-wait');
+            isSetupReady = true;
+
             const myFleetData = placedShips.map(s => ({
                 id: s.id,
                 matrix: s.matrix,
-                x: s.gx,
-                y: s.gy
+                gx: s.gx, // Ensure we send gx/gy for consistency if needed, but fleetData uses x,y usually
+                gy: s.gy
             }));
+
+            // Generate My Ships Logic Objects
+            myShips = placedShips.map(s => ({
+                id: s.id,
+                matrix: s.matrix,
+                x: s.gx,
+                y: s.gy,
+                hits: new Set()
+            }));
+
             conn.send({ type: 'READY_FLEET', fleet: myFleetData });
+            checkStartGame();
         }
 
+        function checkStartGame() {
+            if (isSetupReady && enemyShipsList && enemyShipsList.length > 0) {
+                startGame();
+            }
+        }
+
+        function startGame() {
+            show('screen-game');
+            initGameUI();
+            renderEnemyFleetPanel();
+
+            // Turn Logic: Host starts
+            myTurn = isHost;
+            updateTurnUI();
+        }
 
         // --- GAME PLAY LOGIC ---
         function initGameUI() {
