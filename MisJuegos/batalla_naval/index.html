@@ -790,8 +790,15 @@
             height: 100vh;
             overflow: hidden;
             user-select: none;
-            touch-action: none;
-            /* Critical for drag */
+            /* Allow scroll by default, block only on game area */
+        }
+
+        /* Prevent scroll interfering with Drag & Drop */
+        .board-wrapper,
+        .ship-visual,
+        .inventory-item,
+        #setup-area {
+            touch-action: none !important;
         }
 
         h1,
@@ -1631,29 +1638,31 @@
             dragEl.removeEventListener('pointerup', endDrag);
             dragEl.releasePointerCapture(e.pointerId);
 
-            // Hit Test Center
+            // Hit Test based on TOP-LEFT corner for intuitive snapping
+            // (Previous center-based logic caused long ships to jump forward)
             const rect = dragEl.getBoundingClientRect();
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
+            const shipLeft = rect.left;
+            const shipTop = rect.top;
 
             const board = document.getElementById('setup-board');
             const boardRect = board.getBoundingClientRect();
 
-            // Check if dropped inside board
-            if (cx >= boardRect.left && cx <= boardRect.right && cy >= boardRect.top && cy <= boardRect.bottom) {
-                // Calc Grid Coords
-                const gx = Math.floor((cx - boardRect.left) / tileSize);
-                const gy = Math.floor((cy - boardRect.top) / tileSize);
+            // Check if at least ONE pixel is overlapping to consider it a drop attempt (Loose collision)
+            // But for calculation, we project the top-left relative to grid
+            if (shipLeft + rect.width > boardRect.left && shipLeft < boardRect.right &&
+                shipTop + rect.height > boardRect.top && shipTop < boardRect.bottom) {
+
+                // Calc Grid Coords using rounding to nearest tile edge
+                const gx = Math.round((shipLeft - boardRect.left) / tileSize);
+                const gy = Math.round((shipTop - boardRect.top) / tileSize);
 
                 const size = parseInt(dragEl.dataset.size);
-                // Inherit orientation if it was already on board, else horizontal
+                // Inherit orientation
                 const vertical = dragEl.dataset.vertical === 'true';
+                const existingObj = originData.shipObj; // Identify if we are moving an existing one
 
-                // If dragging existing ship, filter itself out for collision check
-                const selfObj = originData.shipObj;
-
-                if (validatePlacement(gx, gy, size, vertical, selfObj)) {
-                    placeShipOnBoard(dragEl, gx, gy, size, vertical, selfObj);
+                if (validatePlacement(gx, gy, size, vertical, existingObj)) {
+                    placeShipOnBoard(dragEl, gx, gy, size, vertical, existingObj);
                     return;
                 }
             }
