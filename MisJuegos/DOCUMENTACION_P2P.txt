@@ -1,0 +1,176 @@
+DOCUMENTACIÓN TÉCNICA: SISTEMA MULTIJUGADOR P2P (PeerJS)
+=========================================================
+
+Esta documentación detalla la arquitectura base utilizada en "Arcade de Juegos" para la conectividad multijugador sin servidores centralizados (Serverless), utilizando la librería **PeerJS** sobre tecnología WebRTC.
+
+Esta "plantilla" de conexión es re-utilizable para cualquier futuro juego que desarrolles.
+
+1. CONCEPTO GENERAL
+-------------------
+El sistema funciona bajo una arquitectura **P2P (Peer-to-Peer) Híbrida**:
+- No hay un servidor de lógica de juego (Back-end) que procese las partidas.
+- Uno de los jugadores actúa como **HOST (Servidor)** y los demás como **CLIENTES**.
+- Se utiliza un servidor "Broker" (público de PeerJS) solo para el "saludo inicial" (encontrar al otro jugador), pero una vez conectados, los datos viajan directo de PC a PC.
+
+2. LIBRERÍAS NECESARIAS
+-----------------------
+Para que funcione, cada `index.html` debe incluir la librería PeerJS.
+`<script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>`
+
+3. CREACIÓN DE SALA (LÓGICA DEL HOST)
+-------------------------------------
+El Host es quien decide el "Código de Sala". En lugar de dejar que PeerJS nos de un UUID largo (ej: `e34-fa2-11...`), nosotros forzamos un ID corto y amigable.
+
+### Paso A: Generar ID Corto
+Creamos una función que genera 4 caracteres aleatorios, excluyendo el '0' y la 'O' para evitar confusiones.
+
+```javascript
+function generateRoomId() {
+    const chars = "ABCDEFGHIJKLMNPQRSTUVWXYZ123456789"; 
+    let result = "";
+    for(let i=0; i<4; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+    return result;
+}
+```
+
+### Paso B: Inicializar e Intentar Ocupar el ID
+Intentamos registrarnos en la red PeerJS con ese ID. Si ya existe (alguien más en el mundo lo está usando), fallará. Si falla, generamos otro automáticamente.
+
+```javascript
+function startHost() {
+    createPeerWithRetry();
+}
+
+function createPeerWithRetry() {
+    const id = generateRoomId(); // Ej: "X7K2"
+    
+    // Inicializamos Peer con ese ID específico
+    peer = new Peer(id);
+
+    peer.on('open', (pid) => {
+        // ÉXITO: El ID estaba libre y ahora es nuestro.
+        // Mostramos "pid" en pantalla para que el Host se lo dicte a sus amigos.
+        console.log("Sala Creada:", pid);
+    });
+
+    peer.on('error', (err) => {
+        if(err.type === 'unavailable-id') {
+            // ERROR: El ID ya existe. Probamos otro automáticamente.
+            console.log("ID ocupado, reintentando...");
+            peer.destroy();
+            createPeerWithRetry();
+        } else {
+            console.error("Error desconocido:", err);
+        }
+    });
+
+    // Paso C: Escuchar conexiones entrantes
+    peer.on('connection', (conn) => {
+        // Un jugador se ha conectado.
+        setupConnection(conn);
+    });
+}
+```
+
+4. UNIRSE A SALA (LÓGICA DEL CLIENTE)
+-------------------------------------
+El Cliente no necesita un ID bonito, ya que nadie se conectará a él. Él se conecta al Host.
+
+```javascript
+function joinGame(hostCode) {
+    // El cliente se inicia sin ID (PeerJS le asignará uno aleatorio invisible)
+    peer = new Peer();
+
+    peer.on('open', () => {
+        // Una vez listos, conectamos con el Host usando su código
+        const conn = peer.connect(hostCode.toUpperCase());
+        
+        setupConnection(conn);
+    });
+    
+    peer.on('error', (err) => {
+        alert("No se pudo conectar a la sala " + hostCode);
+    });
+}
+```
+
+5. GESTIÓN DE LA COMUNICACIÓN (setupConnection)
+-----------------------------------------------
+Esta función es común para Host y Cliente. Define qué hacer cuando llegan datos.
+
+```javascript
+let myConnection = null;
+
+function setupConnection(conn) {
+    myConnection = conn;
+
+    conn.on('open', () => {
+        console.log("¡Conexión establecida!");
+        // Aquí podrías enviar un saludo o configuración inicial
+        conn.send({ type: 'HOLA', msg: 'Soy un nuevo jugador' });
+    });
+
+    conn.on('data', (data) => {
+        // Aquí recibes TODOS los paquetes del juego.
+        // Se recomienda usar un 'switch' para manejar acciones.
+        console.log("Recibido:", data);
+        
+        switch(data.type) {
+            case 'MOVER_FICHAS':
+                actualizarTablero(data.x, data.y);
+                break;
+            case 'ATAQUE':
+                procesarAtaque(data.damage);
+                break;
+        }
+    });
+
+    conn.on('close', () => {
+        alert("El otro jugador se desconectó");
+    });
+}
+```
+
+6. ESCALABILIDAD (MÁS DE 2 JUGADORES)
+-------------------------------------
+Para juegos con más de 2 personas (ej: Poker, Ludo), se utiliza una topología de **ESTRELLA**.
+
+- **El HOST** mantiene una lista (Array) de todas las conexiones activas.
+- **Los CLIENTES** solo se conectan con el HOST.
+
+Si un Cliente A quiere enviar un mensaje al Cliente B:
+1. Cliente A envía mensaje al HOST.
+2. HOST recibe el mensaje y lo retransmite (Broadcast) a B (o a todos).
+
+**Ejemplo de Host Multijugador:**
+```javascript
+let allConnections = [];
+
+peer.on('connection', (conn) => {
+    allConnections.push(conn);
+    
+    conn.on('data', (data) => {
+        // Si el Host recibe una acción de juego, la replica a todos los demás
+        broadcastData(data, conn); // Reenviar a todos menos al remitente
+    });
+});
+
+function broadcastData(data, senderConn) {
+    allConnections.forEach(c => {
+        if(c !== senderConn) { // No rebotar el mensaje al que lo envió
+            c.send(data);
+        }
+    });
+}
+```
+
+7. CONSIDERACIONES IMPORTANTES
+------------------------------
+- **Redes Restrictivas:** En redes corporativas o 4G estricto, WebRTC puede fallar. PeerJS intenta sortearlo, pero no es infalible sin un servidor TURN propio (actualmente usamos el público gratuito).
+- **iPhone/Safari:** Requiere que la página sea HTTPS o localhost. Además, debes asegurar que los objetos `conn` y `peer` estén en el ámbito global o no sean recolectados por el Garbage Collector inadvertidamente.
+- **Datos:** WebRTC soporta enviar Strings (JSON), Números o Archivos binarios (ArrayBuffer).
+
+=========================================================
+Este documento reside en /MisJuegos/ para referencia futura.
+Creado por: Antigravity AI
+Fecha: Enero 2026
