@@ -1709,24 +1709,37 @@
         // --- SETUP PHASE (PLACEMENT) ---
         function beginSetup() {
             show('screen-setup');
+
+            // Ensure Grid Size is standard if not set
+            if (!gridSize || gridSize < 5) gridSize = 10;
+
             const area = document.getElementById('setup-area');
             const maxW = Math.min(window.innerWidth * 0.95, 500);
             const maxH = (window.innerHeight - 180) * 0.95;
             const limit = Math.min(maxW, maxH);
+
+            // Calculate Tile Size
             tileSize = Math.floor(limit / gridSize);
 
             const board = document.getElementById('setup-board');
             const totalSize = tileSize * gridSize;
+
             board.style.width = `${totalSize}px`;
             board.style.height = `${totalSize}px`;
             board.style.flex = "0 0 auto";
 
             const grid = document.getElementById('setup-grid');
+            // FIX: Explicitly set background size string with 'px'
             grid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
             grid.style.backgroundImage = `
-                linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-                linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)
+                linear-gradient(to right, #334155 1px, transparent 1px),
+                linear-gradient(to bottom, #334155 1px, transparent 1px)
             `;
+            // Add Border to whole grid
+            grid.style.borderTop = '1px solid #334155';
+            grid.style.borderLeft = '1px solid #334155';
+            grid.style.borderRight = '1px solid #334155';
+            grid.style.borderBottom = '1px solid #334155';
 
             placedShips = [];
             while (board.querySelector('.ship-visual')) board.querySelector('.ship-visual').remove();
