@@ -1437,16 +1437,28 @@
         // --- SETUP PHASE (PLACEMENT) ---
         function beginSetup() {
             show('screen-setup');
-            // Calc Tile Size
+
+            // 1. Calculate Tile Size tightly (Constrain by WIDTH and HEIGHT)
+            const area = document.getElementById('setup-area');
             const maxW = Math.min(window.innerWidth * 0.95, 500);
-            tileSize = Math.floor(maxW / gridSize);
+            // Reserve space for inventory (120px) + Header (50px) + Padding
+            const maxH = (window.innerHeight - 180) * 0.95;
 
-            // Build Board
+            // The limiting factor determines the square size
+            const limit = Math.min(maxW, maxH);
+
+            tileSize = Math.floor(limit / gridSize);
+            console.log(`Setup Board Init: Grid ${gridSize}x${gridSize}, Tile ${tileSize}px`);
+
+            // 2. Apply explicit size to board wrapper
             const board = document.getElementById('setup-board');
-            board.style.width = `${tileSize * gridSize}px`;
-            board.style.height = `${tileSize * gridSize}px`;
+            const totalSize = tileSize * gridSize;
 
-            // Grid Lines
+            board.style.width = `${totalSize}px`;
+            board.style.height = `${totalSize}px`;
+            board.style.flex = "0 0 auto"; // Prevent flex stretching
+
+            // 3. Draw Grid Lines
             const grid = document.getElementById('setup-grid');
             grid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
             grid.style.backgroundImage = `
@@ -1456,7 +1468,9 @@
 
             // Clear state
             placedShips = [];
-
+            while (board.querySelector('.ship-visual')) {
+                board.querySelector('.ship-visual').remove();
+            }
             // Populate Inventory
             const inv = document.getElementById('inventory-container');
             inv.innerHTML = '';
