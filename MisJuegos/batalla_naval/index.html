@@ -1709,28 +1709,18 @@
         // --- SETUP PHASE (PLACEMENT) ---
         function beginSetup() {
             show('screen-setup');
-
-            // 1. Calculate Tile Size tightly (Constrain by WIDTH and HEIGHT)
             const area = document.getElementById('setup-area');
             const maxW = Math.min(window.innerWidth * 0.95, 500);
-            // Reserve space for inventory (120px) + Header (50px) + Padding
             const maxH = (window.innerHeight - 180) * 0.95;
-
-            // The limiting factor determines the square size
             const limit = Math.min(maxW, maxH);
-
             tileSize = Math.floor(limit / gridSize);
-            console.log(`Setup Board Init: Grid ${gridSize}x${gridSize}, Tile ${tileSize}px`);
 
-            // 2. Apply explicit size to board wrapper
             const board = document.getElementById('setup-board');
             const totalSize = tileSize * gridSize;
-
             board.style.width = `${totalSize}px`;
             board.style.height = `${totalSize}px`;
-            board.style.flex = "0 0 auto"; // Prevent flex stretching
+            board.style.flex = "0 0 auto";
 
-            // 3. Draw Grid Lines
             const grid = document.getElementById('setup-grid');
             grid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
             grid.style.backgroundImage = `
@@ -1738,22 +1728,412 @@
                 linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)
             `;
 
-            // Clear state
             placedShips = [];
-            while (board.querySelector('.ship-visual')) {
-                board.querySelector('.ship-visual').remove();
-            }
-            // Populate Inventory
+            while (board.querySelector('.ship-visual')) board.querySelector('.ship-visual').remove();
+
             const inv = document.getElementById('inventory-container');
             inv.innerHTML = '';
 
-            // Create ship objects based on config
             let shipIdCounter = 0;
             fleetConfig.forEach(cfg => {
                 for (let i = 0; i < cfg.count; i++) {
-                    createInteractableShip(inv, cfg.size, `ship_${shipIdCounter++}`);
+                    // Deep copy matrix
+                    const m = JSON.parse(JSON.stringify(cfg.matrix));
+                    createInteractableShip(inv, m, `ship_${shipIdCounter++}`);
                 }
             });
+            checkSetupReady();
+        }
+
+        function createInteractableShip(container, matrix, id) {
+            const el = document.createElement('div');
+            el.className = 'ship-visual';
+            el.dataset.id = id;
+            el.matrix = matrix;
+
+            updateShipVisual(el, matrix, 30);
+
+            el.dataset.location = 'inventory';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'inventory-item';
+            wrapper.appendChild(el);
+            container.appendChild(wrapper);
+
+            setupDrag(el);
+            el.addEventListener('pointerdown', (e) => selectShip(e, el));
+        }
+
+        function updateShipVisual(el, matrix, sizePx) {
+            const rows = matrix.length;
+            const cols = matrix[0].length;
+            el.innerHTML = '';
+            el.style.display = 'grid';
+            el.style.gridTemplateColumns = `repeat(${cols}, ${sizePx}px)`;
+            el.style.gridTemplateRows = `repeat(${rows}, ${sizePx}px)`;
+            el.style.width = `${cols * sizePx}px`;
+            el.style.height = `${rows * sizePx}px`;
+            el.style.gap = '0px';
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell';
+                    if (matrix[r][c] === 1) {
+                        // Visible block
+                    } else {
+                        cell.style.opacity = '0';
+                        cell.style.border = 'none';
+                        cell.style.background = 'none';
+                    }
+                    el.appendChild(cell);
+                }
+            }
+        }
+
+        function rotateSelected() {
+            if (!selectedShipRef || selectedShipRef.dataset.location !== 'board') return;
+            const el = selectedShipRef;
+
+            // Transpose + Reverse Row (Rotate 90deg)
+            const oldM = el.matrix;
+            const R = oldM.length, C = oldM[0].length;
+            const newM = Array(C).fill(0).map(() => Array(R).fill(0));
+
+            for (let r = 0; r < R; r++) {
+                for (let c = 0; c < C; c++) {
+                    newM[c][R - 1 - r] = oldM[r][c];
+                }
+            }
+
+            const gx = parseInt(el.dataset.gx);
+            const gy = parseInt(el.dataset.gy);
+
+            if (validatePlacementMatrix(gx, gy, newM, el.dataset.id)) {
+                el.matrix = newM;
+                updateShipVisual(el, newM, tileSize);
+                placeShipOnBoard(el, gx, gy, newM, el.dataset.id);
+            } else {
+                el.classList.add('error');
+                setTimeout(() => el.classList.remove('error'), 200);
+            }
+        }
+
+        // --- DRAG & DROP (MATRIX SUPPORT) ---
+        let dragEl = null;
+        let originData = null;
+
+        function selectShip(e, el) {
+            if (selectedShipRef) selectedShipRef.classList.remove('selected');
+            selectedShipRef = el;
+            el.classList.add('selected');
+            document.getElementById('btn-rotate').disabled = (el.dataset.location !== 'board');
+        }
+
+        function setupDrag(el) {
+            el.addEventListener('pointerdown', startDrag);
+        }
+
+        function startDrag(e) {
+            dragEl = this;
+            if (dragEl.dataset.locked === 'true') return;
+            selectShip(e, dragEl);
+
+            const rect = dragEl.getBoundingClientRect();
+            originData = {
+                parent: dragEl.parentElement,
+                location: dragEl.dataset.location,
+                shipObj: dragEl.dataset.location === 'board' ?
+                    placedShips.find(s => s.id === dragEl.dataset.id) : null,
+                offsetX: e.clientX - rect.left,
+                offsetY: e.clientY - rect.top
+            };
+
+            dragEl.style.position = 'fixed';
+            dragEl.style.zIndex = 1000;
+            dragEl.style.left = (e.clientX - originData.offsetX) + 'px';
+            dragEl.style.top = (e.clientY - originData.offsetY) + 'px';
+            document.body.appendChild(dragEl);
+
+            dragEl.setPointerCapture(e.pointerId);
+            dragEl.classList.add('dragging');
+            dragEl.addEventListener('pointermove', moveDrag);
+            dragEl.addEventListener('pointerup', endDrag);
+        }
+
+        function moveDrag(e) {
+            if (!dragEl) return;
+            e.preventDefault();
+            dragEl.style.left = (e.clientX - originData.offsetX) + 'px';
+            dragEl.style.top = (e.clientY - originData.offsetY) + 'px';
+        }
+
+        function endDrag(e) {
+            if (!dragEl) return;
+            dragEl.classList.remove('dragging');
+            dragEl.removeEventListener('pointermove', moveDrag);
+            dragEl.removeEventListener('pointerup', endDrag);
+            dragEl.releasePointerCapture(e.pointerId);
+
+            const rect = dragEl.getBoundingClientRect();
+            const board = document.getElementById('setup-board');
+            const bRect = board.getBoundingClientRect();
+
+            if (rect.left + rect.width > bRect.left && rect.left < bRect.right &&
+                rect.top + rect.height > bRect.top && rect.top < bRect.bottom) {
+
+                const gx = Math.round((rect.left - bRect.left) / tileSize);
+                const gy = Math.round((rect.top - bRect.top) / tileSize);
+
+                if (validatePlacementMatrix(gx, gy, dragEl.matrix, dragEl.dataset.id)) {
+                    placeShipOnBoard(dragEl, gx, gy, dragEl.matrix, dragEl.dataset.id);
+                    return;
+                }
+            }
+            returnToOrigin();
+        }
+
+        function returnToOrigin() {
+            dragEl.style.position = 'relative';
+            dragEl.style.left = '0';
+            dragEl.style.top = '0';
+            dragEl.style.zIndex = '';
+
+            if (originData.location === 'inventory') {
+                updateShipVisual(dragEl, dragEl.matrix, 30);
+                originData.parent.appendChild(dragEl);
+            } else {
+                const s = originData.shipObj;
+                placeShipOnBoard(dragEl, s.gx, s.gy, s.matrix, s.id);
+            }
+            dragEl = null;
+        }
+
+        function validatePlacementMatrix(gx, gy, matrix, ignoreId) {
+            const rows = matrix.length;
+            const cols = matrix[0].length;
+            if (gx < 0 || gy < 0 || gx + cols > gridSize || gy + rows > gridSize) return false;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (matrix[r][c] === 1) {
+                        for (const ship of placedShips) {
+                            if (ship.id === ignoreId) continue;
+                            if (isPointInShip(gx + c, gy + r, ship)) return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function isPointInShip(x, y, ship) {
+            const relX = x - ship.gx;
+            const relY = y - ship.gy;
+            if (relY >= 0 && relY < ship.matrix.length && relX >= 0 && relX < ship.matrix[0].length) {
+                return ship.matrix[relY][relX] === 1;
+            }
+            return false;
+        }
+
+        function placeShipOnBoard(el, gx, gy, matrix, id) {
+            placedShips = placedShips.filter(s => s.id !== id);
+
+            placedShips.push({ id, gx, gy, matrix });
+
+            const board = document.getElementById('setup-board');
+            el.dataset.location = 'board';
+            el.dataset.gx = gx;
+            el.dataset.gy = gy;
+
+            updateShipVisual(el, matrix, tileSize);
+
+            el.style.position = 'absolute';
+            el.style.left = (gx * tileSize) + 'px';
+            el.style.top = (gy * tileSize) + 'px';
+            el.style.zIndex = 10;
+            board.appendChild(el);
+
+            document.getElementById('btn-rotate').disabled = false;
+            selectShip(null, el); // Reactivate select
+            dragEl = null;
+
+            checkSetupReady();
+        }
+
+        function checkSetupReady() {
+            const totalShips = fleetConfig.reduce((acc, c) => acc + c.count, 0);
+            if (placedShips.length === totalShips) {
+                document.getElementById('btn-ready').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-ready').classList.add('hidden');
+            }
+        }
+
+        function finalizeSetup() {
+            show('screen-wait');
+            const myFleetData = placedShips.map(s => ({
+                id: s.id,
+                matrix: s.matrix,
+                x: s.gx,
+                y: s.gy
+            }));
+            conn.send({ type: 'READY_FLEET', fleet: myFleetData });
+        }
+
+
+        // --- GAME PLAY LOGIC ---
+        function initGameUI() {
+            // Setup Enemy Board
+            const eBoard = document.getElementById('enemy-board');
+            eBoard.style.width = `${tileSize * gridSize}px`;
+            eBoard.style.height = `${tileSize * gridSize}px`;
+
+            const eGrid = document.getElementById('enemy-grid');
+            eGrid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
+            eGrid.style.backgroundImage = `linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+                                          linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)`;
+
+            eBoard.onclick = (e) => onEnemyBoardClick(e);
+
+            // Setup My Board (Static)
+            const mBoard = document.getElementById('my-board');
+            mBoard.style.width = `${tileSize * gridSize}px`;
+            mBoard.style.height = `${tileSize * gridSize}px`;
+
+            const mGrid = document.getElementById('my-grid');
+            mGrid.style.backgroundSize = `${tileSize}px ${tileSize}px`;
+            mGrid.style.backgroundImage = `linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+                                          linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)`;
+
+            const myContainer = document.getElementById('my-final-ships');
+            myContainer.innerHTML = '';
+
+            myShips.forEach(s => {
+                const el = document.createElement('div');
+                el.className = 'ship-visual';
+                updateShipVisual(el, s.matrix, tileSize);
+                el.style.position = 'absolute';
+                el.style.left = (s.x * tileSize) + 'px';
+                el.style.top = (s.y * tileSize) + 'px';
+                myContainer.appendChild(el);
+            });
+
+            renderEnemyFleetPanel();
+            updateTurnUI();
+        }
+
+        function renderEnemyFleetPanel() {
+            const panel = document.getElementById('enemy-fleet-panel');
+            panel.innerHTML = '';
+            enemyShipsList.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'enemy-ship-card';
+                if (s.sunk) card.classList.add('sunk');
+
+                const visual = generateMatrixVisual(s.matrix, 10); // Small preview
+                card.appendChild(visual);
+                panel.appendChild(card);
+            });
+        }
+
+        function onEnemyBoardClick(e) {
+            if (!myTurn) return;
+            const rect = document.getElementById('enemy-board').getBoundingClientRect();
+            const bx = Math.floor((e.clientX - rect.left) / tileSize);
+            const by = Math.floor((e.clientY - rect.top) / tileSize);
+
+            if (bx < 0 || by < 0 || bx >= gridSize || by >= gridSize) return;
+
+            // Check if already shot (simple check via marker existence)
+            // But ideally keep a record. For now let's send shot.
+            if (document.querySelector(`#enemy-markers .marker[data-x="${bx}"][data-y="${by}"]`)) return;
+
+            // Optimistic marker
+            conn.send({ type: 'SHOT', x: bx, y: by });
+            myTurn = false;
+            updateTurnUI();
+        }
+
+        function handleReceiveShot(x, y) {
+            // Check Hit
+            let hit = false;
+            let sunkId = null;
+
+            for (const ship of myShips) {
+                if (isPointInShip(x, y, { gx: ship.x, gy: ship.y, matrix: ship.matrix })) {
+                    hit = true;
+                    // Use a Set to track hits if not exists
+                    if (!ship.hits) ship.hits = new Set();
+                    ship.hits.add(`${x},${y}`);
+
+                    // Check sunk
+                    let totalCells = 0;
+                    ship.matrix.forEach(r => r.forEach(c => totalCells += c));
+                    if (ship.hits.size === totalCells) {
+                        sunkId = ship.id;
+                    }
+                    break;
+                }
+            }
+
+            addMarker('my-markers', x, y, hit);
+            conn.send({ type: 'SHOT_RESULT', x, y, hit, sunkId });
+
+            myTurn = true;
+            document.getElementById('turn-badge').style.display = 'inline-block';
+            document.getElementById('wait-badge').style.display = 'none';
+        }
+
+        function handleShotResult(x, y, hit, sunkId) {
+            addMarker('enemy-markers', x, y, hit);
+            if (sunkId) {
+                const s = enemyShipsList.find(s => s.id === sunkId);
+                if (s) {
+                    s.sunk = true;
+                    renderEnemyFleetPanel();
+                    document.getElementById('game-info').innerText = "¡HUNDIDO!";
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                }
+            } else {
+                document.getElementById('game-info').innerText = hit ? "¡IMPACTO!" : "Agua";
+            }
+        }
+
+        function addMarker(layerId, x, y, hit) {
+            const layer = document.getElementById(layerId);
+            const m = document.createElement('div');
+            m.className = `marker ${hit ? 'hit' : 'miss'}`;
+            m.dataset.x = x;
+            m.dataset.y = y;
+            m.style.left = (x * tileSize) + 'px';
+            m.style.top = (y * tileSize) + 'px';
+            m.style.width = tileSize + 'px';
+            m.style.height = tileSize + 'px';
+
+            if (hit) {
+                m.innerText = '💥';
+                m.style.fontSize = (tileSize * 0.6) + 'px';
+                m.style.display = 'flex'; m.style.justifyContent = 'center'; m.style.alignItems = 'center';
+            }
+            layer.appendChild(m);
+        }
+
+        function updateTurnUI() {
+            if (myTurn) {
+                document.getElementById('turn-badge').style.display = 'inline-block';
+                document.getElementById('wait-badge').style.display = 'none';
+            } else {
+                document.getElementById('turn-badge').style.display = 'none';
+                document.getElementById('wait-badge').style.display = 'inline-block';
+            }
+        }
+        let shipIdCounter = 0;
+        fleetConfig.forEach(cfg => {
+            for (let i = 0; i < cfg.count; i++) {
+                createInteractableShip(inv, cfg.size, `ship_${shipIdCounter++}`);
+            }
+        });
         }
 
         function createInteractableShip(container, size, id) {
