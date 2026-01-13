@@ -1113,12 +1113,23 @@
 
         @media (min-width: 800px) {
             #enemy-fleet-panel {
-                width: 250px;
-                height: 400px;
-                /* Vertical on desktop */
-                flex-direction: column;
-                flex-wrap: nowrap;
-                margin-top: 0;
+                width: 100%;
+                /* Full width */
+                max-width: 500px;
+                /* Match board width */
+                height: auto;
+                min-height: 60px;
+                flex-direction: row;
+                /* Horizontal */
+                justify-content: flex-start;
+                /* Start from left */
+                overflow-x: auto;
+                /* Scrollable */
+                overflow-y: hidden;
+                margin-top: 5px;
+                padding-bottom: 5px;
+                /* Space for scrollbar */
+                gap: 10px;
             }
         }
 
@@ -1128,15 +1139,21 @@
             border-radius: 4px;
             display: flex;
             flex-direction: column;
+            /* Keep shape block layout */
             align-items: center;
             opacity: 0.8;
             border: 1px solid #334155;
+            flex: 0 0 auto;
+            /* Don't shrink */
         }
 
         .enemy-ship-entry.sunk {
-            border-color: var(--hit);
-            background: #450a0a;
-            opacity: 0.5;
+            border-color: #ef4444;
+            /* RED Border */
+            background: rgba(239, 68, 68, 0.2);
+            /* Red tint */
+            box-shadow: 0 0 10px #ef4444;
+            opacity: 1;
         }
 
         .ship-shape-display {
@@ -1146,24 +1163,57 @@
         }
 
         .ship-block {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            /* Slightly smaller for compact list */
+            height: 10px;
             background: #94a3b8;
             border-radius: 2px;
         }
 
         .enemy-ship-entry.sunk .ship-block {
-            background: var(--hit);
+            background: #ef4444;
+            /* Red blocks */
         }
 
-        /* --- CONTROLS --- */
-        .control-bar {
+        /* Markers */
+        .marker {
+            position: absolute;
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            width: 100%;
-            padding: 0 10px;
-            margin-bottom: 5px;
+            font-size: 24px;
+            /* Big Emojis */
+            pointer-events: none;
+            z-index: 20;
+            text-shadow: 0 0 5px black;
+        }
+
+        .marker.miss::after {
+            content: '🌊';
+            font-size: 20px;
+            opacity: 0.7;
+        }
+
+        .marker.hit::after {
+            content: '💥';
+        }
+
+        .marker.sunk-fire::after {
+            content: '🔥';
+            animation: burn 0.5s infinite alternate;
+        }
+
+        @keyframes burn {
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.2);
+            }
+        }
+
+        margin-bottom: 5px;
         }
 
         /* --- CUSTOM SHIP EDITOR --- */
@@ -2156,6 +2206,7 @@
             // Check Hit
             let hit = false;
             let sunkId = null;
+            let sunkCoords = null; // To send back coords of sunk ship
 
             for (const ship of myShips) {
                 if (isPointInShip(x, y, { gx: ship.x, gy: ship.y, matrix: ship.matrix })) {
@@ -2169,52 +2220,93 @@
                     ship.matrix.forEach(r => r.forEach(c => totalCells += c));
                     if (ship.hits.size === totalCells) {
                         sunkId = ship.id;
+                        // Gather global coords of this ship
+                        sunkCoords = [];
+                        ship.matrix.forEach((row, mr) => {
+                            row.forEach((val, mc) => {
+                                if (val === 1) {
+                                    sunkCoords.push({ x: ship.x + mc, y: ship.y + mr });
+                                }
+                            });
+                        });
                     }
                     break;
                 }
             }
 
             addMarker('my-markers', x, y, hit);
-            conn.send({ type: 'SHOT_RESULT', x, y, hit, sunkId });
-
-            myTurn = true;
-            document.getElementById('turn-badge').style.display = 'inline-block';
-            document.getElementById('wait-badge').style.display = 'none';
-        }
-
-        function handleShotResult(x, y, hit, sunkId) {
-            addMarker('enemy-markers', x, y, hit);
-            if (sunkId) {
-                const s = enemyShipsList.find(s => s.id === sunkId);
-                if (s) {
-                    s.sunk = true;
-                    renderEnemyFleetPanel();
-                    document.getElementById('game-info').innerText = "¡HUNDIDO!";
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-                }
-            } else {
-                document.getElementById('game-info').innerText = hit ? "¡IMPACTO!" : "Agua";
+            // If I am Sunk, I should also update my own markers to Fire? 
+            // Yes, "My Fleet" view should also show fire.
+            if (sunkId && sunkCoords) {
+                updateMarkersToFire('my-markers', sunkCoords);
             }
+
+            conn.send({ type: 'SHOT_RESULT', x, y, hit, sunkId, sunkCoords });
+
+            // Swap Turn
+            myTurn = true;
+            updateTurnUI();
         }
 
-        function addMarker(layerId, x, y, hit) {
-            const layer = document.getElementById(layerId);
-            const m = document.createElement('div');
-            m.className = `marker ${hit ? 'hit' : 'miss'}`;
-            m.dataset.x = x;
-            m.dataset.y = y;
-            m.style.left = (x * tileSize) + 'px';
-            m.style.top = (y * tileSize) + 'px';
-            m.style.width = tileSize + 'px';
-            m.style.height = tileSize + 'px';
+        function handleShotResult(x, y, hit, sunkId, sunkCoords) {
+            addMarker('enemy-markers', x, y, hit);
 
             if (hit) {
-                m.innerText = '💥';
-                m.style.fontSize = (tileSize * 0.6) + 'px';
-                m.style.display = 'flex'; m.style.justifyContent = 'center'; m.style.alignItems = 'center';
+                confetti({ particleCount: 30, spread: 20, origin: { y: 0.2 } });
             }
+
+            if (sunkId) {
+                // Mark in manifest
+                const entry = document.getElementById(`enemy-manifest-${sunkId}`);
+                if (entry) entry.classList.add('sunk');
+
+                // Update Explosion Markers to FIRE
+                if (sunkCoords) {
+                    updateMarkersToFire('enemy-markers', sunkCoords);
+                }
+
+                confetti({ particleCount: 100, spread: 60 });
+                // alert("¡BARCO ENEMIGO HUNDIDO!"); // Removed alert to not block UI
+                document.getElementById('game-info').innerText = "¡BARCO HUNDIDO! 🔥";
+            } else {
+                document.getElementById('game-info').innerText = hit ? "¡IMPACTO! 💥" : "Agua 🌊";
+            }
+        }
+
+        function updateMarkersToFire(layerId, coords) {
+            const layer = document.getElementById(layerId);
+            // We need to find markers at these coords.
+            // Since markers don't have IDs easily, we can iterate children or give them data-coord
+            // Let's iterate.
+            const markers = layer.querySelectorAll('.marker.hit');
+            markers.forEach(m => {
+                const mx = parseInt(m.dataset.gx);
+                const my = parseInt(m.dataset.gy);
+
+                // Check if this marker is in the sunkCoords list
+                const isPart = coords.some(c => c.x === mx && c.y === my);
+                if (isPart) {
+                    m.classList.remove('hit');
+                    m.classList.add('sunk-fire');
+                }
+            });
+        }
+
+        function addMarker(layerId, x, y, isHit) {
+            const layer = document.getElementById(layerId);
+            const m = document.createElement('div');
+            m.className = `marker ${isHit ? 'hit' : 'miss'}`;
+            m.style.left = `${x * tileSize}px`;
+            m.style.top = `${y * tileSize}px`;
+            m.style.width = `${tileSize}px`;
+            m.style.height = `${tileSize}px`;
+            // Add data attributes for later finding
+            m.dataset.gx = x;
+            m.dataset.gy = y;
             layer.appendChild(m);
         }
+
+
 
         function updateTurnUI() {
             if (myTurn) {
