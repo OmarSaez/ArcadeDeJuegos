@@ -1845,6 +1845,70 @@
             updateTurnUI();
         }
 
+        function renderFleetConfig() {
+            const container = document.getElementById('fleet-config-list');
+            container.innerHTML = '';
+
+            fleetConfig.forEach((cfg, index) => {
+                const row = document.createElement('div');
+                row.className = 'config-row';
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.justifyContent = 'space-between';
+                row.style.background = '#1e293b';
+                row.style.padding = '8px';
+                row.style.marginBottom = '8px';
+                row.style.borderRadius = '6px';
+
+                // Left: Visual Ship Representation
+                const shipPreview = document.createElement('div');
+                shipPreview.style.display = 'flex';
+                shipPreview.style.gap = '2px';
+
+                // Create blocks
+                for (let i = 0; i < cfg.size; i++) {
+                    const block = document.createElement('div');
+                    block.style.width = '20px';
+                    block.style.height = '20px';
+                    block.style.backgroundColor = '#94a3b8'; // Ship Color
+                    block.style.border = '1px solid #475569';
+                    shipPreview.appendChild(block);
+                }
+
+                // Small label below or side for explicit size number? 
+                // Let's add a small badge with the number
+                const sizeBadge = document.createElement('span');
+                sizeBadge.innerText = `${cfg.size}`;
+                sizeBadge.style.fontSize = '12px';
+                sizeBadge.style.color = '#cbd5e1';
+                sizeBadge.style.marginLeft = '10px';
+                sizeBadge.style.fontWeight = 'bold';
+
+                const leftCol = document.createElement('div');
+                leftCol.style.display = 'flex';
+                leftCol.style.alignItems = 'center';
+                leftCol.appendChild(shipPreview);
+                leftCol.appendChild(sizeBadge);
+
+                // Right: Controls (- 1 +) and Delete
+                const controls = document.createElement('div');
+                controls.style.display = 'flex';
+                controls.style.alignItems = 'center';
+                controls.style.gap = '10px';
+
+                controls.innerHTML = `
+                    <button class="btn-small" onclick="updateShipCount(${index}, -1)" style="background:#ef4444;">-</button>
+                    <span style="font-weight:bold; min-width:20px; text-align:center;">${cfg.count}</span>
+                    <button class="btn-small" onclick="updateShipCount(${index}, 1)" style="background:#22c55e;">+</button>
+                    <button class="btn-small" onclick="removeShipType(${index})" style="background:transparent; border:1px solid #ef4444; color:#ef4444; margin-left:5px;">🗑️</button>
+                `;
+
+                row.appendChild(leftCol);
+                row.appendChild(controls);
+                container.appendChild(row);
+            });
+        }
+
         function renderEnemyFleetPanel() {
             const p = document.getElementById('enemy-fleet-panel');
             p.innerHTML = '';
@@ -1852,13 +1916,21 @@
                 const entry = document.createElement('div');
                 entry.className = 'enemy-ship-entry';
                 entry.id = `enemy-manifest-${s.id}`;
-                entry.innerHTML = `<span style="font-size:0.7rem;">${s.size} Bloques</span>`;
 
+                // Removed text size label, purely visual now
                 const visual = document.createElement('div');
                 visual.className = 'ship-shape-display';
+                visual.style.display = 'flex';
+                visual.style.gap = '2px';
+
                 for (let i = 0; i < s.size; i++) {
                     const block = document.createElement('div');
                     block.className = 'ship-block';
+                    // Inline styling for robustness outside CSS file
+                    block.style.width = '15px';
+                    block.style.height = '15px';
+                    block.style.background = '#94a3b8';
+                    block.style.border = '1px solid #475569';
                     visual.appendChild(block);
                 }
                 entry.appendChild(visual);
