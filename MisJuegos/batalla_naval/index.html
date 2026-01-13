@@ -1658,14 +1658,11 @@
 
         function startHost() {
             isHost = true;
-            createPeerWithRetry();
-        }
-
-        function createPeerWithRetry() {
             const id = generateRoomId();
             peer = new Peer(id);
 
             peer.on('open', (pid) => {
+                console.log("Peer Open:", pid);
                 show('screen-lobby');
                 document.getElementById('lobby-code').innerText = pid;
             });
@@ -1676,15 +1673,17 @@
             });
 
             peer.on('error', e => {
+                console.error("Peer Error:", e);
                 if (e.type === 'unavailable-id') {
-                    console.log("ID taken, retrying...");
-                    peer.destroy();
-                    createPeerWithRetry();
+                    // Just alert/retry once manually or auto-retry once after delay?
+                    // Let's do a simple recursive call after 500ms to avoid loop spam
+                    setTimeout(() => startHost(), 500);
                 } else {
-                    alert("Error Conexión: " + e.type);
+                    alert("Error de conexión P2P: " + e.type);
                 }
             });
         }
+
 
         function connectToHost() {
             const code = document.getElementById('join-code').value.toUpperCase();
