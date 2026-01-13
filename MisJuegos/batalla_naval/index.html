@@ -1605,6 +1605,17 @@
             }
             renderFleetConfig();
         }
+
+        function updateShipCount(idx, delta) {
+            fleetConfig[idx].count += delta;
+            if (fleetConfig[idx].count < 1) fleetConfig[idx].count = 0; // Allow 0, user can delete
+            renderFleetConfig();
+        }
+
+        function removeShipType(idx) {
+            fleetConfig.splice(idx, 1);
+            renderFleetConfig();
+        }
         // --- END CONFIG ---
         function addShipConfig() {
             const s = parseInt(document.getElementById('new-ship-size').value);
