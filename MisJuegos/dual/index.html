@@ -99,7 +99,7 @@
             left: 50%;
             transform: translateX(-50%);
             width: 80%;
-            height: 10px;
+            height: 20px;
             background: #333;
             border: 1px solid #555;
             display: none;
@@ -129,6 +129,112 @@
             color: #aaa;
             margin-top: 10px;
         }
+
+        /* --- EVENTOS UI --- */
+        #event-overlay {
+            position: absolute;
+            top: 20%;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+        }
+
+        #bonus-timer {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px #000;
+            display: none;
+            z-index: 15;
+            text-align: center;
+        }
+
+        @keyframes criticalPulse {
+            0% {
+                box-shadow: 0 0 0 #f00;
+                border-color: #555;
+                transform: translateX(-50%) scale(1);
+            }
+
+            50% {
+                box-shadow: 0 0 20px #f00;
+                border-color: #f00;
+                transform: translateX(-50%) scale(1.05);
+            }
+
+            100% {
+                box-shadow: 0 0 0 #f00;
+                border-color: #555;
+                transform: translateX(-50%) scale(1);
+            }
+        }
+
+        .critical {
+            animation: criticalPulse 0.2s infinite;
+        }
+
+        .event-text {
+            font-size: 10vw;
+            color: #fff;
+            text-shadow: 0 0 15px #0ff;
+            /* Sombra simplificada para movil */
+            font-weight: bold;
+            text-transform: uppercase;
+            animation: pulseText 0.5s infinite alternate;
+            will-change: transform;
+        }
+
+        .event-subtext {
+            font-size: 5vw;
+            color: #ffff00;
+            text-shadow: 0 0 5px #ffff00;
+            margin-top: 15px;
+            font-style: italic;
+        }
+
+        .event-reward {
+            font-size: 12vw;
+            color: #0f0;
+            text-shadow: 0 0 15px #0f0;
+            /* Sombra simplificada */
+            margin: 20px 0;
+            font-weight: 900;
+        }
+
+        .event-score-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 25vw;
+            color: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            z-index: 5;
+            font-weight: bold;
+            display: none;
+        }
+
+        .event-countdown {
+            font-size: 5rem;
+            color: #ffff00;
+            text-shadow: 0 0 10px #ffff00;
+            margin-top: 20px;
+        }
+
+        @keyframes pulseText {
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.1);
+            }
+        }
     </style>
 </head>
 
@@ -140,12 +246,24 @@
         <div id="health-fill"></div>
     </div>
 
+    <!-- UI EVENTOS -->
+    <!-- UI EVENTOS -->
+    <div id="bonus-timer"></div>
+    <div id="event-score-display" class="event-score-overlay">0/45</div>
+
+    <div id="event-overlay">
+        <div id="event-title" class="event-text">¡EVENTO DE BONUS!</div>
+        <div id="event-reward" class="event-reward">DISPARO DOBLE</div>
+        <div id="event-desc" class="event-subtext">GANA: LLUVIA DE ORBES</div>
+        <div id="event-count" class="event-countdown">3</div>
+    </div>
+
     <div id="ui-layer">
         <!-- PANTALLA DE INICIO -->
         <div id="start-screen" class="menu-screen">
             <h1>DualWeb</h1>
             <p>Conecta dos dispositivos y enfréntate.</p>
-            <button onclick="isHost=true; initPeer();">CREAR SALA (Host)</button>
+            <button onclick="showModeSelection()">CREAR SALA (Host)</button>
             <br>
             <div style="margin: 10px 0;">— O —</div>
             <input type="text" id="room-code" placeholder="CÓDIGO SALA">
@@ -153,6 +271,17 @@
             <button onclick="joinGame()">UNIRSE</button>
 
             <button id="ios-sensor-btn" onclick="requestSensorPermission()">📱 Activar Sensores (iOS)</button>
+        </div>
+
+        <!-- SELECCION DE MODO -->
+        <div id="mode-selection-screen" class="menu-screen" style="display:none;">
+            <h2>ELIGE VERSIÓN</h2>
+            <p>Selecciona el modo de juego</p>
+            <button onclick="selectMode('classic')">CLÁSICO</button>
+            <button onclick="selectMode('new')">NUEVO</button>
+            <br><br>
+            <button onclick="backToMenu()"
+                style="font-size: 0.8rem; padding: 10px; border: 1px solid #777; color: #aaa;">VOLVER</button>
         </div>
 
         <!-- PANTALLA DE ESPERA (HOST) -->
@@ -164,9 +293,31 @@
         </div>
 
         <!-- GAME OVER -->
-        <div id="game-over-screen" class="menu-screen" style="display:none;">
-            <h1 id="result-title">FIN DEL JUEGO</h1>
-            <button onclick="restartGame()">REVANCHA</button>
+        <!-- GAME OVER -->
+        <div id="game-over-screen" class="menu-screen" style="display:none; width: 90%; max-width: 400px;">
+            <h1 id="result-title" style="font-size: 3rem; margin-bottom: 10px;">FIN</h1>
+
+            <!-- MARCADOR GLOBAL -->
+            <div
+                style="display:flex; justify-content:space-around; align-items:center; margin-bottom: 20px; font-family: 'Orbitron';">
+                <div style="text-align:center;">
+                    <span style="color:#0ff; font-size: 1.2rem;">YO</span><br>
+                    <span id="score-me" style="font-size: 3rem; color:#0ff;">0</span>
+                </div>
+                <div style="font-size: 2rem; color: #555;">-</div>
+                <div style="text-align:center;">
+                    <span style="color:#f0f; font-size: 1.2rem;">RIVAL</span><br>
+                    <span id="score-rival" style="font-size: 3rem; color:#f0f;">0</span>
+                </div>
+            </div>
+
+            <!-- ESTADISTICAS -->
+            <div id="match-stats"
+                style="background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; font-size: 0.9rem; border: 1px solid #333;">
+                <!-- Se llena con JS -->
+            </div>
+
+            <button onclick="restartGame()" style="width: 100%; padding: 15px; font-size: 1.2rem;">REVANCHA</button>
         </div>
     </div>
 
@@ -183,6 +334,19 @@
         let isHost = false;
         let conn = null;
         let fullSyncInterval = null;
+        let gameMode = 'classic'; // 'classic' | 'new'
+        let activeTimer = { frames: 0, text: '', color: '#fff' };
+
+        // Estadísticas
+        let sessionScore = { me: 0, rival: 0 };
+        let matchStats = {
+            start: 0,
+            shots: 0,
+            hits: 0,
+            events: 0,
+            eventsWon: 0,
+            heal: 0
+        };
 
         // Jugador Local
         const player = {
@@ -193,7 +357,20 @@
             vx: 0,
             vy: 0,
             width: 0.1, // Ancho relativo
-            widthPx: 0
+            widthPx: 0,
+            isGiant: false, // Debuff recibido
+            bonuses: {
+                double: 0, // frames
+                vamp: 0,
+                shield: 0,
+                big: 0,
+                shotgun: 0,
+                auto: 0,
+                rapid: 0, // Bala veloz
+                jammed: 0, // Sin munición
+                broken: 0 // Arma rota
+            },
+            tapCount: 0
         };
 
         // Rival (Fantasma)
@@ -278,22 +455,57 @@
 
         // --- LÓGICA DE JUEGO ---
         function shoot() {
-            // Bala local sale hacia ARRIBA (y negativo)
-            bullets.push({
-                x: player.x,
-                y: player.y,
-                vx: 0,
-                vy: -0.015, // Velocidad hacia arriba
-                isMine: true,
-                color: player.color
-            });
+            // Check Jammed (Sin Munición)
+            if (player.bonuses.jammed > 0) return;
 
-            // Enviar evento 'SHOT' para efectos de sonido o flash en el otro lado?
-            // Realmente enviamos la bala cuando cruza el borde, 
-            // pero para feedback visual inmediato podríamos enviar algo.
+            // Check Broken (Arma Rota) - Necesita 2 taps para 1 bala
+            if (player.bonuses.broken > 0) {
+                player.tapCount++;
+                if (player.tapCount % 2 !== 0) return; // Ignorar disparo impar
+            }
+
+            // Configurar balas según bonus
+            const speed = player.bonuses.rapid > 0 ? -0.025 : -0.015;
+            const size = player.bonuses.big > 0 ? 3 : 1; // 1 normal, 3 mega
+
+            const spawnBullet = (offsetX, angleVx) => {
+                matchStats.shots++; // Stats
+                bullets.push({
+                    x: player.x + offsetX,
+                    y: player.y,
+                    vx: angleVx || 0,
+                    vy: speed,
+                    isMine: true,
+                    color: player.color,
+                    size: size
+                });
+            };
+
+            if (player.bonuses.shotgun > 0) {
+                spawnBullet(0, 0);
+                spawnBullet(0, -0.005);
+                spawnBullet(0, 0.005);
+            } else if (player.bonuses.double > 0) {
+                spawnBullet(-0.02);
+                spawnBullet(0.02);
+            } else {
+                spawnBullet(0);
+            }
         }
 
-        function spawnEnemyBullet(xRel) {
+        function updateBonuses() {
+            // Decrementar timers
+            for (let key in player.bonuses) {
+                if (player.bonuses[key] > 0) player.bonuses[key]--;
+            }
+
+            // Auto Fire
+            if (player.bonuses.auto > 0) {
+                if (player.bonuses.auto % 6 === 0) shoot();
+            }
+        }
+
+        function spawnEnemyBullet(xRel, size) {
             // La bala enemiga llega desde ARRIBA (y=0) hacia ABAJO
             bullets.push({
                 x: xRel, // La misma X relativa (espejo horizontal?) -> Probemos directo
@@ -301,12 +513,20 @@
                 vx: 0,
                 vy: 0.015, // Velocidad hacia abajo (hacia mí)
                 isMine: false,
-                color: enemy.color
+                color: enemy.color,
+                size: size || 1
             });
         }
 
         function update(dt) {
             if (gameState !== 'PLAYING') return;
+
+            // --- LÓGICA MODO NUEVO (EVENTOS) ---
+            if (gameMode === 'new') {
+                updateEventManager();
+                updateBonuses();
+                updateBonusUI(); // Update the bonus timer UI
+            }
 
             // Físicas Jugador (Inercia Gyro)
             if (gyroActive) {
@@ -328,7 +548,7 @@
                 if (b.isMine && b.y < -0.05) {
                     // Enviar al rival
                     if (conn && conn.open) {
-                        conn.send({ type: 'INCOMING_BULLET', x: b.x });
+                        conn.send({ type: 'INCOMING_BULLET', x: b.x, size: b.size });
                     }
                     bullets.splice(i, 1);
                     continue;
@@ -343,21 +563,48 @@
                 // 3. Colisiones (Bala enemiga me pega)
                 if (!b.isMine) {
                     // Hitbox simple
+                    let hitW = 0.05;
+                    let hitH = 0.03;
+
+                    // Si soy gigante (Debuff)
+                    if (player.isGiant) { hitW = 0.1; hitH = 0.06; }
+
+                    // Si la bala es MEGA (b.size > 1)
+                    if (b.size > 1) { hitW *= b.size; hitH *= b.size; }
+
+
                     const dx = Math.abs(b.x - player.x);
                     const dy = Math.abs(b.y - player.y);
-                    // Hitbox size approx 5% width, 5% height
-                    if (dx < 0.05 && dy < 0.03) {
+
+                    if (dx < hitW && dy < hitH) {
+                        // Check Escudo
+                        if (player.bonuses.shield > 0) {
+                            // Bloqueado
+                            bullets.splice(i, 1);
+                            continue;
+                        }
+
                         player.hp -= 10;
+
+                        // Enviar hit confirm al enemigo (por si tiene Robo de Vida)
+                        if (conn) conn.send({ type: 'HIT_CONFIRM' });
+
                         bullets.splice(i, 1);
                         updateHealthUI();
                         if (player.hp <= 0) gameOver(false); // Perdimos
                     }
                 }
             }
+
+            // Check Colisiones Eventos (Balas vs Objetivos)
+            if (currentEvent && currentEvent.active) {
+                checkEventCollisions();
+            }
         }
 
         function draw() {
             // Fondo / Trail effect
+            CTX.shadowBlur = 0; // Resetear sombra para evitar artifacts (pantalla amarilla)
             CTX.fillStyle = 'rgba(0, 0, 0, 0.2)';
             CTX.fillRect(0, 0, W, H);
 
@@ -372,10 +619,11 @@
             CTX.shadowColor = player.color;
 
             // Dibujar nave (Triángulo)
+            const scale = player.isGiant ? 2 : 1;
             CTX.beginPath();
-            CTX.moveTo(px, py - 20);
-            CTX.lineTo(px - 15, py + 20);
-            CTX.lineTo(px + 15, py + 20);
+            CTX.moveTo(px, py - (20 * scale));
+            CTX.lineTo(px - (15 * scale), py + (20 * scale));
+            CTX.lineTo(px + (15 * scale), py + (20 * scale));
             CTX.fill();
             CTX.shadowBlur = 0;
 
@@ -385,10 +633,25 @@
                 CTX.shadowBlur = 10;
                 CTX.shadowColor = b.color;
                 CTX.beginPath();
-                CTX.arc(b.x * W, b.y * H, 6, 0, Math.PI * 2);
+                // Bala Gigante (size 1 -> r=6, size 3 -> r=18)
+                let r = b.size * 6;
+                CTX.arc(b.x * W, b.y * H, r, 0, Math.PI * 2);
                 CTX.fill();
                 CTX.shadowBlur = 0;
             });
+
+            // Efectos Visuales Bonus
+            if (player.bonuses.shield > 0) {
+                CTX.strokeStyle = '#0ff';
+                CTX.lineWidth = 3;
+                CTX.beginPath();
+                CTX.arc(player.x * W, player.y * H, 40, 0, Math.PI * 2);
+                CTX.stroke();
+            }
+            // Dibujar Eventos
+            if (currentEvent && currentEvent.active) {
+                drawEvent();
+            }
         }
 
         function gameLoop() {
@@ -404,12 +667,22 @@
 
         function updateHealthUI() {
             const fill = document.getElementById('health-fill');
-            fill.style.width = player.hp + '%';
-            if (player.hp > 50) fill.style.background = '#0f0';
-            else if (player.hp > 20) fill.style.background = '#ff0';
-            else fill.style.background = '#f00';
+            const bar = document.getElementById('health-bar');
 
-            document.getElementById('health-bar').style.display = 'block';
+            fill.style.width = player.hp + '%';
+
+            if (player.hp > 50) {
+                fill.style.background = '#0f0';
+                bar.classList.remove('critical');
+            } else if (player.hp > 20) {
+                fill.style.background = '#ff0';
+                bar.classList.remove('critical');
+            } else {
+                fill.style.background = '#f00';
+                bar.classList.add('critical');
+            }
+
+            bar.style.display = 'block';
         }
 
         function gameOver(win) {
@@ -419,6 +692,41 @@
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('waiting-screen').style.display = 'none';
             document.getElementById('health-bar').style.display = 'none';
+
+            document.getElementById('waiting-screen').style.display = 'none';
+            document.getElementById('health-bar').style.display = 'none';
+
+            // Limpiar UI Eventos al morir
+            document.getElementById('bonus-timer').style.display = 'none';
+            document.getElementById('event-score-display').style.display = 'none';
+            document.getElementById('event-overlay').style.display = 'none';
+
+            // Actualizar Marcador Global
+            if (win) sessionScore.me++; else sessionScore.rival++;
+            document.getElementById('score-me').innerText = sessionScore.me;
+            document.getElementById('score-rival').innerText = sessionScore.rival;
+
+            // Calcular Estadísticas
+            const durationMs = Date.now() - matchStats.start;
+            const mins = Math.floor(durationMs / 60000);
+            const secs = Math.floor((durationMs % 60000) / 1000);
+            const acc = matchStats.shots > 0 ? Math.round((matchStats.hits / matchStats.shots) * 100) : 0;
+
+            let html = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>⏱️ Duración:</span> <span>${mins}m ${secs}s</span></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>🔫 Disparos:</span> <span>${matchStats.shots}</span></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>🎯 Precisión:</span> <span>${acc}%</span></div>
+            `;
+
+            if (gameMode === 'new') {
+                html += `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>🧩 Eventos:</span> <span>${matchStats.events}</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>🏆 Ev. Ganados:</span> <span>${matchStats.eventsWon}</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>❤️ Vida Recup:</span> <span>${matchStats.heal}</span></div>
+                `;
+            }
+
+            document.getElementById('match-stats').innerHTML = html;
 
             const title = document.getElementById('result-title');
             if (win) {
@@ -449,6 +757,26 @@
         // --- NETWORKING (PEERJS) ---
         let peer;
 
+        function showModeSelection() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('mode-selection-screen').style.display = 'block';
+        }
+
+        function backToMenu() {
+            document.getElementById('mode-selection-screen').style.display = 'none';
+            document.getElementById('start-screen').style.display = 'block';
+        }
+
+        function selectMode(mode) {
+            gameMode = mode;
+            isHost = true;
+            // Aquí podríamos configurar cosas específicas para el modo NUEVO
+            if (gameMode === 'new') {
+                console.log("Modo NUEVO seleccionado");
+            }
+            initPeer();
+        }
+
         function initPeer() {
             const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
             peer = new Peer(shortId);
@@ -459,6 +787,7 @@
                     player.color = '#0ff'; // Host es Cyan
                     enemy.color = '#ff00ff'; // Cliente es Magenta
                     document.getElementById('start-screen').style.display = 'none';
+                    document.getElementById('mode-selection-screen').style.display = 'none';
                     document.getElementById('waiting-screen').style.display = 'block';
                     document.getElementById('display-code').innerText = id;
                 }
@@ -495,15 +824,103 @@
 
                 // Iniciar Juego inmediatamente
                 startGame();
+
+                // HOST: Sincronizar Modo de Juego con el Cliente
+                if (isHost) {
+                    conn.send({ type: 'SYNC_MODE', mode: gameMode });
+                }
             });
 
             conn.on('data', (data) => {
                 switch (data.type) {
+                    case 'SYNC_MODE':
+                        gameMode = data.mode;
+                        console.log("Modo sincronizado:", gameMode);
+                        break;
                     case 'INCOMING_BULLET':
                         // Espejo de X: Si rival disparó en 0.2, aquí entra en 0.2 o 0.8?
                         // Si estamos frente a frente, mi derecha es tu izquierda.
                         // Así que x = 1.0 - data.x
-                        spawnEnemyBullet(1.0 - data.x);
+                        spawnEnemyBullet(1.0 - data.x, data.size);
+                        break;
+                    case 'EVENT_START':
+                        gameMode = 'new'; // Asegurar modo
+                        startEventSequence(data.minigameId, data.bonusId, data.eventSeed);
+                        break;
+                    case 'EVENT_WIN':
+                        // El otro ganó el evento
+                        endEvent(false); // Detener minijuego inmediatamente
+
+                        // Mostrar aviso "RIVAL GANÓ"
+                        const title = document.getElementById('event-title');
+                        const overlay = document.getElementById('event-overlay');
+
+                        let bName = "BONUS";
+                        if (data.bonusId) {
+                            const bOb = BONUS_TYPES.find(b => b.id === data.bonusId);
+                            if (bOb) bName = bOb.name;
+                        }
+
+                        title.innerText = "RIVAL GANÓ: " + bName;
+                        title.style.color = "#f00";
+                        title.style.display = 'block';
+                        overlay.style.display = 'block';
+
+                        // Esperar 3s antes de iniciar el Timer de supervivencia
+                        setTimeout(() => {
+                            overlay.style.display = 'none';
+                            title.innerText = "¡EVENTO DE BONUS!";
+                            title.style.color = "#fff";
+
+                            if (data.bonusId) {
+                                const bObj = BONUS_TYPES.find(b => b.id === data.bonusId);
+                                if (bObj && bObj.duration > 0) {
+                                    let txt = `RIVAL: ${bObj.name}`;
+                                    let col = '#ff0';
+                                    if (['DOUBLE', 'BIG', 'SHOTGUN', 'AUTO', 'FAST', 'VAMP'].includes(data.bonusId)) {
+                                        txt = "¡SOBREVIVE!";
+                                        col = '#f00';
+                                    } else if (data.bonusId === 'GIANT') {
+                                        txt = "ERES GIGANTE";
+                                        col = '#f00';
+                                    } else if (data.bonusId === 'EMPTY') {
+                                        txt = "¡SIN MUNICIÓN!";
+                                        col = '#f00';
+                                    } else if (data.bonusId === 'BROKEN') {
+                                        txt = "¡ARMA ROTA!";
+                                        col = '#f00';
+                                    }
+                                    startBonusUI(bObj.duration, txt, col);
+                                }
+                            }
+                        }, 3000);
+                        break;
+                    case 'HIT_CONFIRM':
+                        // Le di al enemigo
+                        matchStats.hits++;
+
+                        // verificar VAMPIRISMO
+                        if (player.bonuses.vamp > 0) {
+                            player.hp = Math.min(100, player.hp + 5); // Robo 5 HP
+                            matchStats.heal += 5;
+                            updateHealthUI();
+                        }
+                        break;
+                    case 'APPLY_DEBUFF':
+                        // Buscar duración real desde la configuración
+                        let debDuration = 10; // Default
+                        const debObj = BONUS_TYPES.find(b => b.id === data.debuff);
+                        if (debObj) debDuration = debObj.duration;
+
+                        if (data.debuff === 'GIANT') {
+                            player.isGiant = true;
+                            // Resetear despues de duración configurada
+                            setTimeout(() => { player.isGiant = false; }, debDuration * 1000);
+                        } else if (data.debuff === 'EMPTY') {
+                            player.bonuses.jammed = debDuration * 60;
+                        } else if (data.debuff === 'BROKEN') {
+                            player.bonuses.broken = debDuration * 60;
+                        }
                         break;
                     case 'GAME_OVER_YOU_WIN':
                         gameOver(true);
@@ -525,6 +942,477 @@
 
             // Ocultar UI overlay
             document.querySelectorAll('.menu-screen').forEach(el => el.style.display = 'none');
+
+            // Resetear Temporizador de Eventos
+            eventTimer = 0;
+            eventInterval = (Math.floor(Math.random() * 16) + 30) * 60;
+
+            // Resetear Stats Partido
+            matchStats = {
+                start: Date.now(),
+                shots: 0,
+                hits: 0,
+                events: 0,
+                eventsWon: 0,
+                heal: 0
+            };
+
+            // Resetear Estado de Juego Profundo
+            currentEvent = null;
+            minigameStreaks = {};
+            activeTimer = { frames: 0, text: '', color: '#fff' };
+            player.isGiant = false;
+            player.tapCount = 0;
+            player.bonuses = {
+                double: 0, vamp: 0, shield: 0, big: 0, shotgun: 0, auto: 0, rapid: 0, jammed: 0, broken: 0
+            };
+
+            // Limpiar UI Eventos
+            document.getElementById('bonus-timer').style.display = 'none';
+            document.getElementById('event-score-display').style.display = 'none';
+            document.getElementById('event-overlay').style.display = 'none';
+        }
+
+        // --- SISTEMA DE EVENTOS ---
+        let eventTimer = 0;
+        let eventInterval = (Math.floor(Math.random() * 16) + 30) * 60; // 30-45 segundos random
+        let currentEvent = null; // { type, active, targets[], progress, seed }
+        let rng = null; // Instancia de RNG
+
+        // RNG Determinista para sincronizar hosts
+        class SeededRNG {
+            constructor(seed) { this.seed = seed; }
+            next() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
+            }
+            nextRange(min, max) { return min + this.next() * (max - min); }
+        }
+
+        // Definición de Minijuegos (La Tarea)
+        const MINIGAME_TYPES = [
+            { id: 'ORBS', name: 'LLUVIA DE ORBES (45)', targetScore: 45 },
+            { id: 'CORE', name: 'NÚCLEO CENTRAL (100)', targetScore: 100 },
+            { id: 'TARGET', name: 'TIRO AL BLANCO (12)', targetScore: 12 }
+        ];
+
+        // ===================== Definición de Bonus (La Recompensa) =====================
+        const BONUS_TYPES = [
+            { id: 'HEAL', name: 'CURACIÓN (+VIDA)', desc: 'Recupera vida al instante', duration: 0 },
+            { id: 'DOUBLE', name: 'DISPARO DOBLE', desc: 'Doble cañón', duration: 10 },
+            { id: 'VAMP', name: 'ROBO DE VIDA', desc: 'Recupera salud al dañar', duration: 5 },
+            { id: 'SHIELD', name: 'ESCUDO', desc: 'Invulnerabilidad', duration: 15 },
+            { id: 'BIG', name: 'MEGA DISPARO', desc: 'Balas Gigantes', duration: 10 },
+            { id: 'SHOTGUN', name: 'ESCOPETA', desc: 'Triple disparo', duration: 5 },
+            { id: 'AUTO', name: 'AUTO-METRALLETA', desc: 'Disparo automático rápido', duration: 10 },
+            { id: 'FAST', name: 'BALA VELOZ', desc: 'Proyectiles +50% Velocidad', duration: 10 },
+            { id: 'GIANT', name: 'AGRANDAR RIVAL', desc: 'Hacer gigante al enemigo', duration: 10 },
+            { id: 'EMPTY', name: 'RIVAL SIN MUNICIÓN', desc: 'El enemigo no puede disparar', duration: 7 },
+            { id: 'BROKEN', name: 'ARMA ROTA', desc: 'Rival necesita 2 toques por bala', duration: 7 }
+        ];
+
+        function updateEventManager() {
+            // Si hay evento activo, no corre el tiempo para el siguiente
+            if (currentEvent) {
+                if (currentEvent.active) updateEventLogic();
+                return;
+            }
+
+            // Solo el HOST decide cuando inicia evento
+            if (isHost) {
+                eventTimer++;
+                if (eventTimer >= eventInterval) {
+                    eventTimer = 0;
+                    triggerRandomEvent();
+                    // Siguiente evento en 30-45 segundos random
+                    eventInterval = (Math.floor(Math.random() * 16) + 30) * 60;
+                }
+            }
+        }
+
+        let minigameStreaks = {};
+
+        function triggerRandomEvent() {
+            // Inicializar rachas si vacio
+            if (Object.keys(minigameStreaks).length === 0) {
+                MINIGAME_TYPES.forEach(m => minigameStreaks[m.id] = 0);
+            }
+
+            // Calcular pesos según rachas (Anti-repetición)
+            // Racha 0: 1.0 (33%)
+            // Racha 1: 0.6 (21%)
+            // Racha 2+: 0.15 (5%)
+            let weights = [];
+            let totalWeight = 0;
+
+            for (let m of MINIGAME_TYPES) {
+                let s = minigameStreaks[m.id] || 0;
+                let w = 1.0;
+                if (s === 1) w = 0.6;
+                else if (s >= 2) w = 0.15;
+
+                weights.push({ item: m, weight: w });
+                totalWeight += w;
+            }
+
+            // Selección ponderada
+            let r = Math.random() * totalWeight;
+            let mg = weights[0].item;
+            for (let entry of weights) {
+                if (r < entry.weight) {
+                    mg = entry.item;
+                    break;
+                }
+                r -= entry.weight;
+            }
+
+            // Actualizar rachas
+            MINIGAME_TYPES.forEach(m => {
+                if (m.id === mg.id) minigameStreaks[m.id] = (minigameStreaks[m.id] || 0) + 1;
+                else minigameStreaks[m.id] = 0; // Resetear los que no salieron
+            });
+
+            // Seleccionar minijuego y bonus
+            const bonus = BONUS_TYPES[Math.floor(Math.random() * BONUS_TYPES.length)];
+            const eventSeed = Math.floor(Math.random() * 10000);
+
+            // Avisar a red
+            if (conn) conn.send({ type: 'EVENT_START', minigameId: mg.id, bonusId: bonus.id, eventSeed: eventSeed });
+
+            // Iniciar local
+            startEventSequence(mg.id, bonus.id, eventSeed);
+        }
+
+        function startEventSequence(minigameId, bonusId, eventSeed) {
+            matchStats.events++;
+            const mgData = MINIGAME_TYPES.find(e => e.id === minigameId);
+            const bnData = BONUS_TYPES.find(b => b.id === bonusId);
+            // Fallback para seed si viene undefined (evita orbes invisibles)
+            rng = new SeededRNG(eventSeed || Date.now());
+
+            // UI Overlay Sequence
+            const overlay = document.getElementById('event-overlay');
+            const title = document.getElementById('event-title'); // "¡EVENTO DE BONUS!"
+            const rewardText = document.getElementById('event-reward'); // "DISPARO DOBLE"
+            const descText = document.getElementById('event-desc'); // "Gana: NUCLEO CENTRAL"
+            const count = document.getElementById('event-count');
+
+            overlay.style.display = 'block';
+            title.style.display = 'block';
+
+            rewardText.innerText = bnData.name;
+            rewardText.style.display = 'block';
+
+            descText.innerText = `Misión: ${mgData.name}`;
+            descText.style.display = 'block';
+
+            count.style.display = 'none';
+
+            // Timer logica
+            let countdownVal = 3;
+
+            setTimeout(() => { // Oculta Títulos, Muestra Countdown
+                title.style.display = 'none';
+                rewardText.style.display = 'none';
+                descText.style.display = 'none';
+
+                count.innerText = countdownVal;
+                count.style.display = 'block';
+
+                const cInt = setInterval(() => {
+                    countdownVal--;
+                    if (countdownVal > 0) {
+                        count.innerText = countdownVal;
+                    } else if (countdownVal === 0) {
+                        count.innerText = "YA!";
+                    } else {
+                        clearInterval(cInt);
+                        overlay.style.display = 'none';
+                        initEventGameplay(minigameId, bonusId);
+                    }
+                }, 1000);
+            }, 5000); // 5s para leer bien
+        }
+
+        function initEventGameplay(minigameId, bonusId) {
+            const mgData = MINIGAME_TYPES.find(e => e.id === minigameId);
+            const bnData = BONUS_TYPES.find(b => b.id === bonusId);
+
+            currentEvent = {
+                type: minigameId,
+                bonus: bnData, // Guardamos info del bonus
+                active: true,
+                targets: [],
+                score: 0,
+                targetScore: mgData.targetScore,
+                timer: 0
+            };
+
+            if (minigameId === 'CORE') {
+                // Un solo objetivo grande arriba
+                currentEvent.targets.push({
+                    x: 0.5, y: 0.05, r: 0.15, hp: 100, maxHp: 100
+                });
+            }
+            document.getElementById('event-score-display').style.display = 'block';
+            document.getElementById('event-score-display').innerText = `0/${currentEvent.targetScore}`;
+        }
+
+        function updateEventLogic() {
+            if (!currentEvent || !currentEvent.active) return;
+
+            // Safety Check: RNG debe existir
+            if (!rng) rng = new SeededRNG(Date.now());
+
+            currentEvent.timer++;
+
+            if (currentEvent.type === 'ORBS') {
+                // Generar orbes rapido (cada 10 frames = 6 por segundo aprox)
+                if (currentEvent.timer % 15 === 0) { // Un poco mas lento para dar chance
+                    // Usar RNG sincronizado
+                    const ex = rng.nextRange(0.1, 0.9);
+                    const ey = rng.nextRange(0.1, 0.8); // No muy abajo
+                    currentEvent.targets.push({
+                        x: ex, y: ey, r: 0.04, active: true,
+                        birth: Date.now()
+                    });
+                }
+
+                // Limpiar viejos (opcional, para no saturar)
+                if (currentEvent.targets.length > 20) currentEvent.targets.shift();
+            } else if (currentEvent.type === 'TARGET') {
+                // TIRO AL BLANCO: Un solo objetivo que se mueve/reaparece
+                if (currentEvent.targets.length === 0) {
+                    // Spawn inicial
+                    currentEvent.targets.push({
+                        x: 0.5, y: 0.2, r: 0.08, active: true,
+                        timer: 0 // Tiempo vivo
+                    });
+                }
+
+                const t = currentEvent.targets[0];
+                t.timer++;
+
+                // Desaparece/Se mueve cada 1.5s (90 frames)
+                if (t.timer > 90) {
+                    t.x = rng.nextRange(0.1, 0.9);
+                    t.y = rng.nextRange(0.1, 0.6);
+                    t.timer = 0;
+                }
+            }
+        }
+
+        function checkEventCollisions() {
+            // Balas vs Objetivos
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                if (!b.isMine) continue; // Solo mis balas cuentan para MI score
+
+                let hit = false;
+                for (let t of currentEvent.targets) {
+                    if (!t.active && currentEvent.type === 'ORBS') continue;
+
+                    const dx = b.x - t.x;
+                    const dy = b.y - t.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // Radio objetivo (Orbe o Nucleo)
+                    const radius = (currentEvent.type === 'CORE') ? t.r : t.r;
+
+                    if (dist < radius + 0.01) { // 0.01 margen bala
+                        hit = true;
+
+                        // Efecto Hit
+                        if (currentEvent.type === 'ORBS') {
+                            t.active = false; // Desaparece
+                            currentEvent.score++;
+                        } else if (currentEvent.type === 'CORE') {
+                            t.hp--;
+                            currentEvent.score++;
+                        } else if (currentEvent.type === 'TARGET') {
+                            // Hit al target
+                            // TELEPORT INMEDIATO
+                            t.x = rng.nextRange(0.1, 0.9);
+                            t.y = rng.nextRange(0.1, 0.6);
+                            t.timer = 0;
+                            currentEvent.score++;
+                        }
+
+                        // Update Score UI
+                        document.getElementById('event-score-display').innerText =
+                            `${currentEvent.score}/${currentEvent.targetScore}`;
+
+                        // Check Win
+                        if (currentEvent.score >= currentEvent.targetScore) {
+                            eventWin();
+                            return; // Salir inmediatamente para evitar crash
+                        }
+                    }
+                }
+                if (hit) bullets.splice(i, 1);
+            }
+
+            // Limpieza targets inactivos (Orbes)
+            if (currentEvent.type === 'ORBS') {
+                currentEvent.targets = currentEvent.targets.filter(t => t.active);
+            }
+        }
+
+        function drawEvent() {
+            if (currentEvent.type === 'ORBS') {
+                CTX.fillStyle = '#ffff00';
+                CTX.shadowColor = '#ffff00';
+                CTX.shadowBlur = 15;
+                for (let t of currentEvent.targets) {
+                    CTX.beginPath();
+                    CTX.arc(t.x * W, t.y * H, t.r * W, 0, Math.PI * 2);
+                    CTX.fill();
+                }
+            } else if (currentEvent.type === 'CORE') {
+                const t = currentEvent.targets[0];
+                CTX.fillStyle = '#ff0000'; // Rojo nucleo
+                CTX.shadowColor = '#ff4444';
+                CTX.shadowBlur = 20;
+
+                CTX.beginPath();
+                CTX.arc(t.x * W, t.y * H, t.r * W, 0, Math.PI, true); // Medio circulo superior? no, PI a 2PI es arriba.
+                // 0 es derecha, PI es izquierda. Arc dibuja clockwise.
+                // Queremos semicirculo abajo de la linea base?
+                // Vamos a dibujar circulo completo cortado por borde pantalla mejor
+                CTX.arc(t.x * W, 0, t.r * W, 0, Math.PI * 2); // Centrado en borde superior
+                CTX.fill();
+
+                // Texto HP
+                CTX.fillStyle = '#fff';
+                CTX.shadowBlur = 0;
+                CTX.font = "bold 20px Orbitron";
+                CTX.textAlign = "center";
+                CTX.fillText((t.hp).toString(), t.x * W, (t.r * W) + 30);
+            } else if (currentEvent.type === 'TARGET') {
+                if (currentEvent.targets.length > 0) {
+                    const t = currentEvent.targets[0];
+                    CTX.fillStyle = '#00ff00'; // Neon Green
+                    CTX.shadowColor = '#00ff00';
+                    CTX.shadowBlur = 20;
+                    CTX.beginPath();
+                    CTX.arc(t.x * W, t.y * H, t.r * W, 0, Math.PI * 2);
+                    CTX.fill();
+
+                    // Centro blanco
+                    CTX.fillStyle = '#fff';
+                    CTX.shadowBlur = 10;
+                    CTX.beginPath();
+                    CTX.arc(t.x * W, t.y * H, t.r * W * 0.5, 0, Math.PI * 2);
+                    CTX.fill();
+                }
+            }
+
+            // Score UI flotante
+            CTX.fillStyle = '#fff';
+            CTX.font = "15px Orbitron";
+            CTX.textAlign = "right";
+            CTX.fillText(`EVENTO: ${currentEvent.score}/${currentEvent.targetScore}`, W - 20, 30);
+        }
+
+        function eventWin() {
+            if (!currentEvent || !currentEvent.active) return;
+            matchStats.eventsWon++;
+            const rewardName = currentEvent.bonus.name;
+            const bonusId = currentEvent.bonus.id; // Capturar ID antes de limpiar evento
+            currentEvent.active = false;
+
+            // Enviar VICTORIA al rival inmediatamente para que pare su juego
+            if (conn) conn.send({ type: 'EVENT_WIN', bonusId: bonusId });
+
+            // Detener lógica evento local (esto pone currentEvent = null)
+            endEvent(true);
+
+            // 1. Mostrar Texto VICTORIA
+            const title = document.getElementById('event-title');
+            const overlay = document.getElementById('event-overlay');
+            title.innerText = "¡GANASTE: " + rewardName + "!";
+            title.style.color = "#0f0";
+            title.style.display = 'block';
+            overlay.style.display = 'block';
+
+            // 2. Esperar 3s para leer y LUEGO activar bonus y timer
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                title.innerText = "¡EVENTO DE BONUS!"; // Reset text
+                title.style.color = "#fff";
+
+                // Aplicar Bonus (Inicia timer UI internamente)
+                applyBonus(bonusId);
+            }, 3000);
+        }
+
+        function applyBonus(id) {
+            console.log("Aplicando bonus:", id);
+
+            if (id === 'HEAL') {
+                // Curacion variable 10-15%
+                const healAmt = 10 + Math.floor(Math.random() * 6);
+                player.hp = Math.min(100, player.hp + healAmt);
+                matchStats.heal += healAmt;
+                updateHealthUI();
+            } else {
+                // Buscar duracion
+                const bObj = BONUS_TYPES.find(b => b.id === id);
+                const durationFrames = bObj ? bObj.duration * 60 : 600;
+
+                if (id === 'DOUBLE') player.bonuses.double = durationFrames;
+                else if (id === 'VAMP') player.bonuses.vamp = durationFrames;
+                else if (id === 'SHIELD') player.bonuses.shield = durationFrames;
+                else if (id === 'BIG') player.bonuses.big = durationFrames;
+                else if (id === 'SHOTGUN') player.bonuses.shotgun = durationFrames;
+                else if (id === 'AUTO') player.bonuses.auto = durationFrames;
+                else if (id === 'FAST') player.bonuses.rapid = durationFrames;
+                else if (id === 'GIANT') {
+                    if (conn) conn.send({ type: 'APPLY_DEBUFF', debuff: 'GIANT' });
+                }
+                else if (id === 'EMPTY') {
+                    if (conn) conn.send({ type: 'APPLY_DEBUFF', debuff: 'EMPTY' });
+                }
+                else if (id === 'BROKEN') {
+                    if (conn) conn.send({ type: 'APPLY_DEBUFF', debuff: 'BROKEN' });
+                }
+
+                // Iniciar UI Timer propio
+                if (bObj && bObj.duration > 0) {
+                    let txt = "BONUS ACTIVO";
+                    if (id === 'GIANT') txt = "RIVAL GIGANTE";
+                    else if (id === 'EMPTY') txt = "RIVAL DESARMADO";
+                    else if (id === 'BROKEN') txt = "RIVAL ROTO";
+                    else txt = bObj.name;
+                    startBonusUI(bObj.duration, txt, '#0f0');
+                }
+            }
+        }
+
+        function startBonusUI(seconds, text, color) {
+            activeTimer.frames = seconds * 60;
+            activeTimer.text = text;
+            activeTimer.color = color;
+        }
+
+        function updateBonusUI() {
+            if (activeTimer.frames > 0) {
+                activeTimer.frames--;
+                const seconds = Math.ceil(activeTimer.frames / 60);
+                const el = document.getElementById('bonus-timer');
+                el.style.display = 'block';
+                el.style.color = activeTimer.color;
+                el.style.textShadow = `0 0 20px ${activeTimer.color}`;
+                el.innerText = `${activeTimer.text}\n${seconds}s`;
+            } else {
+                document.getElementById('bonus-timer').style.display = 'none';
+            }
+        }
+
+        function endEvent(winner) {
+            currentEvent = null;
+            eventTimer = 0; // Reiniciar cuenta para el proximo
+            document.getElementById('event-score-display').style.display = 'none';
         }
 
     </script>
