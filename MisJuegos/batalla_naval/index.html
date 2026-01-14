@@ -1551,8 +1551,12 @@
             if (allSunk) {
                 setTimeout(() => endGame(false), 1000);
             } else {
-                // Swap Turn
-                myTurn = true;
+                // Logic Change: If HIT, opponent continues. If MISS, my turn.
+                if (!hit) {
+                    myTurn = true;
+                } else {
+                    myTurn = false;
+                }
                 updateTurnUI();
             }
         }
@@ -1590,6 +1594,13 @@
             // CHECK VICTORY
             if (enemyShipsList.every(s => s.sunk)) {
                 setTimeout(() => endGame(true), 1000);
+            } else {
+                if (hit) {
+                    myTurn = true;
+                } else {
+                    myTurn = false;
+                }
+                updateTurnUI();
             }
         }
 
