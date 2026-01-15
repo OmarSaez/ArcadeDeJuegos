@@ -462,9 +462,9 @@
 
         const CANVAS = document.getElementById('gameCanvas');
         const CTX = CANVAS.getContext('2d');
-        let WIDTH = window.innerWidth;
+        let WIDTH = Math.floor(window.innerWidth * 1.3); // Map 30% wider than screen
         let HEIGHT = window.innerHeight;
-        CANVAS.width = WIDTH; CANVAS.height = HEIGHT;
+        CANVAS.width = window.innerWidth; CANVAS.height = HEIGHT;
 
         const GRAVITY = 0.4;
         const TURN_TIME = 40;
@@ -478,21 +478,24 @@
         // --- ESTADO GLOBAL ---
         let myName = "Invitado";
         let myPeerId = null;
-        let isHost = false;
+        let isTurnTransition = false; // Block actions during turn change
 
         // Lobby State
         let players = []; // { id, name, team, color, ready, peerConn (host only) }
-        let myPlayer = null;
+        let isHost = location.hash === '#host';
+        let isGameOverPending = false; // Flag to delay game over screen
 
         // Game State
         let gameState = 'MENU'; // MENU, LOBBY, PLAYING, GAMEOVER
         let terrain = [];
+        let stoneLevels = []; // Static layer defining where stone begins
+        let LAVA_Y = 0; // Flat lava level
         let tanks = []; // { id, x, y, hp, fuel, angle, team, color, name, dead, specialWeapon }
         let projectiles = [];
         let items = [];
         let explosions = [];
+        let particles = []; // Smoke/Fire particles
         let floatTexts = [];
-
         let turnIndex = 0; // Index in 'tanks' array
         let turnTimer = TURN_TIME;
         let timerInterval = null;
@@ -537,12 +540,39 @@
 
         function generateTerrain() {
             terrain = new Array(WIDTH).fill(0);
+            stoneLevels = new Array(WIDTH).fill(0);
+            LAVA_Y = (HEIGHT * 0.7) + 200; // Base Lava Level
+
+            // Random Generation Parameters
+            const baseHeight = HEIGHT * (0.5 + Math.random() * 0.2); // 50% to 70% down screen
+
+            const freq1 = 0.003 + Math.random() * 0.007; // Hills
+            const amp1 = 50 + Math.random() * 70;
+            const phase1 = Math.random() * 1000;
+
+            const freq2 = 0.01 + Math.random() * 0.02; // Bumps
+            const amp2 = 10 + Math.random() * 20;
+            const phase2 = Math.random() * 1000;
+
+            const freq3 = 0.0005 + Math.random() * 0.001; // Large Valley/Hill trend
+            const amp3 = Math.random() * 100;
+
             for (let x = 0; x < WIDTH; x++) {
-                const h1 = Math.sin(x * 0.005) * 100;
-                const h2 = Math.sin(x * 0.02) * 20;
+                const w1 = Math.sin((x + phase1) * freq1) * amp1;
+                const w2 = Math.sin((x + phase2) * freq2) * amp2;
+                const w3 = Math.sin(x * freq3) * amp3;
                 const noise = Math.random() * 2;
-                terrain[x] = (HEIGHT * 0.7) + h1 + h2 + noise;
-                if (x < 10 || x > WIDTH - 10) terrain[x] = HEIGHT * 0.2;
+
+                let h = baseHeight + w1 + w2 + w3 + noise;
+
+                // Clamp slightly to stay reasonably within screen
+                // h = Math.max(HEIGHT * 0.3, Math.min(HEIGHT * 0.9, h));
+
+                terrain[x] = h;
+                stoneLevels[x] = terrain[x] + 100;
+
+                // Ensure terrain doesn't start below lava (clipping)
+                if (terrain[x] > LAVA_Y) terrain[x] = LAVA_Y - 10;
             }
         }
 
@@ -808,9 +838,18 @@
             // 1. Setup Terrain & Tanks
             generateTerrain();
             tanks = [];
-            const shuffled = [...players].sort(() => Math.random() - 0.5);
 
-            shuffled.forEach(p => {
+            // Fix: Interleave teams (Red, Blue, Red, Blue...)
+            const reds = players.filter(p => p.team === 'RED');
+            const blues = players.filter(p => p.team === 'BLUE');
+            const interleaved = [];
+            const max = Math.max(reds.length, blues.length);
+            for (let i = 0; i < max; i++) {
+                if (reds[i]) interleaved.push(reds[i]);
+                if (blues[i]) interleaved.push(blues[i]);
+            }
+
+            interleaved.forEach(p => {
                 const isRed = p.team === 'RED';
                 // Spawn areas: Red (10-35%), Blue (65-90%)
                 let minX = isRed ? WIDTH * 0.1 : WIDTH * 0.65;
@@ -824,7 +863,8 @@
                     id: p.id, name: p.name, team: p.team, color: p.color,
                     x: tx, y: 0, hp: 100, fuel: 100,
                     angle: isRed ? -Math.PI / 4 : -Math.PI * 0.75,
-                    dead: false, specialWeapon: null
+                    dead: false, specialWeapon: null, hasShield: false, poison: null,
+                    wasInLava: false
                 });
             });
 
@@ -833,11 +873,13 @@
             items = [];
             explosions = [];
             floatTexts = [];
+            particles = [];
             turnIndex = -1; // NextTurn will bump to 0
             gameState = 'PLAYING';
+            isGameOverPending = false;
 
             // 3. Notify Everyone
-            const startPacket = { type: 'GAME_START', terrain: terrain, tanks: tanks, width: WIDTH, height: HEIGHT };
+            const startPacket = { type: 'GAME_START', terrain: terrain, stoneLevels: stoneLevels, lavaY: LAVA_Y, tanks: tanks, width: WIDTH, height: HEIGHT };
             broadcast(startPacket);
             initGameClient(startPacket);
 
@@ -852,22 +894,36 @@
         function initGameClient(data) {
             gameState = 'PLAYING';
             terrain = data.terrain || terrain;
+            stoneLevels = data.stoneLevels || stoneLevels;
+            LAVA_Y = data.lavaY || (HEIGHT * 0.7 + 200);
 
             // Sync logic: Host sends 'width' and 'height' used for generation.
             // If data.width/height are missing, infer from terrain or defaults.
             WIDTH = data.width || (terrain.length > 0 ? terrain.length : window.innerWidth);
             HEIGHT = data.height || window.innerHeight;
-            WORLD_HEIGHT = HEIGHT;
+            WORLD_HEIGHT = LAVA_Y + 60; // World ends 60px below lava surface
 
             // Responsive Canvas: Canvas is Viewport, not World
             CANVAS.width = window.innerWidth;
             CANVAS.height = window.innerHeight;
 
             tanks = data.tanks;
+
+            // FIX: Host sends tanks with y=0 initially. Snap them to terrain immediately so camera centers correctly.
+            if (terrain && terrain.length > 0) {
+                tanks.forEach(t => {
+                    // If tank is at 0 (uninitialized physics), put it on ground
+                    if (t.y === 0) {
+                        const gx = Math.floor(Math.max(0, Math.min(WIDTH - 1, t.x)));
+                        t.y = (terrain[gx] || HEIGHT / 2) - 20;
+                    }
+                });
+            }
             projectiles = [];
             items = [];
             explosions = [];
             floatTexts = [];
+            particles = [];
 
             // UI Switch
             document.getElementById('ui-layer').style.pointerEvents = 'none';
@@ -880,7 +936,9 @@
 
             // INITIAL CAMERA SETUP
             const me = tanks.find(t => t.id === myPeerId);
-            const target = me || tanks[0];
+            let target = me || tanks[0];
+            if (projectiles.length > 0) target = projectiles[0]; // Follow bullet if active
+
             if (target) {
                 // Determine screen center in world units
                 // CenterX = (TargetX - CamX) * Zoom
@@ -920,7 +978,7 @@
             broadcast({
                 type: 'SNAPSHOT',
                 tanks: tanks.map(t => ({
-                    id: t.id, x: t.x, y: t.y, angle: t.angle, hp: t.hp, fuel: t.fuel, dead: t.dead, sw: t.specialWeapon
+                    id: t.id, x: t.x, y: t.y, angle: t.angle, hp: t.hp, fuel: t.fuel, dead: t.dead, sw: t.specialWeapon, hs: t.hasShield, psn: t.poison
                 })),
                 projectiles: projectiles.map(p => ({ x: p.x, y: p.y, type: p.type })),
                 turnIndex: turnIndex,
@@ -943,7 +1001,8 @@
             const activeTank = tanks[turnIndex];
 
             // 1. Process Active Player Input
-            if (activeTank && !activeTank.dead && projectiles.length === 0) {
+            // Block input if turn is ending or projectile active
+            if (activeTank && !activeTank.dead && projectiles.length === 0 && !isTurnTransition) {
                 const inp = playerInputs[activeTank.id];
 
                 // Detect Input Logs (Removed to prevent spam)
@@ -982,6 +1041,24 @@
                 t.y = groundY - 20;
 
                 if (!t.dead) {
+                    // Lava Check
+                    if (t.y > LAVA_Y) {
+                        if (!t.wasInLava) {
+                            t.hp = Math.max(0, t.hp - 50); // Lose 50 HP immediately
+                            t.wasInLava = true;
+                            broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 70, text: "¡LAVA -50!", color: '#ff5722' });
+                            if (t.hp <= 0) {
+                                t.dead = true;
+                                broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y });
+                            }
+                            checkWin(); // Check if died
+                        }
+                        // Drag in lava
+                        t.x = t.x * 0.9 + (t.x - 0) * 0.1; // Naive friction? No just leave it
+                    } else {
+                        t.wasInLava = false;
+                    }
+
                     for (let i = items.length - 1; i >= 0; i--) {
                         const it = items[i];
                         const dx = t.x - it.x;
@@ -996,10 +1073,18 @@
             // 3. Projectiles
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 const p = projectiles[i];
-                p.x += p.vx; p.y += p.vy; p.vy += 0.4;
+                p.x += p.vx; p.y += p.vy;
+                // Gravity only for non-LASER projectiles
+                if (p.type !== 'LASER') p.vy += 0.4;
 
                 let hitResult = null;
-                if (p.x < -100 || p.x > WIDTH + 100 || p.y > HEIGHT) hitResult = 'OUT';
+                // Ceiling (-3000) and Floor (WORLD_HEIGHT) check
+                // Note: WORLD_HEIGHT is not fully synced in hostLoop context properly if relying on global var updated in client logic?
+                // Host logic usually relies on its own HEIGHT/variables. 
+                // We should ensure logic is consistent. LAVA_Y is global.
+                const floorLimit = LAVA_Y + 60;
+
+                if (p.x < -100 || p.x > WIDTH + 100 || p.y > floorLimit || p.y < -3000) hitResult = 'OUT';
                 else if (p.y >= terrain[Math.floor(p.x)]) hitResult = 'TERRAIN';
                 else {
                     for (let t of tanks) {
@@ -1032,36 +1117,81 @@
 
         function explode(x, y, type) {
             const r = type === 'BIG' ? 80 : 40;
-
             // Apply visual/physics changes to terrain locally
             applyTerrainExplosion(x, y, r, type);
 
             // Damage Logic (Host only)
-            if (type !== 'MOUNTAIN') {
-                tanks.forEach(t => {
-                    const d = Math.hypot(t.x - x, (t.y + 10) - y);
-                    if (d < r + 20) {
-                        let dmg = 40 * (1 - d / (r + 20));
-                        if (type === 'BIG') dmg *= 2;
-                        t.hp = Math.max(0, t.hp - dmg);
-                        if (t.hp <= 0 && !t.dead) {
-                            t.dead = true;
-                            broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "¡BAJA!", color: '#f00' });
-                        }
+            tanks.forEach(t => {
+                const d = Math.hypot(t.x - x, (t.y + 10) - y);
+                if (d < r + 20) {
+                    if (t.hasShield) {
+                        t.hasShield = false;
+                        broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "¡BLOCKED!", color: '#00ffff' });
+                        // Shield consumes the damage instance for this tank completely
+                        return;
                     }
-                });
-            }
+
+                    let dmg = 40 * (1 - d / (r + 20));
+                    if (type === 'BIG') dmg *= 2;
+                    if (type === 'MOUNTAIN') dmg *= 0.25; // Little damage for Mountain
+
+                    t.hp = Math.max(0, t.hp - dmg);
+
+                    // Poison Application
+                    if (type === 'TOXIC' && dmg > 0 && !t.dead) {
+                        t.poison = { turns: 4, dmg: dmg * 0.05 }; // 4 Turns duration
+                        broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 70, text: "¡POISON!", color: '#00ff00' });
+                    }
+
+                    if (t.hp <= 0 && !t.dead) {
+                        t.dead = true;
+                        broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "¡BAJA!", color: '#f00' });
+                        broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y });
+                    }
+                }
+            });
+
+            checkWin(); // Check if anyone died
+
             // FIX: Use expType to avoid overwriting 'type'
             broadcast({ type: 'EXPLOSION', x, y, r, expType: type });
         }
 
         function applyTerrainExplosion(x, y, r, type) {
             if (type === 'MOUNTAIN') {
-                for (let i = Math.floor(x - 30); i < x + 30; i++)
-                    if (i >= 0 && i < WIDTH) terrain[i] -= Math.sqrt(900 - (i - x) ** 2);
+                const mr = 60; // Double size (was 30)
+                const mrSq = mr * mr;
+                for (let i = Math.floor(x - mr); i < x + mr; i++) {
+                    if (i >= 0 && i < WIDTH) {
+                        const distSq = (i - x) ** 2;
+                        if (distSq < mrSq) terrain[i] -= Math.sqrt(mrSq - distSq);
+                    }
+                }
             } else {
-                for (let i = Math.floor(x - r); i < x + r; i++)
-                    if (i >= 0 && i < WIDTH) terrain[i] += Math.sqrt(r * r - (i - x) ** 2);
+                for (let i = Math.floor(x - r); i < x + r; i++) {
+                    if (i >= 0 && i < WIDTH) {
+                        const distSq = (i - x) ** 2;
+                        if (distSq < r * r) {
+                            let cut = Math.sqrt(r * r - distSq);
+
+                            // Stone resistance logic
+                            const currentY = terrain[i];
+                            const rockY = stoneLevels[i];
+
+                            if (currentY >= rockY) {
+                                // Already in stone
+                                cut *= 0.5;
+                            } else if (currentY + cut > rockY) {
+                                // Transition from dirt to stone
+                                const dirtPart = rockY - currentY;
+                                const stonePart = (cut - dirtPart) * 0.5;
+                                cut = dirtPart + stonePart;
+                            }
+
+                            terrain[i] += cut;
+                        }
+                    }
+                }
             }
         }
 
@@ -1084,85 +1214,122 @@
             else spawn(0);
         }
 
-        function explode(x, y, type) {
-            const r = type === 'BIG' ? 80 : 40;
 
-            // Apply visual/physics changes to terrain locally
-            applyTerrainExplosion(x, y, r, type);
-
-            // Damage Logic (Host only)
-            if (type !== 'MOUNTAIN') {
-                tanks.forEach(t => {
-                    const d = Math.hypot(t.x - x, (t.y + 10) - y);
-                    if (d < r + 20) {
-                        let dmg = 40 * (1 - d / (r + 20));
-                        if (type === 'BIG') dmg *= 2;
-                        t.hp = Math.max(0, t.hp - dmg);
-                        if (t.hp <= 0 && !t.dead) {
-                            t.dead = true;
-                            broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "¡BAJA!", color: '#f00' });
-                        }
-                    }
-                });
-            }
-            broadcast({ type: 'EXPLOSION', x, y, r, expType: type }); // removed 'terrain' to save bandwidth, client calculates it
-        }
-
-        function applyTerrainExplosion(x, y, r, type) {
-            if (type === 'MOUNTAIN') {
-                for (let i = Math.floor(x - 30); i < x + 30; i++)
-                    if (i >= 0 && i < WIDTH) terrain[i] -= Math.sqrt(900 - (i - x) ** 2);
-            } else {
-                for (let i = Math.floor(x - r); i < x + r; i++)
-                    if (i >= 0 && i < WIDTH) terrain[i] += Math.sqrt(r * r - (i - x) ** 2);
-            }
-        }
 
         function collectItemHost(tank, idx) {
             const it = items[idx];
             items.splice(idx, 1);
             let txt = it.type; let col = '#ffeb3b';
             if (it.type === 'HEALTH') { tank.hp = Math.min(100, tank.hp + 25); txt = "+25 HP"; col = '#0f0'; }
+            else if (it.type === 'SHIELD') { tank.hasShield = true; txt = "SHIELD UP!"; col = '#00ffff'; }
+            else if (it.type === 'TOXIC') { tank.specialWeapon = 'TOXIC'; txt = "TOXIC AMMO"; col = '#00ff00'; }
             else { tank.specialWeapon = it.type; }
-            broadcast({ type: 'ITEM_COLLECT', items: items, tankId: tank.id, hp: tank.hp, sw: tank.specialWeapon });
+            broadcast({ type: 'ITEM_COLLECT', items: items, tankId: tank.id, hp: tank.hp, sw: tank.specialWeapon, hs: tank.hasShield, psn: tank.poison });
             broadcast({ type: 'FLOAT_TEXT', x: tank.x, y: tank.y - 50, text: txt, color: col });
         }
 
         function checkTurnEnd() {
-            if (projectiles.length === 0) setTimeout(nextTurn, 1000);
+            if (projectiles.length === 0) {
+                isTurnTransition = true;
+                setTimeout(nextTurn, 1000);
+            }
         }
 
         function nextTurn() {
+            isTurnTransition = false;
             let loops = 0;
             do { turnIndex = (turnIndex + 1) % tanks.length; loops++; } while (tanks[turnIndex].dead && loops < tanks.length);
+
+            const active = tanks[turnIndex];
+
+            // Global Poison Update: Everyone takes damage at start of NEW turn (simulating passage of time)
+            tanks.forEach(t => {
+                if (!t.dead && t.poison) {
+                    t.hp = Math.max(0, t.hp - t.poison.dmg);
+                    t.poison.turns--;
+                    broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 60, text: `-${Math.ceil(t.poison.dmg)}`, color: '#00ff00' });
+
+                    if (t.hp <= 0) {
+                        t.dead = true;
+                        broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 80, text: "¡POISON KILL!", color: '#00ff00' });
+                        broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y });
+                        checkWin();
+                    }
+
+                    if (t.poison.turns <= 0) t.poison = null;
+                }
+            });
+
+            // If active tank died from global poison, skip its turn again
+            if (active && active.dead) {
+                nextTurn();
+                return;
+            }
+
             if (tanks[turnIndex]) tanks[turnIndex].fuel = 100; // Refill Fuel
 
             // Check Win
-            const red = tanks.filter(t => t.team === 'RED' && !t.dead).length;
-            const blue = tanks.filter(t => t.team === 'BLUE' && !t.dead).length;
-            if (red === 0 || blue === 0) {
-                const w = red > 0 ? "EQUIPO ROJO" : "EQUIPO AZUL";
-                broadcast({ type: 'GAMEOVER', winner: w });
-                gameState = 'GAMEOVER'; gameOver(w); return;
-            }
+            if (checkWin()) return;
 
             turnTimer = TURN_TIME;
             if (Math.random() < 0.3) spawnItemHost();
         }
 
+        function checkWin() {
+            if (isGameOverPending) return true; // Win already decided, waiting for animation
+            if (tanks.length === 0) return false; // Not init yet
+
+            const red = tanks.filter(t => t.team === 'RED' && !t.dead).length;
+            const blue = tanks.filter(t => t.team === 'BLUE' && !t.dead).length;
+
+            if (red === 0 || blue === 0) {
+                isGameOverPending = true; // Stop turns from advancing
+
+                // Delay 3 seconds to let users enjoy the destruction
+                setTimeout(() => {
+                    const w = red > 0 ? "EQUIPO ROJO" : (blue > 0 ? "EQUIPO AZUL" : "EMPATE");
+                    broadcast({ type: 'GAMEOVER', winner: w });
+                    gameOver(w);
+                }, 3000);
+
+                return true;
+            }
+            return false;
+        }
+
+        function gameOver(winner) {
+            gameState = 'GAMEOVER';
+            document.getElementById('game-over-screen').style.display = 'block';
+            document.getElementById('winner-text').innerText = "GANADOR: " + winner;
+            document.getElementById('winner-text').style.color = winner.includes('ROJO') ? '#ff5252' : '#448aff';
+        }
+
         function spawnItemHost() {
-            const types = ['HEALTH', 'TRIPLE', 'BIG', 'MOUNTAIN'];
+            const types = ['HEALTH', 'TRIPLE', 'BIG', 'MOUNTAIN', 'SHIELD', 'TOXIC', 'LASER'];
             let x, valid = false, attempts = 0;
 
-            while (!valid && attempts < 10) {
+            while (!valid && attempts < 20) {
                 x = Math.random() * (WIDTH - 100) + 50;
                 valid = true;
+
+                // Check distance from tanks
                 for (let t of tanks) {
-                    if (!t.dead && Math.abs(t.x - x) < 60) {
+                    if (!t.dead && Math.abs(t.x - x) < 80) { // Increased safety zone slightly
                         valid = false;
                         break;
                     }
                 }
+
+                // Check distance from other items (prevent clustering)
+                if (valid) {
+                    for (let it of items) {
+                        if (Math.abs(it.x - x) < 150) { // 150px gap required
+                            valid = false;
+                            break;
+                        }
+                    }
+                }
+
                 attempts++;
             }
 
@@ -1228,9 +1395,16 @@
 
         function clampCamera() {
             const vw = CANVAS.width / camera.zoom;
+            const vh = CANVAS.height / camera.zoom;
+
+            // X Clamp
             if (WIDTH < vw) camera.x = (WIDTH - vw) / 2;
             else camera.x = Math.max(0, Math.min(camera.x, WIDTH - vw));
-            if (camera.y > WORLD_HEIGHT) camera.y = WORLD_HEIGHT;
+
+            // Y Clamp: Don't let bottom of view go below WORLD_HEIGHT
+            const maxCamY = WORLD_HEIGHT - vh;
+            // Allow looking up freely (negative y), but cap bottom
+            camera.y = Math.min(camera.y, maxCamY);
         }
 
         function drawGame() {
@@ -1243,51 +1417,234 @@
             CTX.translate(-camera.x, -camera.y);
             CTX.scale(camera.zoom, camera.zoom);
 
-            // Terrain
-            CTX.fillStyle = '#5d4037'; CTX.beginPath();
-            // Draw way below world height to fill screen
+            CTX.scale(camera.zoom, camera.zoom);
+
+            // 1. Draw Stone Layer (Grey)
+            CTX.fillStyle = '#757575'; // Stone Grey
+            CTX.beginPath();
             CTX.moveTo(0, WORLD_HEIGHT + 2000);
+            for (let x = 0; x < WIDTH; x++) {
+                // Stone starts at max(currentTerrain, stoneLevel)
+                // If we dug pass stoneLevel, currentTerrain is deeper (higher value)
+                // If we piled up mountain, currentTerrain is lower. Stone level remains static?
+                // Actually, mountains are dirt.
+                // Draw stone from stoneLevels down. But if terrain is deeper than stoneLevel, start at terrain.
+                const top = Math.max(terrain[x], stoneLevels[x]);
+                CTX.lineTo(x, top);
+            }
+            CTX.lineTo(WIDTH, WORLD_HEIGHT + 2000);
+            CTX.fill();
+
+            // 2. Draw Dirt Layer (Brown) on top
+            CTX.fillStyle = '#5d4037'; // Dirt Brown
+            CTX.beginPath();
+            // We want to fill the area between terrain[x] and stoneLevels[x]
+            // But only where terrain[x] < stoneLevels[x]
+
+            // It's easier to just draw simple polygons for dirt columns or a path
+            // Let's loop and create a path that follows terrain top and stone bottom
+            CTX.moveTo(0, Math.max(terrain[0], stoneLevels[0])); // Start at stone/terrain interface
+
+            // Trace the top surface (Terrain)
+            for (let x = 0; x < WIDTH; x++) {
+                CTX.lineTo(x, terrain[x]);
+            }
+
+            // Trace the bottom (Stone Interface) backwards
+            for (let x = WIDTH - 1; x >= 0; x--) {
+                CTX.lineTo(x, Math.max(terrain[x], stoneLevels[x]));
+            }
+            CTX.closePath();
+            CTX.fill();
+
+            CTX.strokeStyle = '#4caf50'; CTX.lineWidth = 4;
+            // Redraw top stroke
+            CTX.beginPath();
             for (let x = 0; x < WIDTH; x++) CTX.lineTo(x, terrain[x]);
-            CTX.lineTo(WIDTH, WORLD_HEIGHT + 2000); CTX.fill();
-            CTX.strokeStyle = '#4caf50'; CTX.lineWidth = 4; CTX.stroke();
+            CTX.stroke();
+
+            // 3. LAVA LAYER (NEON)
+            CTX.save();
+            CTX.shadowBlur = 20;
+            CTX.shadowColor = '#ff5722';
+            CTX.fillStyle = 'rgba(255, 87, 34, 0.8)'; // Lava Orange/Red
+            // Draw only 60px of lava
+            CTX.fillRect(0, LAVA_Y, WIDTH, 60);
+
+            // Lava Surface Line
+            CTX.strokeStyle = '#fff';
+            CTX.lineWidth = 2;
+            CTX.shadowBlur = 10;
+            CTX.shadowColor = '#fff';
+            CTX.beginPath();
+            CTX.moveTo(0, LAVA_Y);
+            CTX.lineTo(WIDTH, LAVA_Y);
+            CTX.stroke();
+            CTX.restore();
+
+            // 4. Void/Bedrock below lava (Black) to ensure clean edge
+            CTX.fillStyle = '#101010';
+            CTX.fillRect(0, LAVA_Y + 60, WIDTH, 2000);
 
             // Items
             items.forEach(it => {
                 const y = terrain[Math.floor(it.x)];
                 CTX.fillStyle = '#ff9800'; CTX.fillRect(it.x - 15, y - 30, 30, 30);
                 CTX.fillStyle = '#000'; CTX.font = '20px Arial'; CTX.textAlign = 'center';
-                let s = '?'; if (it.type === 'HEALTH') s = '+'; else if (it.type === 'TRIPLE') s = 'iii'; else if (it.type === 'BIG') s = '☢'; else if (it.type === 'MOUNTAIN') s = '▲';
+                let s = '?';
+                if (it.type === 'HEALTH') s = '+';
+                else if (it.type === 'TRIPLE') s = 'iii';
+                else if (it.type === 'BIG') s = '☢';
+                else if (it.type === 'MOUNTAIN') s = '▲';
+                else if (it.type === 'SHIELD') s = '🛡️';
+                else if (it.type === 'TOXIC') s = '☠️';
+                else if (it.type === 'LASER') s = '🎯';
                 CTX.fillText(s, it.x, y - 8);
             });
 
             // Tanks
             tanks.forEach(t => {
                 if (t.dead) return;
-                CTX.save(); CTX.translate(t.x, t.y + 10);
-                CTX.fillStyle = t.color; CTX.fillRect(-15, -10, 30, 15);
-                CTX.rotate(t.angle); CTX.fillStyle = '#333'; CTX.fillRect(0, -3, 30, 6);
+                CTX.save();
+                CTX.translate(t.x, t.y);
+
+                // Draw Tank
+                // 1. Tracks (Dark Gray)
+                CTX.fillStyle = '#333';
+                CTX.fillRect(-18, 0, 36, 6); // Bottom track
+
+                // 2. Chassis (Body Color)
+                CTX.fillStyle = t.color;
+                // Main body with slight bevel
+                CTX.beginPath();
+                CTX.moveTo(-15, -10);
+                CTX.lineTo(15, -10);
+                CTX.lineTo(18, 0); // Flare out to track
+                CTX.lineTo(-18, 0);
+                CTX.closePath();
+                CTX.fill();
+
+                // 3. Turret Dome (Darker Shade or same color)
+                CTX.beginPath();
+                CTX.arc(0, -10, 8, Math.PI, 0); // Semicircle dome
+                CTX.fill();
+
+                // 4. Cannon (Rotates with angle)
+                CTX.save();
+                CTX.translate(0, -10); // Pivot at turret center
+                CTX.rotate(t.angle);
+                CTX.fillStyle = '#222'; // Black barrel
+                CTX.fillRect(0, -3, 22, 6); // Barrel length
+                // Muzzle tip
+                CTX.fillStyle = '#555';
+                CTX.fillRect(20, -4, 4, 8);
                 CTX.restore();
-                // HUD tags
-                CTX.fillStyle = '#fff'; CTX.font = '10px monospace'; CTX.textAlign = 'center'; CTX.fillText(t.name, t.x, t.y - 35);
-                CTX.fillStyle = 'red'; CTX.fillRect(t.x - 20, t.y - 25, 40, 4);
-                CTX.fillStyle = '#0f0'; CTX.fillRect(t.x - 20, t.y - 25, 40 * (t.hp / 100), 4);
-                if (t.specialWeapon) { CTX.fillStyle = '#ffeb3b'; CTX.fillText(`[${t.specialWeapon}]`, t.x, t.y - 45); }
-                // Aim line (local)
+
+                // Name & HP (Floating above)
+                CTX.fillStyle = '#fff'; CTX.font = '10px Arial'; CTX.textAlign = 'center';
+                CTX.fillText(t.name, 0, -35);
+                // HP Bar
+                CTX.fillStyle = '#f00'; CTX.fillRect(-15, -30, 30, 4);
+                CTX.fillStyle = '#0f0'; CTX.fillRect(-15, -30, 30 * (t.hp / 100), 4);
+
+                // Special Weapon Indicator
+                if (t.specialWeapon) {
+                    CTX.fillStyle = '#ffeb3b';
+                    let wTxt = "WEAPON";
+                    if (t.specialWeapon === 'TRIPLE') wTxt = "TRIPLE";
+                    if (t.specialWeapon === 'BIG') wTxt = "BIG";
+                    if (t.specialWeapon === 'MOUNTAIN') wTxt = "MOUNT";
+                    if (t.specialWeapon === 'SHIELD') wTxt = "SHIELD";
+                    if (t.specialWeapon === 'TOXIC') wTxt = "TOXIC";
+                    if (t.specialWeapon === 'LASER') wTxt = "SNIPER";
+                    CTX.fillText(wTxt, 0, -45);
+                }
+
+                // Shield Visual
+                if (t.hasShield) {
+                    CTX.beginPath();
+                    CTX.arc(0, -5, 25, 0, Math.PI * 2);
+                    CTX.strokeStyle = 'cyan';
+                    CTX.lineWidth = 2;
+                    CTX.stroke();
+                    CTX.fillStyle = 'rgba(0, 255, 255, 0.2)';
+                    CTX.fill();
+                }
+                // Poison Visual
+                if (t.poison) {
+                    CTX.fillStyle = '#00ff00';
+                    CTX.font = '12px Arial';
+                    CTX.fillText("☠️", 0, -50);
+                }
+
+                CTX.restore();
+
+                // Aim line (local) - Needs to be outside the save/restore relative transform to work with world coords? 
+                // Wait, t.x/t.y are world coords. The previous block used translate(t.x, t.y).
+                // Aim line uses world coords (px, py). So we should do it AFTER restore() if we want to use world coords logic 
+                // OR we have to adapt the aim line to be local.
+                // The existing aim line code: `let px = t.x` implies WORLD coords.
+                // So it must be outside the `CTX.save()/restore()` block that translates to tank position.
+
                 if (t.id === myPeerId && isCharging) {
-                    let px = t.x, py = t.y, vx = Math.cos(t.angle) * chargePower, vy = Math.sin(t.angle) * chargePower;
-                    CTX.fillStyle = 'rgba(255,255,255,0.5)';
-                    for (let k = 0; k < 15; k++) { px += vx; py += vy; vy += 0.4; CTX.beginPath(); CTX.arc(px, py, 2, 0, 6.28); CTX.fill(); }
+                    let px = t.x, py = t.y - 12; // Start from turret roughly
+                    let vx = Math.cos(t.angle) * chargePower;
+                    let vy = Math.sin(t.angle) * chargePower;
+                    // Gravity for preview
+                    const isLaser = t.specialWeapon === 'LASER';
+
+                    CTX.fillStyle = isLaser ? '#e040fb' : 'rgba(255,255,255,0.5)';
+                    const steps = isLaser ? 50 : 20; // Sniper sees further
+
+                    for (let k = 0; k < steps; k++) {
+                        px += vx; py += vy;
+                        if (!isLaser) vy += 0.4; // Apply gravity if not laser
+                        CTX.beginPath(); CTX.arc(px, py, 2, 0, 6.28); CTX.fill();
+                    }
                 }
             });
             // Projectiles
-            projectiles.forEach(p => { CTX.beginPath(); CTX.arc(p.x, p.y, p.type === 'BIG' ? 10 : 4, 0, 6.28); CTX.fillStyle = '#ff5252'; CTX.fill(); });
+            projectiles.forEach(p => {
+                CTX.beginPath();
+                CTX.arc(p.x, p.y, p.type === 'BIG' ? 10 : 4, 0, 6.28);
+
+                let col = '#ff5252';
+                if (p.type === 'TOXIC') col = '#00ff00';
+                else if (p.type === 'LASER') col = '#e040fb';
+
+                CTX.fillStyle = col;
+                CTX.fill();
+            });
             // Explosions
             for (let i = explosions.length - 1; i >= 0; i--) {
                 const e = explosions[i];
-                CTX.beginPath(); CTX.arc(e.x, e.y, e.r, 0, 6.28);
-                CTX.fillStyle = `rgba(255,100,0,${e.life / 30})`; CTX.fill();
-                e.life--; if (e.life <= 0) explosions.splice(i, 1);
+                e.life--;
+                CTX.beginPath();
+                CTX.arc(e.x, e.y, e.r * (e.life / 30), 0, Math.PI * 2);
+                CTX.fillStyle = `rgba(255, 100, 0, ${e.life / 30})`;
+                CTX.fill();
+                if (e.life <= 0) explosions.splice(i, 1);
             }
+
+            // Particles (Smoke/Fire)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                p.size *= 1.02; // Grow smoke
+
+                CTX.beginPath();
+                CTX.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                // Reconstruct rgba with new alpha
+                // Assuming color is "rgba(r,g,b," 
+                // Let's use simple logic: p.color is base string like "rgba(50,50,50,"
+                CTX.fillStyle = p.color.replace('A', p.life / 60);
+                CTX.fill();
+
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
             // FloatText
             for (let i = floatTexts.length - 1; i >= 0; i--) {
                 const f = floatTexts[i];
@@ -1323,7 +1680,7 @@
                 else if (data.type === 'REQ_READY') { const p = players.find(x => x.id === conn.peer); if (p) { p.ready = !p.ready; broadcast({ type: 'LOBBY_UPDATE', players: sanitizedPlayers() }); updateLobbyUI(); checkStartGame(); } }
             } else {
                 if (data.type === 'SNAPSHOT') {
-                    data.tanks.forEach(s => { const l = tanks.find(t => t.id === s.id); if (l) { l.x = s.x; l.y = s.y; l.angle = s.angle; l.hp = s.hp; l.fuel = s.fuel; l.dead = s.dead; l.specialWeapon = s.sw; } });
+                    data.tanks.forEach(s => { const l = tanks.find(t => t.id === s.id); if (l) { l.x = s.x; l.y = s.y; l.angle = s.angle; l.hp = s.hp; l.fuel = s.fuel; l.dead = s.dead; l.specialWeapon = s.sw; l.hasShield = s.hs; l.poison = s.psn; } });
                     projectiles = data.projectiles; turnIndex = data.turnIndex; turnTimer = data.timer;
                 }
                 else if (data.type === 'EXPLOSION') {
@@ -1331,8 +1688,23 @@
                     applyTerrainExplosion(data.x, data.y, data.r, data.expType);
                     explosions.push({ x: data.x, y: data.y, r: data.r, life: 30 });
                 }
+                else if (data.type === 'TANK_DEATH') {
+                    // Big Boom
+                    explosions.push({ x: data.x, y: data.y, r: 80, life: 50 });
+                    // Smoke
+                    for (let i = 0; i < 20; i++) {
+                        particles.push({
+                            x: data.x, y: data.y,
+                            vx: (Math.random() - 0.5) * 8,
+                            vy: (Math.random() * -5) - 2, // Upward
+                            life: 60 + Math.random() * 40,
+                            size: 5 + Math.random() * 10,
+                            color: `rgba(80, 80, 80, A` // Placeholder for alpha logic
+                        });
+                    }
+                }
                 else if (data.type === 'FLOAT_TEXT') { floatTexts.push({ x: data.x, y: data.y, text: data.text, color: data.color, life: 60 }); }
-                else if (data.type === 'SYNC_ITEMS' || data.type === 'ITEM_COLLECT') { items = data.items; if (data.tankId) { const t = tanks.find(x => x.id === data.tankId); if (t) { t.hp = data.hp; t.specialWeapon = data.sw; } } }
+                else if (data.type === 'SYNC_ITEMS' || data.type === 'ITEM_COLLECT') { items = data.items; if (data.tankId) { const t = tanks.find(x => x.id === data.tankId); if (t) { t.hp = data.hp; t.specialWeapon = data.sw; t.hasShield = data.hs; t.poison = data.psn; } } }
                 else if (data.type === 'GAME_START') { initGameClient(data); }
                 else if (data.type === 'LOBBY_UPDATE') { players = data.players; updateLobbyUI(); }
                 else if (data.type === 'GAME_START_COUNTDOWN') { document.getElementById('start-timer').innerText = data.sec === "CANCELADO" ? "" : "INICIANDO EN " + data.sec; }
