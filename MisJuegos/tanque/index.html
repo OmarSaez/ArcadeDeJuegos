@@ -38,32 +38,122 @@
             transform: translate(-50%, -50%);
             padding: 30px;
             border: 2px solid #555;
-            border-radius: 10px;
+            border-radius: 15px;
             text-align: center;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
-            min-width: 400px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+            min-width: 900px;
+            /* Large but not screen-filling */
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            max-width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Mobile Adjustments (Strict Overrides) */
+        @media (max-width: 768px) {
+            .menu-screen {
+                min-width: 300px !important;
+                min-height: auto !important;
+                padding: 15px !important;
+                width: 90%;
+            }
+
+            h1 {
+                font-size: 2rem !important;
+                margin-bottom: 10px !important;
+            }
+
+            button {
+                font-size: 1rem !important;
+                padding: 8px 16px !important;
+            }
+
+            .team-box {
+                flex: 1 1 100% !important;
+                min-height: 150px !important;
+            }
+
+            input {
+                width: 100% !important;
+                font-size: 1rem !important;
+            }
+
+            h2 {
+                font-size: 1.5rem !important;
+            }
+
+            .team-header {
+                font-size: 1.2rem !important;
+            }
+
+            #lobby-tip {
+                font-size: 0.8rem !important;
+            }
+
+            #lobby-code-label {
+                font-size: 1rem !important;
+            }
+
+            #lobby-code-display {
+                font-size: 1.2rem !important;
+            }
+
+            .player-slot {
+                font-size: 1rem !important;
+                padding: 5px !important;
+            }
+
+            .ready-status {
+                width: 15px !important;
+                height: 15px !important;
+            }
+
+            .color-dot {
+                width: 20px !important;
+                height: 20px !important;
+            }
+
+            /* Mobile Overrides for New UI Changes */
+            #stats-panel {
+                font-size: 1.2rem !important;
+                top: 50px !important;
+                left: 10px !important;
+            }
+
+            .turn-banner {
+                font-size: 1.5rem !important;
+                top: 90px !important;
+            }
         }
 
         h1 {
             color: #4caf50;
-            font-size: 2.5rem;
+            font-size: 3.5rem;
+            /* Large Title */
             margin: 0 0 20px 0;
-            letter-spacing: 3px;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
         }
 
         h2 {
-            font-size: 1.5rem;
-            margin: 10px 0;
+            font-size: 2.2rem;
+            /* Medium-Large Subtitles */
+            margin: 15px 0;
             color: #ddd;
         }
 
         button {
             background: #444;
             color: white;
-            border: 1px solid #fff;
-            padding: 10px 20px;
+            border: 2px solid #fff;
+            padding: 12px 24px;
             font-size: 1.2rem;
-            margin: 5px;
+            /* Standard Large Button */
+            margin: 8px;
             cursor: pointer;
             font-family: 'Black Ops One', cursive;
             transition: all 0.2s;
@@ -100,36 +190,63 @@
         }
 
         input {
-            padding: 10px;
-            font-size: 1.2rem;
+            padding: 12px;
+            font-size: 1.5rem;
+            /* Readable Input */
             text-align: center;
             font-family: monospace;
             border: 1px solid #555;
             background: #222;
             color: #fff;
-            margin-bottom: 20px;
-            width: 250px;
+            margin-bottom: 25px;
+            width: 350px;
         }
 
         /* LOBBY STYLES */
         .team-container {
             display: flex;
-            justify-content: space-around;
+            justify-content: center;
             margin-top: 20px;
+            gap: 20px;
+            flex-wrap: wrap;
+            /* Allow stacking on mobile */
         }
 
         .team-box {
-            width: 45%;
+            flex: 1 1 200px;
             background: rgba(0, 0, 0, 0.3);
-            padding: 10px;
-            border-radius: 5px;
-            min-height: 200px;
+            padding: 15px;
+            border-radius: 10px;
+            min-height: 300px;
+            /* Medium-Taller team boxes */
         }
 
         .team-header {
-            font-size: 1.2rem;
-            margin-bottom: 10px;
+            font-size: 2rem;
+            /* Big Team Headers */
+            margin-bottom: 15px;
             text-decoration: underline;
+        }
+
+        #lobby-tip {
+            font-size: 1.5rem;
+            /* Big Tip */
+            color: #81c784;
+            margin-bottom: 15px;
+        }
+
+        #lobby-code-label {
+            font-size: 2rem;
+            /* Big Code Label */
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+
+        #lobby-code-display {
+            font-size: 3rem;
+            /* Huge Code */
+            color: white;
+            user-select: text;
         }
 
         .red-team {
@@ -143,19 +260,21 @@
         }
 
         .player-slot {
-            margin: 5px 0;
-            padding: 5px;
+            margin: 10px 0;
+            padding: 10px;
             background: rgba(255, 255, 255, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-family: monospace;
-            font-size: 1rem;
+            font-size: 2rem;
+            /* Big Player Names */
         }
 
         .ready-status {
-            width: 15px;
-            height: 15px;
+            width: 25px;
+            /* Bigger ready dot */
+            height: 25px;
             border-radius: 50%;
             background: #333;
             border: 1px solid #777;
@@ -167,8 +286,9 @@
         }
 
         .color-dot {
-            width: 20px;
-            height: 20px;
+            width: 30px;
+            /* Bigger color dot */
+            height: 30px;
             display: inline-block;
             cursor: pointer;
             border: 2px solid white;
@@ -217,10 +337,16 @@
 
         .turn-banner {
             position: absolute;
-            top: 80px;
+            top: 50px;
+            /* Higher up */
             width: 100%;
             text-align: center;
             pointer-events: none;
+            font-size: 3.5rem;
+            /* Doubled size for PC */
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+            z-index: 5;
         }
 
         .info-panel {
@@ -231,8 +357,31 @@
             justify-content: space-between;
             padding: 0 20px;
             box-sizing: border-box;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
             text-shadow: 1px 1px 2px black;
+        }
+
+        #stats-panel {
+            position: absolute;
+            top: 60px;
+            /* Top Left now, below name */
+            left: 20px;
+            text-align: left;
+            font-size: 2rem;
+            /* Slighly larger for PC */
+            text-shadow: 2px 2px 2px #000;
+            font-family: 'Black Ops One', cursive;
+            color: white;
+            z-index: 5;
+        }
+
+        /* Shrink Game Over Buttons for PC */
+        #game-over-screen button {
+            font-size: 1rem;
+            /* Reduced to half of standard 2rem */
+            padding: 8px 16px;
+            margin: 5px;
+            min-width: auto;
         }
 
         #weapon-display {
@@ -400,12 +549,10 @@
         </div>
 
         <!-- LOBBY -->
-        <div id="lobby-screen" class="menu-screen" style="display:none; min-width: 600px;">
+        <div id="lobby-screen" class="menu-screen" style="display:none; width: 90%; max-width: 700px;">
             <h2 id="lobby-title">SALA DE ESPERA</h2>
-            <div style="font-size: 0.8rem; color: #81c784; margin-bottom: 8px;">💡 Tip: Clickea tu nombre o color para
-                personalizarlo</div>
-            <div style="font-size: 0.9rem; color: #aaa;">CÓDIGO: <span id="lobby-code-display"
-                    style="color:white; font-size:1.2rem; user-select: text;">---</span></div>
+            <div id="lobby-tip">💡 Tip: Clickea tu nombre o color para personalizarlo</div>
+            <div id="lobby-code-label">CÓDIGO: <span id="lobby-code-display">---</span></div>
 
             <div class="team-container">
                 <!-- RED TEAM -->
@@ -488,10 +635,9 @@
             <div id="fire-power-bar">
                 <div id="fire-power-fill"></div>
             </div>
-            <div id="stats-panel"
-                style="position:absolute; bottom:20px; left:20px; text-align:left; font-size:1.5rem; text-shadow:2px 2px 2px #000; font-family: 'Black Ops One', cursive;">
-                <div style="color:#4caf50; margin-bottom:5px;">❤️ <span id="hp-disp">100</span>%</div>
-                <div style="color:#ff9800;">⛽ <span id="fuel-disp">100</span></div>
+            <div id="stats-panel">
+                ❤️ <span id="hp-disp">100</span>% <br>
+                ⛽ <span id="fuel-disp">100</span>
             </div>
         </div>
     </div>
@@ -505,9 +651,9 @@
     <script>
         // --- CONSTANTES & CONFIG ---
         const RED_PALETTE = [
-            '#ef5350', '#c62828', '#ff1744', '#d50000', '#b71c1c', // Rojos
-            '#ff9800', '#ef6c00', '#ffb74d', '#fb8c00', '#ffe0b2', // Naranjas
-            '#fdd835', '#f9a825', '#ffeb3b', '#fff176', '#fff59d'  // Amarillos
+            '#b71c1c', '#ff5252', '#880e4f', '#ec407a', '#ff80ab', // Reds & Pinks (Dark Red, Red, Dark Pink, Pink, Light Pink)
+            '#e65100', '#ff9800', '#ffcc80', '#ffd600', '#ffff00', // Oranges & Yellows (Dark Orange, Orange, Pale Orange, Gold, Yellow)
+            '#3e2723', '#795548', '#d7ccc8', '#bf360c', '#6d4c41'  // Browns (Dark Brown, Brown, Beige, Rust, Cocoa)
         ];
         const BLUE_PALETTE = [
             '#42a5f5', '#1565c0', '#0d47a1', '#82b1ff', '#2962ff', // Azules
@@ -517,9 +663,11 @@
 
         const CANVAS = document.getElementById('gameCanvas');
         const CTX = CANVAS.getContext('2d');
-        let WIDTH = Math.floor(window.innerWidth * 1.3); // Map 30% wider than screen
-        let HEIGHT = window.innerHeight;
-        CANVAS.width = window.innerWidth; CANVAS.height = HEIGHT;
+        // WORLD DIMENSIONS
+        // Fixed minimum dimensions to prevent tiny maps on mobile
+        let WIDTH = Math.max(window.innerWidth, 2500);
+        let HEIGHT = Math.max(window.innerHeight, 900);
+        CANVAS.width = window.innerWidth; CANVAS.height = window.innerHeight;
 
         const GRAVITY = 0.4;
         const TURN_TIME = 40;
@@ -568,6 +716,8 @@
         let peer;
         let hostConn = null; // Client -> Host
         let clientConns = {}; // Host -> Clients { peerId: conn }
+        let lastSentInput = ""; // Dedup string for network
+        let frameCounter = 0; // For heartbeat input
 
         function createRoom() {
             myName = document.getElementById('player-name').value || "Host";
@@ -1013,6 +1163,7 @@
             explosions = [];
             floatTexts = [];
             particles = [];
+            debris = [];
 
             // UI Switch
             document.getElementById('ui-layer').style.pointerEvents = 'none';
@@ -1047,12 +1198,13 @@
 
             // Sync Resize
             window.addEventListener('resize', () => {
-                CANVAS.width = window.innerWidth;
                 CANVAS.height = window.innerHeight;
             });
 
             requestAnimationFrame(clientRenderLoop);
         }
+
+
 
         // --- HOST AUTHORITATIVE LOOP ---
         let lastTime = 0;
@@ -1087,6 +1239,7 @@
         }
 
         function updatePhysics() {
+            updateLocalEffects(); // Host also runs this for its own view
             const activeTank = tanks[turnIndex];
 
             // 1. Process Active Player Input
@@ -1237,6 +1390,21 @@
                 }
             }
 
+        }
+
+        // Shared Local Physics (Run on both Host and Client)
+        function updateLocalEffects() {
+            // 3. Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                p.vy += 0.05; // Light gravity
+                p.size *= 0.95;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
             // 4. Debris Physics (Loose dirt falling)
             for (let i = debris.length - 1; i >= 0; i--) {
                 const d = debris[i];
@@ -1248,12 +1416,14 @@
                 if (d.x < 0 || d.x >= WIDTH || d.y > LAVA_Y + 50) { debris.splice(i, 1); continue; }
 
                 // Hit Terrain
-                const ground = terrain[Math.floor(d.x)];
+                // Check bounds to avoid NaN
+                const idx = Math.floor(d.x);
+                if (idx < 0 || idx >= WIDTH) { debris.splice(i, 1); continue; }
+
+                const ground = terrain[idx];
                 if (d.y >= ground) {
                     // Reintegrate into terrain
-                    // Pile up!
-                    // Add slight random spread to avoid perfect spikes
-                    const pileX = Math.min(WIDTH - 1, Math.max(0, Math.floor(d.x)));
+                    const pileX = Math.min(WIDTH - 1, Math.max(0, idx));
                     terrain[pileX] -= 3; // Pile height
 
                     // Smooth neighbors slightly to form hills
@@ -1264,6 +1434,8 @@
                 }
             }
         }
+
+
 
         function triggerAirstrike(latX, ownerId) {
             broadcast({ type: 'FLOAT_TEXT', x: latX, y: 100, text: "⚠ AIRSTRIKE ⚠", color: '#ff9800' });
@@ -1651,7 +1823,12 @@
                         playerInputs[myPeerId] = { ...playerInputs[myPeerId], ...inp };
                     }
                 } else {
-                    send({ type: 'INPUT', inputs: inp });
+                    // Input Throttling: Send only if changed OR every 15 frames (heartbeat)
+                    const inputStr = JSON.stringify(inp);
+                    if (inputStr !== lastSentInput || frameCounter % 15 === 0) {
+                        send({ type: 'INPUT', inputs: inp });
+                        lastSentInput = inputStr;
+                    }
                 }
 
                 // Local charging visual
@@ -1667,8 +1844,18 @@
                 }
             }
 
+            // Physics & Visuals UPDATE (Client Local)
+            if (gameState === 'PLAYING' || gameState === 'GAMEOVER') {
+                try {
+                    updateLocalEffects();
+                } catch (e) {
+                    console.error("Visual Effects Error:", e);
+                }
+            }
+
             drawGame();
             requestAnimationFrame(clientRenderLoop);
+            frameCounter++;
         }
 
 
@@ -2006,7 +2193,7 @@
                             vy: (Math.random() * -5) - 2, // Upward
                             life: 60 + Math.random() * 40,
                             size: 5 + Math.random() * 10,
-                            color: `rgba(80, 80, 80, A` // Placeholder for alpha logic
+                            color: `rgba(80, 80, 80, A)` // Placeholder for alpha logic
                         });
                     }
                 }
@@ -2123,9 +2310,21 @@
         window.addEventListener('wheel', e => {
             if (gameState !== 'PLAYING') return;
             e.preventDefault();
-            const zoomSpeed = 0.1;
-            const newZoom = camera.zoom - Math.sign(e.deltaY) * zoomSpeed;
-            camera.zoom = Math.max(0.2, Math.min(2.0, newZoom));
+
+            if (e.ctrlKey) {
+                // ZOOM (Pinch or Ctrl+Scroll)
+                // Use raw delta for smoothness, but dampen it significantly for trackpads
+                // Trackpads send frequent small deltas (e.g., 5-20), Mouse wheels send large lumps (100)
+                const zoomSensitivity = 0.002;
+                camera.zoom -= e.deltaY * zoomSensitivity;
+                camera.zoom = Math.max(0.3, Math.min(3.0, camera.zoom)); // Reasonable limits
+            } else {
+                // PAN (Two-finger scroll / Wheel scroll)
+                // Move camera matching the scroll direction
+                // Divide by zoom so panning feels 1:1 with finger movement regardless of zoom level
+                camera.x += e.deltaX / camera.zoom;
+                camera.y += e.deltaY / camera.zoom;
+            }
         }, { passive: false });
 
     </script>
