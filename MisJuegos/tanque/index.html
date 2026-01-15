@@ -345,6 +345,39 @@
             flex-direction: column;
             gap: 15px;
         }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Stats Table */
+        #stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        #stats-table th,
+        #stats-table td {
+            border: 1px solid #555;
+            padding: 8px;
+            text-align: center;
+        }
+
+        #stats-table th {
+            background: #333;
+            color: #ffeb3b;
+        }
+
+        #stats-table tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
     </style>
 </head>
 
@@ -357,7 +390,7 @@
         <!-- LOGIN -->
         <div id="login-screen" class="menu-screen">
             <h1>TANK TEAM WARS</h1>
-            <input type="text" id="player-name" placeholder="TU NOMBRE (Max 10 chars)" maxlength="10">
+            <input type="text" id="player-name" placeholder="TU NOMBRE (Max 20 chars)" maxlength="20">
             <br>
             <button class="btn-green" onclick="createRoom()">CREAR SALA</button>
             <br>
@@ -377,13 +410,13 @@
             <div class="team-container">
                 <!-- RED TEAM -->
                 <div class="team-box red-team">
-                    <div class="team-header">EQUIPO CALIDO</div>
+                    <div class="team-header">EQUIPO ROJO</div>
                     <div id="red-list"></div>
                     <button onclick="requestTeam('RED')">UNIRSE AL ROJO</button>
                 </div>
                 <!-- BLUE TEAM -->
                 <div class="team-box blue-team">
-                    <div class="team-header">EQUIPO FRIO</div>
+                    <div class="team-header">EQUIPO AZUL</div>
                     <div id="blue-list"></div>
                     <button onclick="requestTeam('BLUE')">UNIRSE AL AZUL</button>
                 </div>
@@ -396,9 +429,31 @@
         </div>
 
         <!-- GAME OVER -->
-        <div id="game-over-screen" class="menu-screen" style="display:none;">
-            <h1 id="winner-text">GANADOR</h1>
-            <button onclick="location.reload()">VOLVER AL MENÚ</button>
+        <div id="game-over-screen"
+            style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:40px; border-radius:10px; text-align:center; border: 2px solid #fff; z-index:20; width: 80%; max-width: 800px; pointer-events: auto;">
+            <h1 id="winner-text" style="font-size:40px; margin:0 0 10px 0;">GANADOR</h1>
+            <h3 id="match-time" style="color:#aaa; margin-bottom: 20px;">Tiempo: 00:00</h3>
+
+            <table id="stats-table">
+                <thead>
+                    <tr>
+                        <th>Jugador</th>
+                        <th>Bajas</th>
+                        <th>Disparos</th>
+                        <th>Precisión</th>
+                        <th>Items</th>
+                        <th>Vida Recup.</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-body"></tbody>
+            </table>
+
+            <div style="display: flex; justify-content: center; gap: 20px; margin-top: 20px;">
+                <button onclick="location.reload()" style="background:#f44336;">Volver al Menú</button>
+                <button id="btn-lobby" onclick="returnToLobby()" style="background:#ff9800;">Volver a Elegir</button>
+                <button id="btn-rematch" onclick="rematch()" style="background:#4caf50;">Volver a Jugar</button>
+            </div>
+            <p id="rematch-wait" style="display:none; color:#bbb; margin-top:10px;">Esperando al anfitrión...</p>
         </div>
 
         <!-- TOUCH CONTROLS (Only visible on mobile landscape) -->
@@ -495,10 +550,13 @@
         let items = [];
         let explosions = [];
         let particles = []; // Smoke/Fire particles
+        let debris = []; // Physics terrain chunks
         let floatTexts = [];
         let turnIndex = 0; // Index in 'tanks' array
         let turnTimer = TURN_TIME;
         let timerInterval = null;
+        let matchStartTime = 0;
+
         let isCharging = false;
         let chargePower = 0;
         let chargeDir = 1;
@@ -699,6 +757,34 @@
             return players.map(p => ({ id: p.id, name: p.name, team: p.team, color: p.color, ready: p.ready }));
         }
 
+        function rematch() {
+            if (isHost) {
+                startHostGame();
+            }
+        }
+
+        function returnToLobby() {
+            if (isHost) {
+                broadcast({ type: 'RETURN_TO_LOBBY' });
+                resetToLobby();
+            }
+        }
+
+        function resetToLobby() {
+            gameState = 'LOBBY';
+            document.getElementById('game-over-screen').style.display = 'none';
+            document.getElementById('main-hud').style.display = 'none';
+            document.getElementById('lobby-screen').style.display = 'block';
+            document.getElementById('ui-layer').style.pointerEvents = 'auto'; // Re-enable clicks
+
+            // Reset ready state
+            players.forEach(p => p.ready = false);
+            updateLobbyUI();
+
+            // Stop game loops if running locally as client (though host loop keeps running, just waits for PLAYING)
+            isGameOverPending = false;
+        }
+
         // --- LOBBY LOGIC ---
         function showScreen(id) {
             document.querySelectorAll('.menu-screen').forEach(el => el.style.display = 'none');
@@ -864,7 +950,8 @@
                     x: tx, y: 0, hp: 100, fuel: 100,
                     angle: isRed ? -Math.PI / 4 : -Math.PI * 0.75,
                     dead: false, specialWeapon: null, hasShield: false, poison: null,
-                    wasInLava: false
+                    wasInLava: false,
+                    stats: { kills: 0, shots: 0, hits: 0, items: 0, healed: 0 }
                 });
             });
 
@@ -874,9 +961,11 @@
             explosions = [];
             floatTexts = [];
             particles = [];
+            debris = [];
             turnIndex = -1; // NextTurn will bump to 0
             gameState = 'PLAYING';
             isGameOverPending = false;
+            matchStartTime = Date.now();
 
             // 3. Notify Everyone
             const startPacket = { type: 'GAME_START', terrain: terrain, stoneLevels: stoneLevels, lavaY: LAVA_Y, tanks: tanks, width: WIDTH, height: HEIGHT };
@@ -1004,7 +1093,6 @@
             // Block input if turn is ending or projectile active
             if (activeTank && !activeTank.dead && projectiles.length === 0 && !isTurnTransition) {
                 const inp = playerInputs[activeTank.id];
-
                 // Detect Input Logs (Removed to prevent spam)
                 // if (Math.random() < 0.05) { ... } // Removed
 
@@ -1085,14 +1173,39 @@
                 const floorLimit = LAVA_Y + 60;
 
                 if (p.x < -100 || p.x > WIDTH + 100 || p.y > floorLimit || p.y < -3000) hitResult = 'OUT';
-                else if (p.y >= terrain[Math.floor(p.x)]) hitResult = 'TERRAIN';
+                else if (p.y >= terrain[Math.floor(p.x)]) {
+                    if (p.type === 'DRILL') {
+                        // Drill Logic: Don't stop on terrain immediately.
+                        // Apply friction/drag while underground
+                        p.vx *= 0.95;
+                        p.vy *= 0.9;
+                        // If too slow, explode
+                        if (Math.abs(p.vx) < 0.5 && Math.abs(p.vy) < 0.5) hitResult = 'TERRAIN';
+                        else hitResult = null; // Keep going
+
+                        // Add drilling visual particles?
+                        if (Math.random() < 0.3) {
+                            broadcast({ type: 'FLOAT_TEXT', x: p.x, y: p.y - 10, text: ".", color: '#aaa' });
+                        }
+                    } else {
+                        hitResult = 'TERRAIN';
+                    }
+                }
                 else {
                     for (let t of tanks) {
-                        if (!t.dead && Math.hypot(p.x - t.x, p.y - (t.y + 10)) < 20) {
-                            hitResult = 'TANK'; break;
+                        // Improved Hitbox: Tank is roughly 36x20. 
+                        // Check simple box or elliptical distance. 
+                        // Let's us a closer check: |dx| < 18 and |dy| < 15 (shifted up slightly as y is ground)
+                        // Tank center visual is roughly y - 10.
+                        if (!t.dead) {
+                            const dx = Math.abs(p.x - t.x);
+                            const dy = Math.abs(p.y - (t.y - 10));
+                            if (dx < 18 && dy < 15) {
+                                hitResult = 'TANK'; break;
+                            }
                         }
                     }
-                    if (!hitResult) {
+                    if (!hitResult && p.type !== 'AIR_MISSILE' && p.type !== 'CLUSTER_FRAG') { // Don't let sub-munitions pick up items
                         for (let k = items.length - 1; k >= 0; k--) {
                             const it = items[k];
                             const dy = (terrain[Math.floor(it.x)] - 15);
@@ -1108,17 +1221,87 @@
                 }
 
                 if (hitResult) {
-                    if (hitResult !== 'OUT') explode(p.x, p.y, p.type);
+                    if (hitResult === 'TANK') {
+                        const shooter = tanks.find(t => t.id === p.ownerId);
+                        if (shooter) shooter.stats.hits++;
+                    }
+                    if (hitResult !== 'OUT') {
+                        if (p.type === 'AIRSTRIKE') {
+                            triggerAirstrike(p.x, p.ownerId);
+                        } else {
+                            explode(p.x, p.y, p.type, p.ownerId);
+                        }
+                    }
                     projectiles.splice(i, 1);
                     checkTurnEnd();
                 }
             }
+
+            // 4. Debris Physics (Loose dirt falling)
+            for (let i = debris.length - 1; i >= 0; i--) {
+                const d = debris[i];
+                d.x += d.vx;
+                d.y += d.vy;
+                d.vy += 0.4; // Gravity
+
+                // Boundary / Out
+                if (d.x < 0 || d.x >= WIDTH || d.y > LAVA_Y + 50) { debris.splice(i, 1); continue; }
+
+                // Hit Terrain
+                const ground = terrain[Math.floor(d.x)];
+                if (d.y >= ground) {
+                    // Reintegrate into terrain
+                    // Pile up!
+                    // Add slight random spread to avoid perfect spikes
+                    const pileX = Math.min(WIDTH - 1, Math.max(0, Math.floor(d.x)));
+                    terrain[pileX] -= 3; // Pile height
+
+                    // Smooth neighbors slightly to form hills
+                    if (pileX > 0) terrain[pileX - 1] -= 1;
+                    if (pileX < WIDTH - 1) terrain[pileX + 1] -= 1;
+
+                    debris.splice(i, 1);
+                }
+            }
         }
 
-        function explode(x, y, type) {
-            const r = type === 'BIG' ? 80 : 40;
+        function triggerAirstrike(latX, ownerId) {
+            broadcast({ type: 'FLOAT_TEXT', x: latX, y: 100, text: "⚠ AIRSTRIKE ⚠", color: '#ff9800' });
+            // Spawn 3 missiles
+            for (let k = 0; k < 3; k++) {
+                setTimeout(() => {
+                    projectiles.push({
+                        x: latX + (Math.random() - 0.5) * 100,
+                        y: -200 - (k * 100), // Staggered height
+                        vx: 0,
+                        vy: 15, // Fast drop
+                        type: 'AIR_MISSILE',
+                        ownerId: ownerId
+                    });
+                }, k * 200);
+            }
+        }
+
+        function explode(x, y, type, ownerId) {
+            let r = 40;
+            if (type === 'BIG' || type === 'AIR_MISSILE') r = 80;
+            if (type === 'CLUSTER_FRAG') r = 20;
+
             // Apply visual/physics changes to terrain locally
             applyTerrainExplosion(x, y, r, type);
+
+            // Cluster Logic: Spawn fragments
+            if (type === 'CLUSTER') {
+                for (let i = 0; i < 5; i++) {
+                    projectiles.push({
+                        x: x, y: y - 10,
+                        vx: (Math.random() - 0.5) * 15,
+                        vy: -(Math.random() * 10 + 5), // Up and out
+                        type: 'CLUSTER_FRAG',
+                        ownerId: ownerId
+                    });
+                }
+            }
 
             // Damage Logic (Host only)
             tanks.forEach(t => {
@@ -1133,9 +1316,22 @@
 
                     let dmg = 40 * (1 - d / (r + 20));
                     if (type === 'BIG') dmg *= 2;
+                    if (type === 'AIR_MISSILE') dmg *= 2.5; // High damage
+                    if (type === 'CLUSTER_FRAG') dmg *= 0.5; // Low damage per frag
                     if (type === 'MOUNTAIN') dmg *= 0.25; // Little damage for Mountain
 
                     t.hp = Math.max(0, t.hp - dmg);
+
+                    // Vampire Healing
+                    if (type === 'VAMPIRE' && dmg > 0) {
+                        const shooter = tanks.find(s => s.id === ownerId);
+                        if (shooter && !shooter.dead) {
+                            const heal = dmg * 0.5;
+                            shooter.hp = Math.min(100, shooter.hp + heal);
+                            shooter.stats.healed += heal;
+                            broadcast({ type: 'FLOAT_TEXT', x: shooter.x, y: shooter.y - 40, text: `+${Math.ceil(heal)}`, color: '#f00' });
+                        }
+                    }
 
                     // Poison Application
                     if (type === 'TOXIC' && dmg > 0 && !t.dead) {
@@ -1147,6 +1343,13 @@
                         t.dead = true;
                         broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "¡BAJA!", color: '#f00' });
                         broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y });
+
+                        // Attribute Kill
+                        if (ownerId) {
+                            const killer = tanks.find(k => k.id === ownerId);
+                            if (killer && killer.id !== t.id) killer.stats.kills++; // Self-kill doesn't count? Or counts? usually no.
+                            else if (killer && killer.id === t.id) killer.stats.kills = Math.max(0, killer.stats.kills - 1); // Penalty for suicide?
+                        }
                     }
                 }
             });
@@ -1168,11 +1371,18 @@
                     }
                 }
             } else {
+                // Jagged Crater & Debris
+                const chunksToSpawn = Math.floor(r / 2); // Amount of debris depends on explosion size (Reduced)
+
                 for (let i = Math.floor(x - r); i < x + r; i++) {
                     if (i >= 0 && i < WIDTH) {
                         const distSq = (i - x) ** 2;
                         if (distSq < r * r) {
                             let cut = Math.sqrt(r * r - distSq);
+
+                            // 1. Add randomized noise for jagged edges (Reduced)
+                            cut += (Math.random() - 0.5) * 5;
+                            if (cut < 0) cut = 0;
 
                             // Stone resistance logic
                             const currentY = terrain[i];
@@ -1192,6 +1402,17 @@
                         }
                     }
                 }
+
+                // Spawn Debris
+                for (let k = 0; k < chunksToSpawn; k++) {
+                    debris.push({
+                        x: x + (Math.random() - 0.5) * r,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: -(Math.random() * 10 + 5), // Fly up
+                        color: Math.random() < 0.5 ? '#5d4037' : '#757575' // Dirt or Stone
+                    });
+                }
             }
         }
 
@@ -1202,13 +1423,16 @@
         function fireWeapon(tank, power) {
             const type = tank.specialWeapon;
             tank.specialWeapon = null; // Consume
-            const spawn = (off) => projectiles.push({
-                x: tank.x + Math.cos(tank.angle + off) * 30,
-                y: (tank.y - 15) + Math.sin(tank.angle + off) * 30,
-                vx: Math.cos(tank.angle + off) * power,
-                vy: Math.sin(tank.angle + off) * power,
-                type: type, ownerId: tank.id
-            });
+            const spawn = (off) => {
+                projectiles.push({
+                    x: tank.x + Math.cos(tank.angle + off) * 30,
+                    y: (tank.y - 15) + Math.sin(tank.angle + off) * 30,
+                    vx: Math.cos(tank.angle + off) * power,
+                    vy: Math.sin(tank.angle + off) * power,
+                    type: type, ownerId: tank.id
+                });
+                tank.stats.shots++;
+            };
 
             if (type === 'TRIPLE') { spawn(-0.2); spawn(0); spawn(0.2); }
             else spawn(0);
@@ -1220,10 +1444,22 @@
             const it = items[idx];
             items.splice(idx, 1);
             let txt = it.type; let col = '#ffeb3b';
-            if (it.type === 'HEALTH') { tank.hp = Math.min(100, tank.hp + 25); txt = "+25 HP"; col = '#0f0'; }
+            if (it.type === 'HEALTH') {
+                tank.hp = Math.min(100, tank.hp + 25);
+                txt = "+25 HP"; col = '#0f0';
+                tank.stats.healed += 25;
+            }
             else if (it.type === 'SHIELD') { tank.hasShield = true; txt = "SHIELD UP!"; col = '#00ffff'; }
             else if (it.type === 'TOXIC') { tank.specialWeapon = 'TOXIC'; txt = "TOXIC AMMO"; col = '#00ff00'; }
+            else if (it.type === 'LASER') { tank.specialWeapon = 'LASER'; txt = "SNIPER RIFLE"; col = '#e040fb'; }
+            else if (it.type === 'CLUSTER') { tank.specialWeapon = 'CLUSTER'; txt = "CLUSTER BOMB"; col = '#9c27b0'; }
+            else if (it.type === 'DRILL') { tank.specialWeapon = 'DRILL'; txt = "DRILL SHOT"; col = '#9e9e9e'; }
+            else if (it.type === 'VAMPIRE') { tank.specialWeapon = 'VAMPIRE'; txt = "VAMPIRE"; col = '#f44336'; }
+            else if (it.type === 'AIRSTRIKE') { tank.specialWeapon = 'AIRSTRIKE'; txt = "AIRSTRIKE"; col = '#ff9800'; }
             else { tank.specialWeapon = it.type; }
+
+            tank.stats.items++;
+
             broadcast({ type: 'ITEM_COLLECT', items: items, tankId: tank.id, hp: tank.hp, sw: tank.specialWeapon, hs: tank.hasShield, psn: tank.poison });
             broadcast({ type: 'FLOAT_TEXT', x: tank.x, y: tank.y - 50, text: txt, color: col });
         }
@@ -1288,8 +1524,20 @@
                 // Delay 3 seconds to let users enjoy the destruction
                 setTimeout(() => {
                     const w = red > 0 ? "EQUIPO ROJO" : (blue > 0 ? "EQUIPO AZUL" : "EMPATE");
-                    broadcast({ type: 'GAMEOVER', winner: w });
-                    gameOver(w);
+
+                    // Final Stats Compilation
+                    const durationSec = Math.floor((Date.now() - matchStartTime) / 1000);
+                    const finalStats = tanks.map(t => ({
+                        name: t.name,
+                        kills: t.stats.kills,
+                        shots: t.stats.shots,
+                        hits: t.stats.hits,
+                        items: t.stats.items,
+                        healed: t.stats.healed
+                    }));
+
+                    broadcast({ type: 'GAMEOVER', winner: w, stats: finalStats, duration: durationSec });
+                    gameOver(w, finalStats, durationSec);
                 }, 3000);
 
                 return true;
@@ -1297,15 +1545,46 @@
             return false;
         }
 
-        function gameOver(winner) {
+        function gameOver(winner, stats, duration) {
             gameState = 'GAMEOVER';
+            document.getElementById('ui-layer').style.pointerEvents = 'auto'; // Re-enable UI clicks
             document.getElementById('game-over-screen').style.display = 'block';
             document.getElementById('winner-text').innerText = "GANADOR: " + winner;
             document.getElementById('winner-text').style.color = winner.includes('ROJO') ? '#ff5252' : '#448aff';
+
+            // Format time
+            const m = Math.floor(duration / 60);
+            const s = duration % 60;
+            document.getElementById('match-time').innerText = `Tiempo: ${m}:${s < 10 ? '0' + s : s}`;
+
+            // Populate Table
+            const tbody = document.getElementById('stats-body');
+            tbody.innerHTML = '';
+            // Sort by kills? No, preserve order or sort. Let's sort by kills desc.
+            if (stats) {
+                stats.sort((a, b) => b.kills - a.kills);
+                stats.forEach(st => {
+                    const tr = document.createElement('tr');
+                    const acc = st.shots > 0 ? Math.round((st.hits / st.shots) * 100) + '%' : '0%';
+                    tr.innerHTML = `<td>${st.name}</td><td>${st.kills}</td><td>${st.shots}</td><td>${acc}</td><td>${st.items}</td><td>${st.healed}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Rematch Buttons
+            if (isHost) {
+                document.getElementById('btn-rematch').style.display = 'inline-block';
+                document.getElementById('btn-lobby').style.display = 'inline-block';
+                document.getElementById('rematch-wait').style.display = 'none';
+            } else {
+                document.getElementById('btn-rematch').style.display = 'none';
+                document.getElementById('btn-lobby').style.display = 'none';
+                document.getElementById('rematch-wait').style.display = 'block';
+            }
         }
 
         function spawnItemHost() {
-            const types = ['HEALTH', 'TRIPLE', 'BIG', 'MOUNTAIN', 'SHIELD', 'TOXIC', 'LASER'];
+            const types = ['HEALTH', 'TRIPLE', 'BIG', 'MOUNTAIN', 'SHIELD', 'TOXIC', 'LASER', 'CLUSTER', 'DRILL', 'VAMPIRE', 'AIRSTRIKE'];
             let x, valid = false, attempts = 0;
 
             while (!valid && attempts < 20) {
@@ -1457,11 +1736,19 @@
             CTX.closePath();
             CTX.fill();
 
-            CTX.strokeStyle = '#4caf50'; CTX.lineWidth = 4;
-            // Redraw top stroke
-            CTX.beginPath();
-            for (let x = 0; x < WIDTH; x++) CTX.lineTo(x, terrain[x]);
-            CTX.stroke();
+            CTX.lineWidth = 4;
+            // Draw surface stroke segment by segment to handle color changes
+            for (let x = 0; x < WIDTH - 1; x++) {
+                CTX.beginPath();
+                CTX.moveTo(x, terrain[x]);
+                CTX.lineTo(x + 1, terrain[x + 1]);
+
+                // Color based on material
+                // If current surface is below stone level, it's stone.
+                const isStone = terrain[x] >= stoneLevels[x];
+                CTX.strokeStyle = isStone ? '#757575' : '#4caf50';
+                CTX.stroke();
+            }
 
             // 3. LAVA LAYER (NEON)
             CTX.save();
@@ -1499,6 +1786,10 @@
                 else if (it.type === 'SHIELD') s = '🛡️';
                 else if (it.type === 'TOXIC') s = '☠️';
                 else if (it.type === 'LASER') s = '🎯';
+                else if (it.type === 'CLUSTER') s = '🍇';
+                else if (it.type === 'DRILL') s = '🔩';
+                else if (it.type === 'VAMPIRE') s = '🧛';
+                else if (it.type === 'AIRSTRIKE') s = '✈️';
                 CTX.fillText(s, it.x, y - 8);
             });
 
@@ -1557,6 +1848,10 @@
                     if (t.specialWeapon === 'SHIELD') wTxt = "SHIELD";
                     if (t.specialWeapon === 'TOXIC') wTxt = "TOXIC";
                     if (t.specialWeapon === 'LASER') wTxt = "SNIPER";
+                    if (t.specialWeapon === 'CLUSTER') wTxt = "CLUSTER";
+                    if (t.specialWeapon === 'DRILL') wTxt = "DRILL";
+                    if (t.specialWeapon === 'VAMPIRE') wTxt = "VAMPIRE";
+                    if (t.specialWeapon === 'AIRSTRIKE') wTxt = "AIR STRK";
                     CTX.fillText(wTxt, 0, -45);
                 }
 
@@ -1611,6 +1906,12 @@
                 let col = '#ff5252';
                 if (p.type === 'TOXIC') col = '#00ff00';
                 else if (p.type === 'LASER') col = '#e040fb';
+                else if (p.type === 'DRILL') col = '#9e9e9e';
+                else if (p.type === 'VAMPIRE') col = '#b71c1c';
+                else if (p.type === 'CLUSTER') col = '#9c27b0';
+                else if (p.type === 'AIRSTRIKE') col = '#ff9800';
+                else if (p.type === 'AIR_MISSILE') col = '#ff5722';
+                else if (p.type === 'CLUSTER_FRAG') col = '#e1bee7';
 
                 CTX.fillStyle = col;
                 CTX.fill();
@@ -1644,6 +1945,12 @@
 
                 if (p.life <= 0) particles.splice(i, 1);
             }
+
+            // Debris (Chunks)
+            debris.forEach(d => {
+                CTX.fillStyle = d.color;
+                CTX.fillRect(d.x - 2, d.y - 2, 4, 4);
+            });
 
             // FloatText
             for (let i = floatTexts.length - 1; i >= 0; i--) {
@@ -1708,7 +2015,8 @@
                 else if (data.type === 'GAME_START') { initGameClient(data); }
                 else if (data.type === 'LOBBY_UPDATE') { players = data.players; updateLobbyUI(); }
                 else if (data.type === 'GAME_START_COUNTDOWN') { document.getElementById('start-timer').innerText = data.sec === "CANCELADO" ? "" : "INICIANDO EN " + data.sec; }
-                else if (data.type === 'GAMEOVER') { gameState = 'GAMEOVER'; gameOver(data.winner); }
+                else if (data.type === 'GAMEOVER') { gameState = 'GAMEOVER'; gameOver(data.winner, data.stats, data.duration); }
+                else if (data.type === 'RETURN_TO_LOBBY') { resetToLobby(); }
             }
         }
 
