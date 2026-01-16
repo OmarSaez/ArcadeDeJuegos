@@ -162,7 +162,8 @@
             }
 
             50% {
-                box-shadow: 0 0 20px #f00;
+                box-shadow: 0 0 10px #f00;
+                /* Reducido de 20px */
                 border-color: #f00;
                 transform: translateX(-50%) scale(1.05);
             }
@@ -175,7 +176,8 @@
         }
 
         .critical {
-            animation: criticalPulse 0.2s infinite;
+            animation: criticalPulse 0.5s infinite;
+            /* Mas lento (0.2 -> 0.5) */
         }
 
         .event-text {
@@ -615,7 +617,7 @@
             const py = player.y * H;
 
             CTX.fillStyle = player.color;
-            CTX.shadowBlur = 20;
+            CTX.shadowBlur = 15; // Reducido de 20
             CTX.shadowColor = player.color;
 
             // Dibujar nave (Triángulo)
@@ -630,8 +632,15 @@
             // Balas
             bullets.forEach(b => {
                 CTX.fillStyle = b.color;
-                CTX.shadowBlur = 10;
-                CTX.shadowColor = b.color;
+
+                // Optimización: Sombra solo si es grande/especial
+                if (b.size > 1) {
+                    CTX.shadowBlur = 10;
+                    CTX.shadowColor = b.color;
+                } else {
+                    CTX.shadowBlur = 0; // Sin sombra para balas comunes (mejora FPS)
+                }
+
                 CTX.beginPath();
                 // Bala Gigante (size 1 -> r=6, size 3 -> r=18)
                 let r = b.size * 6;
@@ -945,7 +954,7 @@
 
             // Resetear Temporizador de Eventos
             eventTimer = 0;
-            eventInterval = (Math.floor(Math.random() * 16) + 30) * 60;
+            eventInterval = (Math.floor(Math.random() * 16) + 15) * 60;
 
             // Resetear Stats Partido
             matchStats = {
@@ -975,7 +984,7 @@
 
         // --- SISTEMA DE EVENTOS ---
         let eventTimer = 0;
-        let eventInterval = (Math.floor(Math.random() * 16) + 30) * 60; // 30-45 segundos random
+        let eventInterval = (Math.floor(Math.random() * 16) + 15) * 60; // 15-30 segundos random
         let currentEvent = null; // { type, active, targets[], progress, seed }
         let rng = null; // Instancia de RNG
 
@@ -1024,8 +1033,8 @@
                 if (eventTimer >= eventInterval) {
                     eventTimer = 0;
                     triggerRandomEvent();
-                    // Siguiente evento en 30-45 segundos random
-                    eventInterval = (Math.floor(Math.random() * 16) + 30) * 60;
+                    // Siguiente evento en 15-30 segundos random
+                    eventInterval = (Math.floor(Math.random() * 16) + 15) * 60;
                 }
             }
         }
@@ -1260,10 +1269,15 @@
 
         function drawEvent() {
             if (currentEvent.type === 'ORBS') {
-                CTX.fillStyle = '#ffff00';
-                CTX.shadowColor = '#ffff00';
-                CTX.shadowBlur = 15;
                 for (let t of currentEvent.targets) {
+                    // Glow Geometrico (Mas barato que shadowBlur)
+                    CTX.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                    CTX.beginPath();
+                    CTX.arc(t.x * W, t.y * H, (t.r * W) + 5, 0, Math.PI * 2);
+                    CTX.fill();
+
+                    // Nucleo Solido
+                    CTX.fillStyle = '#ffff00';
                     CTX.beginPath();
                     CTX.arc(t.x * W, t.y * H, t.r * W, 0, Math.PI * 2);
                     CTX.fill();
@@ -1293,7 +1307,7 @@
                     const t = currentEvent.targets[0];
                     CTX.fillStyle = '#00ff00'; // Neon Green
                     CTX.shadowColor = '#00ff00';
-                    CTX.shadowBlur = 20;
+                    CTX.shadowBlur = 10; // Reducido de 20
                     CTX.beginPath();
                     CTX.arc(t.x * W, t.y * H, t.r * W, 0, Math.PI * 2);
                     CTX.fill();
