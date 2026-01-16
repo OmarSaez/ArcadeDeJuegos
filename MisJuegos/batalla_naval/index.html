@@ -891,6 +891,14 @@
             return found === targetCount;
         }
 
+        function changeGridSize(delta) {
+            gridSize += delta;
+            if (gridSize < 7) gridSize = 7;
+            if (gridSize > 20) gridSize = 20;
+            document.getElementById('cfg-grid-size').innerText = gridSize;
+            document.getElementById('cfg-grid-size-2').innerText = gridSize;
+        }
+
         // --- CONFIG UI RENDERING ---
         function renderFleetConfig() {
             const container = document.getElementById('fleet-config-list');
@@ -1106,7 +1114,7 @@
             show('screen-setup');
 
             // Ensure Grid Size is standard if not set
-            if (!gridSize || gridSize < 5) gridSize = 10;
+            if (!gridSize || gridSize < 7) gridSize = 10;
 
             const area = document.getElementById('setup-area');
             // Calculate Max Width considering Screen Padding (10px * 2 = 20px) + Safety (5px)
