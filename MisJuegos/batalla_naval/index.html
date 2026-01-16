@@ -1508,10 +1508,29 @@
                 card.id = `enemy-manifest-${s.id}`; // FIX: Added ID for lookup
                 if (s.sunk) card.classList.add('sunk');
 
-                const visual = generateMatrixVisual(s.matrix, 10); // Small preview
+                // Normalize matrix to hide orientation (force horizontal-ish)
+                const displayMatrix = normalizeShipMatrix(s.matrix);
+
+                const visual = generateMatrixVisual(displayMatrix, 10); // Small preview
                 card.appendChild(visual);
                 panel.appendChild(card);
             });
+        }
+
+        function normalizeShipMatrix(matrix) {
+            const rows = matrix.length;
+            const cols = matrix[0].length;
+            // If taller than wide, rotate 90 degrees to make it horizontal
+            if (rows > cols) {
+                const newM = Array(cols).fill(0).map(() => Array(rows).fill(0));
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        newM[c][rows - 1 - r] = matrix[r][c];
+                    }
+                }
+                return newM;
+            }
+            return matrix;
         }
 
         function onEnemyBoardClick(e) {
