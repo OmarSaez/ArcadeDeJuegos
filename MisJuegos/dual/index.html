@@ -183,12 +183,13 @@
         .event-text {
             font-size: 10vw;
             color: #fff;
-            text-shadow: 0 0 15px #0ff;
-            /* Sombra simplificada para movil */
+            text-shadow: 0 0 8px #0ff;
+            /* Sombra reducida para maximo rendimiento */
             font-weight: bold;
             text-transform: uppercase;
-            animation: pulseText 0.5s infinite alternate;
-            will-change: transform;
+            animation: pulseText 0.8s infinite alternate;
+            /* Mas lento */
+            will-change: opacity;
         }
 
         .event-subtext {
@@ -202,10 +203,11 @@
         .event-reward {
             font-size: 12vw;
             color: #0f0;
-            text-shadow: 0 0 15px #0f0;
-            /* Sombra simplificada */
+            text-shadow: 0 0 8px #0f0;
+            /* Sombra reducida */
             margin: 20px 0;
             font-weight: 900;
+            animation: pulseText 0.8s infinite alternate;
         }
 
         .event-score-overlay {
@@ -230,11 +232,13 @@
 
         @keyframes pulseText {
             from {
-                transform: scale(1);
+                opacity: 0.7;
+                filter: brightness(0.8);
             }
 
             to {
-                transform: scale(1.1);
+                opacity: 1;
+                filter: brightness(1.2);
             }
         }
     </style>
@@ -431,6 +435,11 @@
             if (gameState === 'PLAYING') shoot();
         });
 
+        // Disparo: Barra Espaciadora (PC), W, S
+        window.addEventListener('keydown', (e) => {
+            if (['Space', 'KeyW', 'KeyS'].includes(e.code) && gameState === 'PLAYING') shoot();
+        });
+
         function requestSensorPermission() {
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
@@ -460,14 +469,14 @@
             // Check Jammed (Sin Munición)
             if (player.bonuses.jammed > 0) return;
 
-            // Check Broken (Arma Rota) - Necesita 2 taps para 1 bala
+            // Check Broken (Arma Rota) - Necesita 3 taps para 1 bala
             if (player.bonuses.broken > 0) {
                 player.tapCount++;
-                if (player.tapCount % 2 !== 0) return; // Ignorar disparo impar
+                if (player.tapCount % 3 !== 0) return; // Solo 1 de cada 3 intentos dispara
             }
 
             // Configurar balas según bonus
-            const speed = player.bonuses.rapid > 0 ? -0.025 : -0.015;
+            const speed = player.bonuses.rapid > 0 ? -0.025 : -0.0140; // Normal 5% mas lento
             const size = player.bonuses.big > 0 ? 3 : 1; // 1 normal, 3 mega
 
             const spawnBullet = (offsetX, angleVx) => {
@@ -507,13 +516,13 @@
             }
         }
 
-        function spawnEnemyBullet(xRel, size) {
+        function spawnEnemyBullet(xRel, size, speed) {
             // La bala enemiga llega desde ARRIBA (y=0) hacia ABAJO
             bullets.push({
                 x: xRel, // La misma X relativa (espejo horizontal?) -> Probemos directo
                 y: -0.05, // Un poco más arriba del borde
                 vx: 0,
-                vy: 0.015, // Velocidad hacia abajo (hacia mí)
+                vy: speed || 0.0142, // Velocidad recibida o default
                 isMine: false,
                 color: enemy.color,
                 size: size || 1
@@ -540,6 +549,12 @@
                 if (player.x > 1) { player.x = 1; player.vx = 0; }
             }
 
+            // Networking: Enviar movimiento si cambió
+            if (Math.abs(player.x - (player.lastSentX || 0.5)) > 0.001) {
+                if (conn && conn.open) conn.send({ type: 'PLAYER_MOVE', x: player.x });
+                player.lastSentX = player.x;
+            }
+
             // Balas
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i];
@@ -548,9 +563,9 @@
 
                 // 1. Bala mía sale de la pantalla por ARRIBA
                 if (b.isMine && b.y < -0.05) {
-                    // Enviar al rival
+                    // Enviar al rival (Incluyendo velocidad para sincronizar bonus)
                     if (conn && conn.open) {
-                        conn.send({ type: 'INCOMING_BULLET', x: b.x, size: b.size });
+                        conn.send({ type: 'INCOMING_BULLET', x: b.x, size: b.size, speed: Math.abs(b.vy) });
                     }
                     bullets.splice(i, 1);
                     continue;
@@ -611,6 +626,26 @@
             CTX.fillRect(0, 0, W, H);
 
             if (gameState !== 'PLAYING') return;
+
+            // Indicador Rival (Brillo sutil superior)
+            if (conn && conn.open) {
+                const ex = enemy.x * W;
+                const r = W * 0.1; // Mas pequeño
+                const yOffset = -r * 0.6; // 60% afuera
+
+                const grad = CTX.createRadialGradient(ex, yOffset, 2, ex, yOffset, r);
+                grad.addColorStop(0, enemy.color);
+                grad.addColorStop(1, 'transparent');
+
+                CTX.save();
+                CTX.globalAlpha = 0.8; // Brillo 80%
+                CTX.globalCompositeOperation = 'screen';
+                CTX.fillStyle = grad;
+                CTX.beginPath();
+                CTX.arc(ex, yOffset, r, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.restore();
+            }
 
             // Jugador
             const px = player.x * W;
@@ -846,11 +881,15 @@
                         gameMode = data.mode;
                         console.log("Modo sincronizado:", gameMode);
                         break;
+                    case 'PLAYER_MOVE':
+                        // Movimiento rival espejado
+                        enemy.x = 1.0 - data.x;
+                        break;
                     case 'INCOMING_BULLET':
                         // Espejo de X: Si rival disparó en 0.2, aquí entra en 0.2 o 0.8?
                         // Si estamos frente a frente, mi derecha es tu izquierda.
                         // Así que x = 1.0 - data.x
-                        spawnEnemyBullet(1.0 - data.x, data.size);
+                        spawnEnemyBullet(1.0 - data.x, data.size, data.speed);
                         break;
                     case 'EVENT_START':
                         gameMode = 'new'; // Asegurar modo
@@ -969,6 +1008,7 @@
             // Resetear Estado de Juego Profundo
             currentEvent = null;
             minigameStreaks = {};
+            bonusWeights = {};
             activeTimer = { frames: 0, text: '', color: '#fff' };
             player.isGiant = false;
             player.tapCount = 0;
@@ -1040,11 +1080,15 @@
         }
 
         let minigameStreaks = {};
+        let bonusWeights = {};
 
         function triggerRandomEvent() {
             // Inicializar rachas si vacio
             if (Object.keys(minigameStreaks).length === 0) {
                 MINIGAME_TYPES.forEach(m => minigameStreaks[m.id] = 0);
+            }
+            if (Object.keys(bonusWeights).length === 0) {
+                BONUS_TYPES.forEach(b => bonusWeights[b.id] = 10);
             }
 
             // Calcular pesos según rachas (Anti-repetición)
@@ -1081,8 +1125,42 @@
                 else minigameStreaks[m.id] = 0; // Resetear los que no salieron
             });
 
-            // Seleccionar minijuego y bonus
-            const bonus = BONUS_TYPES[Math.floor(Math.random() * BONUS_TYPES.length)];
+            // --- SELECCION DE BONUS (PONDERADA) ---
+            // Entre mas tiempo sin salir, mas peso tiene
+            const isLowHp = player.hp <= 30;
+            let bTotal = 0;
+            let bList = [];
+            BONUS_TYPES.forEach(b => {
+                let w = bonusWeights[b.id] || 10;
+
+                // Comeback Mechanic: Si poca vida, aumentar prob de Curacion
+                if (isLowHp && (b.id === 'HEAL' || b.id === 'VAMP')) {
+                    w += 15; // Boost sutil
+                }
+
+                bList.push({ item: b, weight: w });
+                bTotal += w;
+            });
+
+            let br = Math.random() * bTotal;
+            let bonus = bList[0].item;
+            for (let entry of bList) {
+                if (br < entry.weight) {
+                    bonus = entry.item;
+                    break;
+                }
+                br -= entry.weight;
+            }
+
+            // Actualizar pesos Bonus
+            BONUS_TYPES.forEach(b => {
+                if (b.id === bonus.id) {
+                    bonusWeights[b.id] = 1; // Reseteo drastico
+                } else {
+                    bonusWeights[b.id] = (bonusWeights[b.id] || 10) + 5; // Aumentar probabilidad
+                }
+            });
+
             const eventSeed = Math.floor(Math.random() * 10000);
 
             // Avisar a red
@@ -1364,8 +1442,8 @@
             console.log("Aplicando bonus:", id);
 
             if (id === 'HEAL') {
-                // Curacion variable 10-15%
-                const healAmt = 10 + Math.floor(Math.random() * 6);
+                // Curacion DOUBLE (20-30%)
+                const healAmt = (10 + Math.floor(Math.random() * 6)) * 2;
                 player.hp = Math.min(100, player.hp + healAmt);
                 matchStats.heal += healAmt;
                 updateHealthUI();
