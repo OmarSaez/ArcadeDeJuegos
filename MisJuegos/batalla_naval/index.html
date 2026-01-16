@@ -78,9 +78,17 @@
             justify-content: center;
             align-items: center;
             z-index: 100;
-            padding: 20px;
+            padding: 3px;
+            /* Reduced from 20px for mobile */
             box-sizing: border-box;
             overflow-y: auto;
+        }
+
+        /* Add more padding on desktop */
+        @media (min-width: 600px) {
+            .screen {
+                padding: 20px;
+            }
         }
 
         .hidden {
@@ -226,7 +234,8 @@
             border: 2px solid #64748b;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             /* Remove transform logic that might mess up coord calc */
-            margin: auto;
+            margin: 0 auto;
+            /* Explicitly auto for centering */
         }
 
         /* FIX: Align setup board to top */
@@ -359,7 +368,7 @@
             width: 100%;
             max-width: 400px;
             /* Mobile */
-            height: 100px;
+            height: 150px;
             background: #1e293b;
             border: 1px solid #334155;
             margin-top: 10px;
@@ -534,6 +543,29 @@
         .ship-visual.error .matrix-cell {
             background-color: #ef4444 !important;
         }
+
+        /* --- DYNAMIC TURN LAYOUT --- */
+        .game-layout.defending #section-fleet {
+            order: -1;
+            /* Move My Fleet to Top */
+        }
+
+        /* Optional: Move Radar to bottom explicitly to be safe */
+        .game-layout.defending #section-radar {
+            order: 1;
+        }
+
+        /* --- SWAP ANIMATION --- */
+        .board-section {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .game-layout.anim-swap .board-section {
+            opacity: 0;
+            transform: scale(0.95);
+        }
     </style>
 </head>
 
@@ -664,6 +696,8 @@
                 <span id="turn-badge"
                     style="background:#22c55e; color:black; padding:2px 6px; border-radius:4px; font-weight:bold; display:none;">TU
                     TURNO</span>
+                <span id="turn-timer"
+                    style="color:#ffffff; font-weight:bold; margin-left:5px; display:none; transition: all 0.2s ease;">30s</span>
                 <span id="wait-badge" style="color:#94a3b8; font-size:0.9rem;">Esperando...</span>
             </div>
             <div style="font-size:0.8rem;">
@@ -673,7 +707,7 @@
 
         <div class="game-layout">
             <!-- ENEMY MAP (RADAR) -->
-            <div class="board-section">
+            <div id="section-radar" class="board-section">
                 <span style="margin-bottom:5px; color:#ef4444; font-weight:bold;">RADAR (ENEMIGO)</span>
                 <div id="enemy-board" class="board-wrapper">
                     <div class="grid-layer" id="enemy-grid"></div>
@@ -687,7 +721,7 @@
             </div>
 
             <!-- MY MAP (BOTTOM) -->
-            <div class="board-section" style="opacity:0.9;">
+            <div id="section-fleet" class="board-section" style="opacity:0.9;">
                 <span style="margin-bottom:5px; color:#3b82f6; font-weight:bold;">MI FLOTA</span>
                 <div id="my-board" class="board-wrapper" style="pointer-events:none;">
                     <div class="grid-layer" id="my-grid"></div>
@@ -737,7 +771,10 @@
         let placedShips = [];
         let isSetupReady = false;
         let myTurn = false;
+        let inputLocked = false;
         let selectedShipRef = null;
+        let turnTimerInterval = null;
+        let timeLeft = 30;
 
         // Stats
         let myStats = { shots: 0, hits: 0, sunk: 0 };
@@ -1072,7 +1109,9 @@
             if (!gridSize || gridSize < 5) gridSize = 10;
 
             const area = document.getElementById('setup-area');
-            const maxW = Math.min(window.innerWidth * 0.95, 500);
+            // Calculate Max Width considering Screen Padding (10px * 2 = 20px) + Safety (5px)
+            const marginSafety = 25;
+            const maxW = Math.min(window.innerWidth - marginSafety, 500);
             const maxH = (window.innerHeight - 180) * 0.95;
             const limit = Math.min(maxW, maxH);
 
@@ -1457,7 +1496,7 @@
             enemyStats = { shots: 0, hits: 0, sunk: 0 };
 
             renderEnemyFleetPanel();
-            updateTurnUI();
+
         }
 
         function renderEnemyFleetPanel() {
@@ -1476,21 +1515,73 @@
         }
 
         function onEnemyBoardClick(e) {
-            if (!myTurn) return;
+            if (!myTurn || inputLocked) return;
             const rect = document.getElementById('enemy-board').getBoundingClientRect();
             const bx = Math.floor((e.clientX - rect.left) / tileSize);
             const by = Math.floor((e.clientY - rect.top) / tileSize);
 
             if (bx < 0 || by < 0 || bx >= gridSize || by >= gridSize) return;
 
-            // Check if already shot (simple check via marker existence)
-            // But ideally keep a record. For now let's send shot.
+            // Check if already shot
             if (document.querySelector(`#enemy-markers .marker[data-x="${bx}"][data-y="${by}"]`)) return;
 
+            sendShot(bx, by);
+        }
+
+        function sendShot(bx, by) {
+            stopTurnTimer();
             // Optimistic marker
             conn.send({ type: 'SHOT', x: bx, y: by });
-            myTurn = false;
+            inputLocked = true; // Prevents spam while waiting for result
             updateTurnUI();
+        }
+
+        function startTurnTimer() {
+            stopTurnTimer();
+            timeLeft = 30;
+            const timerEl = document.getElementById('turn-timer');
+            timerEl.style.display = 'inline-block';
+            timerEl.innerText = timeLeft + 's';
+            timerEl.style.color = '#ffffff';
+            timerEl.style.transform = 'scale(1)';
+
+            turnTimerInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.innerText = timeLeft + 's';
+                if (timeLeft <= 5) {
+                    timerEl.style.color = '#ef4444';
+                    timerEl.style.transform = 'scale(1.3)';
+                } else {
+                    timerEl.style.transform = 'scale(1)';
+                }
+
+                if (timeLeft <= 0) {
+                    stopTurnTimer();
+                    autoFire();
+                }
+            }, 1000);
+        }
+
+        function stopTurnTimer() {
+            if (turnTimerInterval) clearInterval(turnTimerInterval);
+            document.getElementById('turn-timer').style.display = 'none';
+        }
+
+        function autoFire() {
+            if (!myTurn || inputLocked) return;
+            // Find valid random spot
+            let valid = false;
+            let rx, ry;
+            let attempts = 0;
+            while (!valid && attempts < 200) {
+                rx = Math.floor(Math.random() * gridSize);
+                ry = Math.floor(Math.random() * gridSize);
+                if (!document.querySelector(`#enemy-markers .marker[data-x="${rx}"][data-y="${ry}"]`)) {
+                    valid = true;
+                }
+                attempts++;
+            }
+            if (valid) sendShot(rx, ry);
         }
 
         function handleReceiveShot(x, y) {
@@ -1548,16 +1639,24 @@
                 return s.hits && s.hits.size === total;
             });
 
+
             if (allSunk) {
                 setTimeout(() => endGame(false), 1000);
             } else {
                 // Logic Change: If HIT, opponent continues. If MISS, my turn.
                 if (!hit) {
-                    myTurn = true;
+                    // Enemy Missed. I gain turn.
+                    // Wait 2.5s to show result, then activate my turn.
+                    setTimeout(() => {
+                        myTurn = true;
+                        inputLocked = false;
+                        updateTurnUI();
+                    }, 1500);
                 } else {
+                    // Enemy Hit. They keep turn. I stay defending.
                     myTurn = false;
+                    updateTurnUI();
                 }
-                updateTurnUI();
             }
         }
 
@@ -1596,11 +1695,24 @@
                 setTimeout(() => endGame(true), 1000);
             } else {
                 if (hit) {
+                    // HIT: Keep Turn.
+                    // Delay unlocking input to show explosion (2.5s requested)
+                    inputLocked = true;
                     myTurn = true;
+                    updateTurnUI(); // Show "My Turn"
+                    setTimeout(() => {
+                        inputLocked = false;
+                    }, 1500);
                 } else {
+                    // MISS: Lose Turn.
+                    inputLocked = true; // Lock
                     myTurn = false;
+                    // Wait 2.5s then Swap
+                    setTimeout(() => {
+                        updateTurnUI(); // Will swap to Defending
+                        inputLocked = false;
+                    }, 1500);
                 }
-                updateTurnUI();
             }
         }
 
@@ -1686,14 +1798,33 @@
 
 
         function updateTurnUI() {
+            const layout = document.querySelector('.game-layout');
+            const currentlyDefending = layout ? layout.classList.contains('defending') : false;
+            const willDefend = !myTurn;
+
+            // Badges
             if (myTurn) {
                 document.getElementById('turn-badge').style.display = 'inline-block';
                 document.getElementById('wait-badge').style.display = 'none';
+                if (!inputLocked) startTurnTimer(); // Start timer
+                else stopTurnTimer(); // Hide if locked (waiting animation)
             } else {
                 document.getElementById('turn-badge').style.display = 'none';
                 document.getElementById('wait-badge').style.display = 'inline-block';
+                stopTurnTimer();
+            }
+
+            // Animate Swap ONLY if state changes
+            if (layout && currentlyDefending !== willDefend) {
+                layout.classList.add('anim-swap');
+                setTimeout(() => {
+                    if (willDefend) layout.classList.add('defending');
+                    else layout.classList.remove('defending');
+                    layout.classList.remove('anim-swap');
+                }, 300);
             }
         }
+
 
     </script>
 </body>
