@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinturillo Arcade</title>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style>
+        /* --- ESTILOS GENERALES (TEMA PINTURILLO) --- */
+        :root {
+            --bg-body: #1a1a2e;
+            --bg-panel: #16213e;
+            --primary: #0f3460;
+            --accent: #e94560;
+            --text-light: #f1f1f1;
+            --canvas-bg: #ffffff;
+            --chat-bg: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-body);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            margin: 0;
+        }
+
+        /* --- PANTALLAS --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-body);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- BOTONES E INPUTS --- */
+        .btn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 4px 0 #c0392b;
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        .btn.secondary {
+            background: #555;
+            box-shadow: 0 4px 0 #333;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid #555;
+            font-size: 1rem;
+            text-align: center;
+            margin: 10px;
+        }
+
+        /* --- LOBBY --- */
+        #lobby-player-list {
+            background: var(--bg-panel);
+            width: 300px;
+            min-height: 200px;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 20px;
+        }
+
+        .lobby-item {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* --- GAME LAYOUT --- */
+        #game-container {
+            display: flex;
+            width: 95%;
+            height: 90vh;
+            max-width: 1200px;
+            background: var(--bg-panel);
+            margin-top: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* IZQUIERDA: LISTA JUGADORES */
+        #player-panel {
+            width: 200px;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+        }
+
+        .p-card {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            background: #222;
+        }
+
+        .p-card.drawing {
+            background: #2c3e50;
+            border-left: 4px solid var(--accent);
+        }
+
+        .p-card.correct {
+            background: #27ae60;
+        }
+
+        /* CENTRO: LIENZO */
+        #canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ccc;
+            position: relative;
+        }
+
+        #top-bar {
+            height: 60px;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        #word-display {
+            font-size: 1.5rem;
+            letter-spacing: 5px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 5px 15px;
+            border-radius: 5px;
+        }
+
+        #main-canvas {
+            background: var(--canvas-bg);
+            cursor: crosshair;
+            align-self: center;
+            margin: auto;
+            border: 2px solid #000;
+        }
+
+        #tools-panel {
+            min-height: 80px;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 5px 15px;
+            flex-wrap: wrap;
+            /* Allow wrapping */
+        }
+
+        .tools-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .color-btn {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+            transition: transform 0.1s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.2);
+            z-index: 2;
+        }
+
+        .color-btn.active {
+            border: 2px solid #333;
+            transform: scale(1.1);
+        }
+
+        .tool-btn {
+            background: #fff;
+            border: 1px solid #999;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 4px;
+            color: #333;
+            font-size: 1.2rem;
+            transition: background 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #eee;
+        }
+
+        .tool-btn.active {
+            background: #0f3460;
+            color: white;
+            border-color: #0f3460;
+        }
+
+        /* DERECHA: CHAT */
+        #chat-panel {
+            width: 300px;
+            background: #f1f1f1;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #999;
+        }
+
+        #chat-log {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            color: #333;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .chat-msg {
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: white;
+            width: fit-content;
+            max-width: 90%;
+        }
+
+        .chat-msg b {
+            color: #0f3460;
+        }
+
+        .chat-msg.system {
+            background: #e9e9e9;
+            color: #666;
+            font-style: italic;
+            align-self: center;
+            width: 100%;
+            text-align: center;
+        }
+
+        .chat-msg.correct {
+            background: #a8e6cf;
+            color: #1b5e20;
+            border: 1px solid #1b5e20;
+        }
+
+        #chat-input-area {
+            padding: 10px;
+            background: #ddd;
+            display: flex;
+        }
+
+        #chat-input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #999;
+            border-radius: 4px;
+        }
+
+        /* OVERLAYS */
+        #overlay-word-select {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .word-option {
+            background: white;
+            color: #333;
+            font-size: 1.5rem;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .word-option:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* --- RESPONSIVE / MOBILE --- */
+        .canvas-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            width: 100%;
+            aspect-ratio: 4/3;
+            max-height: 80vh;
+            margin: 0 auto;
+        }
+
+        #main-canvas,
+        #temp-canvas,
+        #input-layer {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                height: 100%;
+                overflow: auto;
+                /* Allow scroll if needed on very small screens */
+            }
+
+            #game-container {
+                flex-direction: column;
+                width: 100%;
+                height: 100vh;
+                /* Full viewport height */
+                margin: 0;
+                border-radius: 0;
+            }
+
+            /* Player Panel: Top Horizontal Scroll */
+            #player-panel {
+                width: 100%;
+                height: auto;
+                min-height: 70px;
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                border-right: none;
+                border-bottom: 1px solid #333;
+                white-space: nowrap;
+                background: #111;
+            }
+
+            .p-card {
+                width: 110px;
+                min-width: 110px;
+                flex-direction: column;
+                justify-content: center;
+                border-bottom: none;
+                border-right: 1px solid #333;
+                padding: 5px;
+                font-size: 0.8rem;
+            }
+
+            /* Top Bar Compact */
+            #top-bar {
+                height: auto;
+                min-height: 50px;
+                padding: 10px;
+                flex-wrap: wrap;
+                /* Allow wrapping if needed */
+            }
+
+            #top-bar>div {
+                gap: 10px !important;
+            }
+
+            #timer {
+                font-size: 1.2rem !important;
+            }
+
+            #game-room-code {
+                font-size: 1rem !important;
+            }
+
+            #word-display {
+                font-size: 1.2rem !important;
+                margin: 5px 0;
+                order: 3;
+                /* Move word to bottom of topbar if wrapped? No, keep center */
+                width: 100%;
+                /* If wrapped, take full line */
+                text-align: center;
+            }
+
+            /* Re-order top bar items for mobile using order if needed, but flex-wrap might suffice */
+            /* Better Top Bar for Mobile: 
+               Row 1: Room | Time | Round 
+               Row 2: Word 
+            */
+            #top-bar {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                grid-template-areas:
+                    "left right round"
+                    "word word word";
+                gap: 5px;
+            }
+
+            #top-bar>div:nth-child(1) {
+                grid-area: left;
+                text-align: left !important;
+                justify-content: flex-start !important;
+            }
+
+            /* Room/Time Container */
+            #top-bar>div:nth-child(2) {
+                grid-area: word;
+            }
+
+            /* Word */
+            #top-bar>div:nth-child(3) {
+                grid-area: round;
+            }
+
+            /* Round */
+
+            /* Actually the HTML structure of top-bar is:
+               Div 1 (Flex: Room + Time)
+               Div 2 (Word)
+               Div 3 (Round)
+            */
+
+            /* Canvas: Full Width, Aspect Ratio Maintained */
+            .canvas-wrapper {
+                width: 100%;
+                aspect-ratio: 4/3;
+                flex: none;
+                /* Do not stretch vertically, enforce ratio */
+                background: #ccc;
+            }
+
+            #main-canvas,
+            #temp-canvas,
+            #input-layer {
+                width: 100% !important;
+                height: 100% !important;
+            }
+
+            /* Tools: Compact */
+            #tools-panel {
+                padding: 5px;
+                gap: 5px;
+                min-height: 60px;
+            }
+
+            .color-btn {
+                width: 25px;
+                height: 25px;
+            }
+
+            .tool-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+            }
+
+            /* Chat: Bottom Fixed height */
+            #chat-panel {
+                width: 100%;
+                flex: 1;
+                /* Take remaining space */
+                min-height: 150px;
+                border-left: none;
+                border-top: 2px solid #333;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SCREEN 1: MENU -->
+    <div id="screen-menu" class="screen">
+        <h1 style="font-size: 4rem; margin-bottom: 0px; color:white; text-shadow: 4px 4px 0px var(--accent);">PINTURILLO
+        </h1>
+        <h2 style="color: #aaa; margin-bottom: 30px;">ARCADE EDITION</h2>
+
+        <input type="text" id="my-name" placeholder="TU NOMBRE (Ej: Omar)" maxlength="10">
+
+        <div style="display:flex;">
+            <button class="btn" onclick="tryCreateRoom()">CREAR SALA</button>
+            <button class="btn secondary" onclick="showJoin()">UNIRSE</button>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: JOIN -->
+    <div id="screen-join" class="screen hidden">
+        <h2>UNIRSE A SALA</h2>
+        <input type="text" id="room-code-input" placeholder="CÓDIGO SALA" maxlength="4"
+            style="text-transform:uppercase;">
+        <button class="btn" onclick="tryJoinRoom()">ENTRAR</button>
+        <button class="btn secondary" onclick="showMenu()">ATRÁS</button>
+    </div>
+
+    <!-- SCREEN 3: LOBBY -->
+    <div id="screen-lobby" class="screen hidden">
+        <h2>SALA DE ESPERA</h2>
+        <h1 id="lobby-code-display" style="font-size:3rem; color:var(--accent); letter-spacing:5px;">----</h1>
+
+        <div id="lobby-player-list">
+            <!-- JS inserts players here -->
+        </div>
+
+        <div id="host-controls" class="hidden">
+            <div style="margin-bottom:10px;">
+                <label style="color:#aaa;">RONDAS:</label>
+                <select id="rounds-select"
+                    style="padding:5px; border-radius:5px; background:#333; color:white; border:1px solid #555;">
+                    <option value="1">1 Ronda</option>
+                    <option value="2">2 Rondas</option>
+                    <option value="3" selected>3 Rondas</option>
+                    <option value="4">4 Rondas</option>
+                    <option value="5">5 Rondas</option>
+                </select>
+            </div>
+            <button class="btn" onclick="hostStartGame()">COMENZAR PARTIDA</button>
+        </div>
+        <p id="waiting-host-msg" style="color:#aaa;">Esperando a que el anfitrión inicie...</p>
+    </div>
+
+    <!-- SCREEN 4: GAME -->
+    <div id="screen-game" class="screen hidden">
+        <div id="game-container">
+
+            <div id="player-panel">
+                <!-- Players rendered here -->
+            </div>
+
+            <div id="canvas-area">
+                <div id="top-bar">
+                    <div style="display:flex; gap:20px; text-align:center;">
+                        <div>
+                            <span style="font-size:0.8rem; color:#aaa;">SALA</span><br>
+                            <span id="game-room-code"
+                                style="font-size:1.2rem; font-weight:bold; color:var(--accent); user-select:text;">----</span>
+                        </div>
+                        <div>
+                            <span style="font-size:0.8rem; color:#aaa;">TIEMPO</span><br>
+                            <span id="timer" style="font-size:1.5rem; font-weight:bold;">60</span>
+                        </div>
+                    </div>
+
+                    <div id="word-display">_ _ _ _</div>
+
+                    <div style="text-align:right;">
+                        <span style="font-size:0.8rem; color:#aaa;">RONDA</span><br>
+                        <span id="round-info">1/3</span>
+                    </div>
+                </div>
+
+                <div class="canvas-wrapper">
+                    <canvas id="main-canvas" width="800" height="600" style="position:absolute; z-index:1;"></canvas>
+                    <canvas id="temp-canvas" width="800" height="600"
+                        style="position:absolute; z-index:2; pointer-events:none;"></canvas>
+                    <div id="input-layer" style="position:absolute; z-index:10; cursor:crosshair;"></div>
+
+                    <!-- WORD SELECT OVERLAY -->
+                    <div id="overlay-word-select" class="hidden">
+                        <h2 style="color:white; margin-bottom:20px;">ELIGE UNA PALABRA</h2>
+                        <div id="word-options-container"></div>
+                    </div>
+                </div>
+
+                <div id="tools-panel" class="hidden">
+                    <!-- Color Palette -->
+                    <div class="tools-group">
+                        <div class="color-btn" style="background:black;" onclick="setTool('brush', '#000000', this)">
+                        </div>
+                        <div class="color-btn" style="background:#555;" onclick="setTool('brush', '#555555', this)">
+                        </div>
+                        <div class="color-btn" style="background:#aaa;" onclick="setTool('brush', '#aaaaaa', this)">
+                        </div>
+                        <div class="color-btn" style="background:white;" onclick="setTool('brush', '#ffffff', this)">
+                        </div> <!-- White Brush (not eraser) -->
+
+                        <div class="color-btn" style="background:red;" onclick="setTool('brush', '#ff0000', this)">
+                        </div>
+                        <div class="color-btn" style="background:orange;" onclick="setTool('brush', '#ffa500', this)">
+                        </div>
+                        <div class="color-btn" style="background:yellow;" onclick="setTool('brush', '#ffff00', this)">
+                        </div>
+                        <div class="color-btn" style="background:lime;" onclick="setTool('brush', '#00ff00', this)">
+                        </div>
+                        <div class="color-btn" style="background:green;" onclick="setTool('brush', '#008000', this)">
+                        </div>
+
+                        <div class="color-btn" style="background:cyan;" onclick="setTool('brush', '#00ffff', this)">
+                        </div>
+                        <div class="color-btn" style="background:blue;" onclick="setTool('brush', '#0000ff', this)">
+                        </div>
+                        <div class="color-btn" style="background:purple;" onclick="setTool('brush', '#800080', this)">
+                        </div>
+                        <div class="color-btn" style="background:pink;" onclick="setTool('brush', '#ffc0cb', this)">
+                        </div>
+                        <div class="color-btn" style="background:brown;" onclick="setTool('brush', '#a52a2a', this)">
+                        </div>
+                    </div>
+
+                    <!-- Shapes & Eraser -->
+                    <div class="tools-group">
+                        <div class="tool-btn" onclick="setTool('rect', currentColor, this)" title="Rectángulo">⬛</div>
+                        <div class="tool-btn" onclick="setTool('circle', currentColor, this)" title="Círculo">⬤</div>
+                        <div class="tool-btn" onclick="setTool('triangle', currentColor, this)" title="Triángulo">▲
+                        </div>
+                        <div class="tool-btn" onclick="setTool('eraser', '#ffffff', this)" title="Borrador">🧼</div>
+                    </div>
+
+                    <div class="tool-btn" style="font-size:0.8rem; width:auto; padding:0 10px;"
+                        onclick="clearCanvasAction()">BORRAR TODO</div>
+                </div>
+            </div>
+
+            <div id="chat-panel">
+                <div id="chat-log"></div>
+                <div id="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Escribe aquí..." maxlength="30">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SCREEN 5: RESULTS -->
+    <div id="screen-results" class="screen hidden" style="background: rgba(0,0,0,0.95);">
+        <canvas id="confetti-canvas"
+            style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
+
+        <h2 style="color:#aaa; letter-spacing: 5px;">GANADOR</h2>
+        <h1 id="winner-name" style="font-size: 5rem; color: #f1c40f; text-shadow: 0 0 20px #f1c40f; margin: 10px 0;">
+            PLAYER</h1>
+        <h3 id="winner-score" style="color:white; margin-bottom:40px;">0 Puntos</h3>
+
+        <div id="leaderboard"
+            style="background:#222; padding:20px; border-radius:10px; width:400px; max-height:40vh; overflow-y:auto;">
+            <!-- JS inserts rows -->
+        </div>
+
+        <div id="results-host-controls" class="hidden" style="margin-top:30px; z-index:100;">
+            <button class="btn" onclick="returnToLobby()">VOLVER AL LOBBY</button>
+        </div>
+        <p id="results-waiting-msg" style="margin-top:20px; color:#666;">Esperando al anfitrión...</p>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        // --- CONSTANTES ---
+        const WORDS_DB = [
+            // Originales (40)
+            "CASA", "PERRO", "GATO", "AUTO", "AVION", "SOL", "LUNA", "ARBOL", "FLOR", "MONTAÑA",
+            "RIO", "MAR", "PEZ", "PAJARO", "MANZANA", "BANANA", "UVA", "PIZZA", "HAMBURGUESA", "HELADO",
+            "FUTBOL", "BASQUET", "TENIS", "GUITARRA", "PIANO", "LIBRO", "LAPIZ", "SILLA", "MESA", "CAMA",
+            "RELOJ", "GAFAS", "SOMBRERO", "ZAPATO", "CAMISA", "PANTALON", "VESTIDO", "ANILLO", "COLLAR", "CORAZON",
+
+            // Animales
+            "CABALLO", "VACA", "CERDO", "OVEJA", "LEON", "TIGRE", "ELEFANTE", "JIRAFA", "MONO", "RATON",
+            "CONEJO", "TORTUGA", "SERPIENTE", "DELFIN", "BALLENA", "TIBURON", "OSO", "PINGUINO", "GALLINA", "PATO",
+
+            // Objetos cotidianos
+            "TELEFONO", "COMPUTADOR", "TELEVISION", "MOCHILA", "BOTELLA", "TAZA", "PLATO", "CUCHARA", "TENEDOR", "CUCHILLO",
+            "LLAVE", "PUERTA", "VENTANA", "ESPEJO", "CEPILLO", "JABON", "TOALLA", "BOLSO", "PARAGUAS", "LINTERN A",
+
+            // Comida y bebida
+            "PAN", "QUESO", "HUEVO", "LECHE", "PASTA", "ARROZ", "SOPA", "ENSALADA", "PASTEL", "GALLETAS",
+            "CHOCOLATE", "CARAMELO", "CAFÉ", "TE", "JUGO",
+
+            // Naturaleza y clima
+            "NUBE", "LLUVIA", "NIEVE", "VIENTO", "RAYO", "TRUENO", "FUEGO", "HOJA", "SEMILLA", "PLAYA",
+
+            // Misceláneos fáciles de dibujar
+            "BICICLETA", "MOTO", "CAMION", "BARCO", "TREN",
+            "PELOTA", "COMETA", "GLOBO", "REGALO", "ESTRELLA"
+        ];
+
+
+        // --- ESTADO LOCAL ---
+        let myName = "Invitado";
+        let myId = null;
+        let isHost = false;
+        let currentDrawerId = null;
+        let amIDrawing = false;
+
+        // --- PEERJS ---
+        let peer;
+        let hostConn; // Cliente: Conexion al host
+        let clientConns = {}; // Host: Mapa de conexiones {peerId: conn}
+        let players = []; // {id, name, score, correct}
+
+        // --- CANVAS ---
+        const canvas = document.getElementById('main-canvas');
+        const tempCanvas = document.getElementById('temp-canvas');
+        const inputLayer = document.getElementById('input-layer');
+        const ctx = canvas.getContext('2d');
+        const tempCtx = tempCanvas.getContext('2d');
+
+        // Tool State
+        let isDrawing = false;
+        let startX = 0, startY = 0;
+        let lastX = 0, lastY = 0;
+
+        let currentTool = 'brush'; // brush, eraser, rect, circle, triangle
+        let currentColor = '#000000';
+        let currentWidth = 4;
+
+        // --- GAME LOGIC (HOST) ---
+        let gameState = {
+            round: 1,
+            maxRounds: 3,
+            state: 'LOBBY',
+            currentWord: '',
+            drawerIndex: 0,
+            timer: 0
+        };
+        let turnInterval;
+        // ==========================================
+        // NAVEGACION
+        // ==========================================
+        function show(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+        function showMenu() { show('screen-menu'); }
+        function showJoin() { show('screen-join'); }
+
+        // ==========================================
+        // CONEXIÓN (STAR TOPOLOGY)
+        // ==========================================
+
+        function tryCreateRoom() {
+            myName = document.getElementById('my-name').value.trim() || "Host";
+            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+            peer = new Peer(shortId);
+
+            peer.on('open', (id) => {
+                isHost = true;
+                myId = id;
+                players = [{ id: id, name: myName, score: 0, correct: false }];
+
+                show('screen-lobby');
+                document.getElementById('lobby-code-display').innerText = id;
+                document.getElementById('game-room-code').innerText = id; // Set for game screen too
+                document.getElementById('host-controls').classList.remove('hidden');
+                document.getElementById('waiting-host-msg').classList.add('hidden');
+                updateLobbyUI();
+            });
+
+            peer.on('connection', (c) => handleHostConnection(c));
+            peer.on('error', (e) => alert("Error P2P: " + e));
+        }
+
+        function tryJoinRoom() {
+            myName = document.getElementById('my-name').value.trim() || "Jugador";
+            const code = document.getElementById('room-code-input').value.toUpperCase();
+            if (!code) return;
+
+            peer = new Peer(); // ID Auto
+            peer.on('open', (id) => {
+                myId = id;
+                hostConn = peer.connect(code);
+                setupClientConnection(hostConn);
+                show('screen-lobby');
+                document.getElementById('lobby-code-display').innerText = code;
+                document.getElementById('game-room-code').innerText = code; // Set for game screen too
+            });
+            peer.on('error', (e) => alert("Error uniendo: " + e));
+        }
+
+        // --- HOST SIDE ---
+        function handleHostConnection(conn) {
+            conn.on('open', () => {
+                clientConns[conn.peer] = conn;
+                conn.on('data', (data) => handleHostData(conn.peer, data));
+                conn.on('close', () => {
+                    players = players.filter(p => p.id !== conn.peer);
+                    delete clientConns[conn.peer];
+                    broadcast({ type: 'PLAYERS_UPDATE', list: players });
+                    addChatMessage(null, "Un jugador se ha desconectado", "system");
+                });
+            });
+        }
+
+        function handleHostData(peerId, data) {
+            switch (data.type) {
+                case 'LOGIN':
+                    const newPlayer = { id: peerId, name: data.name, score: 0, correct: false };
+                    players.push(newPlayer);
+                    broadcast({ type: 'PLAYERS_UPDATE', list: players });
+                    break;
+                case 'DRAW_Op':
+                    // Re-broadcast generic draw operation
+                    broadcastExcluding(peerId, { type: 'DRAW_Op', op: data.op });
+                    break;
+                case 'CLEAR_CANVAS':
+                    broadcastExcluding(peerId, { type: 'CLEAR_CANVAS' });
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    break;
+                case 'CHAT_MSG':
+                    processChat(peerId, data.text);
+                    break;
+                case 'WORD_SELECTED':
+                    if (peerId === players[gameState.drawerIndex].id) {
+                        startGameTurn(data.word);
+                    }
+                    break;
+            }
+        }
+
+        function broadcast(msg) {
+            Object.values(clientConns).forEach(c => c.send(msg));
+            if (isHost) handleClientData(msg);
+        }
+
+        function broadcastExcluding(excludeId, msg) {
+            Object.values(clientConns).forEach(c => {
+                if (c.peer !== excludeId) c.send(msg);
+            });
+            if (isHost && myId !== excludeId) handleClientData(msg);
+        }
+
+        // --- CLIENT SIDE ---
+        function setupClientConnection(conn) {
+            conn.on('open', () => {
+                conn.send({ type: 'LOGIN', name: myName });
+            });
+            conn.on('data', (data) => handleClientData(data));
+            conn.on('close', () => alert("Host desconectado"));
+        }
+
+        function handleClientData(data) {
+            switch (data.type) {
+                case 'PLAYERS_UPDATE':
+                    players = data.list;
+                    updateLobbyUI();
+                    updateGamePlayerList();
+                    break;
+                case 'GAME_START':
+                    if (data.maxRounds) gameState.maxRounds = data.maxRounds;
+                    // Reset Game State Clean
+                    document.getElementById('chat-log').innerHTML = '';
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                    show('screen-game');
+                    resizeCanvas();
+                    break;
+                case 'GAME_OVER':
+                    show('screen-results');
+                    const standings = data.standings.sort((a, b) => b.score - a.score);
+                    const winner = standings[0];
+
+                    document.getElementById('winner-name').innerText = winner.name;
+                    document.getElementById('winner-score').innerText = winner.score + ' PTS';
+
+                    const lb = document.getElementById('leaderboard');
+                    lb.innerHTML = standings.map((p, i) => `
+    <div
+        style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #444; ${p.id === myId ? 'background:#333;' : ''}">
+        <span style="color:${i === 0 ? '#f1c40f' : (i === 1 ? '#bdc3c7' : (i === 2 ? '#cd7f32' : 'white'))}; font-weight:bold;">
+            #${i + 1} ${p.name}
+        </span>
+        <span>${p.score} pts</span>
+    </div>
+    `).join('');
+
+                    if (isHost) {
+                        document.getElementById('results-host-controls').classList.remove('hidden');
+                        document.getElementById('results-waiting-msg').classList.add('hidden');
+                    } else {
+                        document.getElementById('results-host-controls').classList.add('hidden');
+                        document.getElementById('results-waiting-msg').classList.remove('hidden');
+                    }
+
+                    // Confetti only for winner? Or for everyone? Let's do everyone for celebration.
+                    startConfetti();
+                    if (winner.id === myId) {
+                        // Extra fancy?
+                    }
+                    break;
+                case 'LOBBY_RETURN':
+                    stopConfetti();
+                    show('screen-lobby');
+                    if (isHost) document.getElementById('host-controls').classList.remove('hidden');
+                    addChatMessage(null, "--- NUEVA PARTIDA ---", "system");
+                    break;
+                case 'TURN_PREP':
+                    amIDrawing = (data.drawerId === myId);
+                    currentDrawerId = data.drawerId;
+                    gameState.round = data.round;
+                    resetRound();
+                    document.getElementById('round-info').innerText = `${gameState.round}/${gameState.maxRounds}`;
+
+                    // Force reset UI
+                    document.getElementById('tools-panel').classList.add('hidden');
+                    document.getElementById('overlay-word-select').classList.add('hidden');
+
+                    if (amIDrawing) {
+                        document.getElementById('tools-panel').classList.remove('hidden');
+                        showWordSelection(data.words);
+                        addChatMessage(null, "¡ES TU TURNO! Elige una palabra.", "system");
+                        // Reset tool to brush by default
+                        setTool('brush', '#000000', document.querySelector('.color-btn'));
+                    } else {
+                        const drawer = players.find(p => p.id === data.drawerId);
+                        addChatMessage(null, `Turno de ${drawer ? drawer.name : '???'}`, "system");
+                    }
+                    break;
+                case 'TURN_START':
+                    document.getElementById('word-display').innerText = data.hint;
+                    startTimer(data.time);
+                    break;
+                case 'DRAW_Op':
+                    executeDrawOp(data.op);
+                    break;
+                case 'CLEAR_CANVAS':
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    break;
+                case 'CHAT_MSG':
+                    addChatMessage(data.sender, data.text, data.style);
+                    break;
+                case 'PLAYER_CORRECT':
+                    playSound('ding');
+                    break;
+                case 'ROUND_END':
+                    document.getElementById('word-display').innerText = data.word; // Reveal
+                    break;
+            }
+        }
+
+        // ==========================================
+        // CORE JUEGO (HOST) -- (Unchanged mostly)
+        // ==========================================
+
+        function hostStartGame() {
+            if (players.length < 2) {
+                alert("Necesitas al menos 2 jugadores.");
+                // return; // Commented for testing
+            }
+
+            // Safety clear
+            clearInterval(turnInterval);
+
+            const rSelect = document.getElementById('rounds-select');
+            gameState.maxRounds = parseInt(rSelect ? rSelect.value : 3);
+
+            // Reset Scores
+            players.forEach(p => { p.score = 0; p.correct = false; });
+            broadcast({ type: 'PLAYERS_UPDATE', list: players });
+
+            broadcast({ type: 'GAME_START', maxRounds: gameState.maxRounds });
+            gameState.state = 'GAME';
+            gameState.round = 1;
+            gameState.drawerIndex = -1; // Next will be 0
+
+            nextTurn();
+        }
+
+        function nextTurn() {
+            gameState.drawerIndex++;
+            if (gameState.drawerIndex >= players.length) {
+                gameState.drawerIndex = 0;
+                gameState.round++;
+                if (gameState.round > gameState.maxRounds) {
+                    broadcast({ type: 'GAME_OVER', standings: players });
+                    return;
+                }
+            }
+            players.forEach(p => p.correct = false);
+            broadcast({ type: 'PLAYERS_UPDATE', list: players });
+            broadcast({ type: 'CLEAR_CANVAS' });
+
+            const options = [];
+            for (let i = 0; i < 3; i++) {
+                options.push(WORDS_DB[Math.floor(Math.random() * WORDS_DB.length)]);
+            }
+
+            const drawerId = players[gameState.drawerIndex].id;
+            broadcast({
+                type: 'TURN_PREP',
+                drawerId: drawerId,
+                words: options,
+                round: gameState.round
+            });
+        }
+
+        function startGameTurn(word) {
+            gameState.currentWord = word;
+            gameState.timer = 60; const hint = word.split('').map(() => '_').join(' ');
+
+            Object.values(clientConns).forEach(c => {
+                if (c.peer === players[gameState.drawerIndex].id) {
+                    c.send({ type: 'TURN_START', hint: word, time: 60 });
+                } else {
+                    c.send({ type: 'TURN_START', hint: hint, time: 60 });
+                }
+            });
+            if (isHost) {
+                if (players[gameState.drawerIndex].id === myId) handleClientData({
+                    type: 'TURN_START', hint: word, time: 60
+                });
+                else handleClientData({ type: 'TURN_START', hint: hint, time: 60 });
+            }
+
+            clearInterval(turnInterval);
+            turnInterval = setInterval(() => {
+                gameState.timer--;
+                if (gameState.timer <= 0) { endTurn(); }
+            }, 1000);
+        } function endTurn() {
+            clearInterval(turnInterval);
+            broadcast({ type: 'ROUND_END', word: gameState.currentWord }); setTimeout(() => { nextTurn(); }, 3000);
+        }
+
+        function processChat(senderId, text) {
+            const p = players.find(x => x.id === senderId);
+            if (!p) return;
+            if (p.correct || senderId === players[gameState.drawerIndex].id) {
+                broadcast({ type: 'CHAT_MSG', sender: p.name, text: text, style: p.correct ? 'correct' : '' });
+                return;
+            }
+            if (text.trim().toUpperCase() === gameState.currentWord) {
+                p.correct = true;
+                const points = Math.floor(10 + (gameState.timer / 60) * 50);
+                p.score += points;
+                const drawer = players[gameState.drawerIndex];
+                drawer.score += Math.floor(points / 4);
+
+                broadcast({ type: 'PLAYERS_UPDATE', list: players });
+                broadcast({ type: 'CHAT_MSG', sender: null, text: `¡${p.name} ha acertado!`, style: 'correct' });
+
+                const guessers = players.filter(pl => pl.id !== drawer.id);
+                if (guessers.every(g => g.correct)) {
+                    endTurn();
+                }
+            } else {
+                broadcast({ type: 'CHAT_MSG', sender: p.name, text: text });
+            }
+        }
+
+
+        // ==========================================
+        // UI LOGIC
+        // ==========================================
+
+        function updateLobbyUI() {
+            const list = document.getElementById('lobby-player-list');
+            list.innerHTML = players.map(p => `
+                <div class="lobby-item"><span>${p.name} ${p.id === myId ? '(Tú)' : ''}</span><span>0 pts</span></div>
+                `).join('');
+        }
+
+        function updateGamePlayerList() {
+            const panel = document.getElementById('player-panel');
+            const sorted = [...players].sort((a, b) => b.score - a.score);
+            panel.innerHTML = sorted.map(p => {
+                let classes = 'p-card';
+                if (p.id === currentDrawerId) classes += ' drawing';
+                if (p.correct) classes += ' correct';
+                return `<div class="${classes}"><span style="font-weight:bold; font-size:1.1rem;">${p.name}</span><span
+                        style="color:#aaa;">Puntos: ${p.score}</span></div>`;
+            }).join('');
+        }
+
+        function showWordSelection(words) {
+            const container = document.getElementById('word-options-container');
+            container.innerHTML = words.map(w => `<div class="word-option" onclick="sendWordChoice('${w}')">${w}
+                </div>`).join('');
+            document.getElementById('overlay-word-select').classList.remove('hidden');
+        }
+
+        function sendWordChoice(word) {
+            if (isHost) startGameTurn(word);
+            else hostConn.send({ type: 'WORD_SELECTED', word: word });
+            document.getElementById('overlay-word-select').classList.add('hidden');
+        }
+
+        function startTimer(seconds) {
+            const el = document.getElementById('timer');
+            let t = seconds;
+            el.innerText = t;
+            const interval = setInterval(() => {
+                t--;
+                el.innerText = t;
+                if (t <= 0) clearInterval(interval);
+            }, 1000);
+        } function resetRound() {
+            ctx.clearRect(0, 0,
+                canvas.width, canvas.height); document.getElementById('chat-log').innerHTML = '';
+            addChatMessage(null, "--- NUEVA RONDA ---", "system");
+        }
+        document.getElementById('chat-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const txt = e.target.value.trim();
+                if (!txt) return;
+                if (isHost) processChat(myId, txt);
+                else hostConn.send({ type: 'CHAT_MSG', text: txt });
+                e.target.value = '';
+            }
+        });
+
+        function addChatMessage(sender, text, style = 'normal') {
+            const div = document.createElement('div');
+            div.className = `chat-msg ${style}`;
+            if (sender) div.innerHTML = `<b>${sender}:</b> ${text}`;
+            else div.innerHTML = text;
+            const log = document.getElementById('chat-log');
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+
+        // ==========================================
+        // CANVAS INTERACTION (CLEANED)
+        // ==========================================
+
+        function resizeCanvas() { }
+
+        function setTool(tool, color, btnElement) {
+            currentTool = tool;
+
+            // Visual Update
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+
+            if (tool === 'eraser') {
+                currentColor = '#ffffff';
+                currentWidth = 20;
+                if (btnElement) btnElement.classList.add('active');
+            } else {
+                if (color) currentColor = color;
+                currentWidth = 4;
+
+                if (btnElement) {
+                    if (btnElement.classList.contains('color-btn')) btnElement.classList.add('active');
+                    else btnElement.classList.add('active');
+                }
+            }
+        }
+
+        function getPos(e) {
+            const rect = inputLayer.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        // UNIFIED EVENT HANDLERS
+        inputLayer.onmousedown = startDraw;
+        inputLayer.ontouchstart = (e) => { e.preventDefault(); startDraw(e); };
+
+        inputLayer.onmousemove = moveDraw;
+        inputLayer.ontouchmove = (e) => { e.preventDefault(); moveDraw(e); };
+
+        inputLayer.onmouseup = endDraw;
+        inputLayer.onmouseleave = endDraw;
+        inputLayer.ontouchend = endDraw;
+
+        function startDraw(e) {
+            if (!amIDrawing) return;
+            isDrawing = true;
+            const pos = getPos(e);
+            startX = pos.x; startY = pos.y;
+            lastX = pos.x; lastY = pos.y;
+        }
+
+        function moveDraw(e) {
+            if (!isDrawing || !amIDrawing) return;
+            const pos = getPos(e);
+
+            if (currentTool === 'brush' || currentTool === 'eraser') {
+                const op = {
+                    tool: currentTool,
+                    x0: lastX, y0: lastY, x1: pos.x, y1: pos.y,
+                    color: currentColor, w: currentWidth
+                };
+                executeDrawOp(op);
+                sendDrawOp(op);
+            } else {
+                // Shape Preview
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                drawShape(tempCtx, currentTool, startX, startY, pos.x, pos.y, currentColor);
+            }
+            // Always update last pos
+            lastX = pos.x; lastY = pos.y;
+        }
+
+        function endDraw(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            if (['rect', 'circle', 'triangle'].includes(currentTool)) {
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                // Commit Shape using Start and Last known position
+                const op = {
+                    tool: currentTool, x0: startX, y0: startY, x1: lastX, y1: lastY, color: currentColor,
+                    w: 4
+                };
+                executeDrawOp(op);
+                sendDrawOp(op);
+            }
+        }
+
+        function sendDrawOp(op) {
+            if (isHost) {
+                broadcastExcluding(myId, { type: 'DRAW_Op', op: op });
+            } else {
+                hostConn.send({ type: 'DRAW_Op', op: op });
+            }
+        }
+
+        function executeDrawOp(op) {
+            const c = ctx;
+            c.strokeStyle = op.color;
+            c.fillStyle = op.color;
+            c.lineWidth = op.w;
+            c.lineCap = 'round';
+            c.lineJoin = 'round';
+
+            c.beginPath();
+            if (op.tool === 'brush' || op.tool === 'eraser') {
+                c.moveTo(op.x0, op.y0);
+                c.lineTo(op.x1, op.y1);
+                c.stroke();
+            } else {
+                drawShape(c, op.tool, op.x0, op.y0, op.x1, op.y1, op.color);
+            }
+        }
+
+        function drawShape(c, tool, x0, y0, x1, y1, color) {
+            c.strokeStyle = color;
+            c.fillStyle = color; // Fill or Stroke? "Pinturillo" usually stroke but filled shapes are nice.
+            // Let's do STROKE for now, maybe fill?
+            // Requests said "rect, circle, triangle". Usually filled is better for pixel art, stroke for
+            diagram.
+                // Lets do Stroke with width 4.
+                c.lineWidth = 4;
+            c.beginPath();
+
+            const w = x1 - x0;
+            const h = y1 - y0;
+
+            if (tool === 'rect') {
+                c.rect(x0, y0, w, h);
+                c.stroke();
+            } else if (tool === 'circle') {
+                c.ellipse(x0 + w / 2, y0 + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, 2 * Math.PI);
+                c.stroke();
+            } else if (tool === 'triangle') {
+                c.moveTo(x0 + w / 2, y0); // Top center
+                c.lineTo(x0, y0 + h); // Bottom left
+                c.lineTo(x0 + w, y0 + h); // Bottom right
+                c.closePath();
+                c.stroke();
+            }
+        }
+
+        function clearCanvasAction() {
+            if (!amIDrawing) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (isHost) broadcastExcluding(myId, { type: 'CLEAR_CANVAS' });
+            else hostConn.send({ type: 'CLEAR_CANVAS' });
+        }
+
+        function playSound() { }
+
+        // ==========================================
+        // CONFETTI LOGIC
+        // ==========================================
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        const confCtx = confettiCanvas.getContext('2d');
+        let confettiParticles = [];
+        let confettiAnimation = null;
+
+        function startConfetti() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+            confettiParticles = [];
+
+            const colors = ['#f1c40f', '#e74c3c', '#3498db', '#9b59b6', '#2ecc71', '#ecf0f1'];
+
+            for (let i = 0; i < 300; i++) {
+                confettiParticles.push({
+                    x: Math.random() * confettiCanvas.width, y:
+                        Math.random() * confettiCanvas.height - confettiCanvas.height, vx: Math.random() * 4 - 2, vy:
+                        Math.random() * 5 + 3, color: colors[Math.floor(Math.random() * colors.length)], size:
+                        Math.random() * 8 + 4, angle: Math.random() * 360, spin: Math.random() * 0.2 - 0.1
+                });
+            }
+            if (!confettiAnimation) loopConfetti();
+        } function loopConfetti() {
+            confCtx.clearRect(0, 0,
+                confettiCanvas.width, confettiCanvas.height); confettiParticles.forEach((p, index) => {
+                    p.y += p.vy;
+                    p.x += p.vx;
+                    p.angle += p.spin;
+
+                    confCtx.save();
+                    confCtx.translate(p.x, p.y);
+                    confCtx.rotate(p.angle * Math.PI / 180);
+                    confCtx.fillStyle = p.color;
+                    confCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    confCtx.restore();
+
+                    if (p.y > confettiCanvas.height) {
+                        p.y = -20;
+                        p.x = Math.random() * confettiCanvas.width;
+                    }
+                });
+
+            confettiAnimation = requestAnimationFrame(loopConfetti);
+        }
+
+        function stopConfetti() {
+            if (confettiAnimation) cancelAnimationFrame(confettiAnimation);
+            confettiAnimation = null;
+            confCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        }
+
+        function returnToLobby() {
+            broadcast({ type: 'LOBBY_RETURN' });
+        }
+
+
+
+    </script>
+</body>
+
+</html>
