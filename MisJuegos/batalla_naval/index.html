@@ -452,9 +452,15 @@
             align-items: center;
             font-size: 24px;
             /* Big Emojis */
-            pointer-events: none;
+            pointer-events: none !important;
             z-index: 20;
             text-shadow: 0 0 5px black;
+        }
+
+        #chat-btn,
+        #quick-chat-overlay,
+        .chat-option {
+            pointer-events: auto !important;
         }
 
         .marker.miss::after {
@@ -467,9 +473,11 @@
             content: '💥';
         }
 
-        .marker.sunk-fire::after {
-            content: '🔥';
+        .marker.sunk-fire {
             animation: burn 0.5s infinite alternate;
+            color: #ef4444;
+            /* Force red/orange color if text */
+            text-shadow: 0 0 5px #ef4444, 0 0 10px #fbbf24;
         }
 
         @keyframes burn {
@@ -480,6 +488,84 @@
             to {
                 transform: scale(1.2);
             }
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            60% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes shake {
+            0% {
+                transform: translate(1px, 1px) rotate(0deg);
+            }
+
+            10% {
+                transform: translate(-1px, -2px) rotate(-1deg);
+            }
+
+            20% {
+                transform: translate(-3px, 0px) rotate(1deg);
+            }
+
+            30% {
+                transform: translate(3px, 2px) rotate(0deg);
+            }
+
+            40% {
+                transform: translate(1px, -1px) rotate(1deg);
+            }
+
+            50% {
+                transform: translate(-1px, 2px) rotate(-1deg);
+            }
+
+            60% {
+                transform: translate(-3px, 1px) rotate(0deg);
+            }
+
+            70% {
+                transform: translate(3px, 1px) rotate(-1deg);
+            }
+
+            80% {
+                transform: translate(-1px, -1px) rotate(1deg);
+            }
+
+            90% {
+                transform: translate(1px, 2px) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(1px, -2px) rotate(-1deg);
+            }
+        }
+
+        .shake-element {
+            animation: shake 0.5s;
+            animation-iteration-count: 1;
+        }
+
+
+
+        .marker.hit-anim {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .marker.miss-anim {
+            animation: popIn 0.4s ease forwards;
         }
 
         /* --- CUSTOM SHIP EDITOR --- */
@@ -565,6 +651,87 @@
         .game-layout.anim-swap .board-section {
             opacity: 0;
             transform: scale(0.95);
+        }
+
+        /* --- LAST MOVE HIGHLIGHT --- */
+        .marker.last-move {
+            border: 2px solid #fbbf24;
+            box-shadow: 0 0 15px #fbbf24;
+            z-index: 30;
+        }
+
+        /* --- CHAT UI --- */
+        #chat-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #22c55e;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #quick-chat-overlay {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 200px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .chat-option {
+            background: #0f172a;
+            color: #94a3b8;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-align: center;
+            transition: background 0.2s;
+        }
+
+        .chat-option:hover {
+            background: #334155;
+            color: white;
+        }
+
+        #chat-toast {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #22c55e;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid #22c55e;
+            z-index: 2000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        #chat-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1.1);
         }
     </style>
 </head>
@@ -661,7 +828,7 @@
     <div id="screen-setup" class="screen hidden" style="justify-content: flex-start; padding: 0;">
         <div
             style="width:100%; background:#1e293b; padding:5px 10px; display:flex; justify-content:space-between; align-items:center; z-index:200;">
-            <span style="font-size:1rem; margin-left:7px;">Organiza tu Flota</span>
+            <span style="font-size:1rem; margin-left:7px;">Coloca tus barcos en el mapa</span>
             <div>
                 <button id="btn-rotate" class="btn secondary" disabled onclick="rotateSelected()"
                     style="font-size: 1.1rem; padding: 8px 16px;">🔄 ROTAR</button>
@@ -730,6 +897,24 @@
                 </div>
             </div>
         </div>
+
+        <!-- CHAT ELEMENTS -->
+        <button id="chat-btn" onclick="toggleChat()">💬</button>
+
+        <div id="quick-chat-overlay" class="hidden">
+            <div class="chat-option" onclick="sendChat('¡Buena Jugada! 😎')">¡Buena Jugada! 😎</div>
+            <div class="chat-option" onclick="sendChat('¡Buena Partida! �')">¡Buena Partida! �</div>
+            <div class="chat-option" onclick="sendChat('¡Qué suerte! 🍀')">¡Qué suerte! 🍀</div>
+            <div class="chat-option" onclick="sendChat('¡Jaja! 😂')">¡Jaja! 😂</div>
+            <div class="chat-option" onclick="sendChat('¿Viste esa jugada? 🔥')">¿Viste esa jugada? 🔥</div>
+            <div class="chat-option" onclick="sendChat('¡Mira y aprende! 🎓')">¡Mira y aprende! 🎓</div>
+            <div class="chat-option" onclick="sendChat('¡No la viste venir! 👻')">¡No la viste venir! 👻</div>
+            <div class="chat-option" onclick="sendChat('💀💀💀')">💀💀💀</div>
+        </div>
+
+        <div id="chat-toast">MENSAJE</div>
+
+    </div>
     </div>
 
     <!-- SCREEN: RESULT -->
@@ -1094,9 +1279,11 @@
                     case 'SHOT_RESULT':
                         handleShotResult(data.x, data.y, data.hit, data.sunkId, data.sunkCoords);
                         break;
-                    case 'GAME_OVER':
                         // Handle Remote Game Over?
                         // Or just standard interactions.
+                        break;
+                    case 'CHAT':
+                        showChatMessage(data.msg);
                         break;
                 }
             });
@@ -1210,7 +1397,7 @@
         }
 
         function rotateSelected() {
-            if (!selectedShipRef || selectedShipRef.dataset.location !== 'board') return;
+            if (!selectedShipRef) return;
             const el = selectedShipRef;
 
             // Transpose + Reverse Row (Rotate 90deg)
@@ -1224,16 +1411,23 @@
                 }
             }
 
-            const gx = parseInt(el.dataset.gx);
-            const gy = parseInt(el.dataset.gy);
+            // Logic based on location
+            if (el.dataset.location === 'board') {
+                const gx = parseInt(el.dataset.gx);
+                const gy = parseInt(el.dataset.gy);
 
-            if (validatePlacementMatrix(gx, gy, newM, el.dataset.id)) {
-                el.matrix = newM;
-                updateShipVisual(el, newM, tileSize);
-                placeShipOnBoard(el, gx, gy, newM, el.dataset.id);
+                if (validatePlacementMatrix(gx, gy, newM, el.dataset.id)) {
+                    el.matrix = newM;
+                    updateShipVisual(el, newM, tileSize);
+                    placeShipOnBoard(el, gx, gy, newM, el.dataset.id);
+                } else {
+                    el.classList.add('error');
+                    setTimeout(() => el.classList.remove('error'), 200);
+                }
             } else {
-                el.classList.add('error');
-                setTimeout(() => el.classList.remove('error'), 200);
+                // Inventory Rotation
+                el.matrix = newM;
+                updateShipVisual(el, newM, 30); // 30 is inventory size
             }
         }
 
@@ -1245,7 +1439,7 @@
             if (selectedShipRef) selectedShipRef.classList.remove('selected');
             selectedShipRef = el;
             el.classList.add('selected');
-            document.getElementById('btn-rotate').disabled = (el.dataset.location !== 'board');
+            document.getElementById('btn-rotate').disabled = false; // Always allow rotate
         }
 
         function setupDrag(el) {
@@ -1332,15 +1526,45 @@
                     placeShipOnBoard(dragEl, gx, gy, dragEl.matrix, dragEl.dataset.id);
                     return;
                 }
-            } else if (gx >= 0 && gy >= 0 && gx < gridSize && gy < gridSize) {
-                // It is partial, try to snap if valid
-                if (validatePlacementMatrix(gx, gy, dragEl.matrix, dragEl.dataset.id)) {
-                    placeShipOnBoard(dragEl, gx, gy, dragEl.matrix, dragEl.dataset.id);
-                    return;
-                }
+            }
+
+            // Check Drop on Inventory
+            const inv = document.getElementById('inventory-container');
+            const iRect = inv.getBoundingClientRect();
+            if (rect.right > iRect.left && rect.left < iRect.right &&
+                rect.bottom > iRect.top && rect.top < iRect.bottom) {
+                moveToInventory(dragEl);
+                return;
             }
 
             returnToOrigin();
+        }
+
+        function moveToInventory(el) {
+            // Remove from board logic
+            placedShips = placedShips.filter(s => s.id !== el.dataset.id);
+
+            el.dataset.location = 'inventory';
+            el.style.position = 'relative';
+            el.style.left = '0';
+            el.style.top = '0';
+            el.style.zIndex = '';
+
+            // Restore visual
+            updateShipVisual(el, el.matrix, 30);
+
+            // Check if it needs a wrapper (if coming from board, it has none in DOM tree context)
+            // But dragging removes it from parent.
+            // We should put it in a wrapper to match structure
+            const wrapper = document.createElement('div');
+            wrapper.className = 'inventory-item';
+            wrapper.appendChild(el);
+
+            document.getElementById('inventory-container').appendChild(wrapper);
+
+            selectShip(null, el);
+            checkSetupReady();
+            dragEl = null;
         }
 
         function returnToOrigin() {
@@ -1603,8 +1827,11 @@
             while (!valid && attempts < 200) {
                 rx = Math.floor(Math.random() * gridSize);
                 ry = Math.floor(Math.random() * gridSize);
-                if (!document.querySelector(`#enemy-markers .marker[data-x="${rx}"][data-y="${ry}"]`)) {
-                    valid = true;
+                if (!document.querySelector(`#enemy-markers .marker[data-x="${rx}"][data-y="${rx}"]`)) { // Fix usage to rx, ry logic
+                    // Actually logic below uses rx, ry properly?
+                    // Let's use getElementById logic or just querySelector for specific Coords
+                    // Better selector check:
+                    if (!document.querySelector(`#enemy-markers .marker[data-x="${rx}"][data-y="${ry}"]`)) valid = true;
                 }
                 attempts++;
             }
@@ -1646,9 +1873,16 @@
                 }
             }
 
-            if (hit) enemyStats.hits++;
+            if (hit) {
+                enemyStats.hits++;
+                triggerShake();
+            }
 
-            addMarker('my-markers', x, y, hit);
+            // Highlight Last Move
+            clearLastMoveHighlights('my-markers');
+            const m = addMarker('my-markers', x, y, hit);
+            m.classList.add('last-move');
+
             // If I am Sunk, I should also update my own markers to Fire? 
             // Yes, "My Fleet" view should also show fire.
             if (sunkId && sunkCoords) {
@@ -1688,11 +1922,15 @@
         }
 
         function handleShotResult(x, y, hit, sunkId, sunkCoords) {
-            addMarker('enemy-markers', x, y, hit);
+            clearLastMoveHighlights('enemy-markers');
+            const m = addMarker('enemy-markers', x, y, hit);
+            m.classList.add('last-move');
+
             myStats.shots++;
 
             if (hit) {
                 myStats.hits++;
+                triggerShake(); // Shake on Hit dealt
                 confetti({ particleCount: 30, spread: 20, origin: { y: 0.2 } });
             }
 
@@ -1708,13 +1946,17 @@
 
                 // Update Explosion Markers to FIRE
                 if (sunkCoords) {
+                    // Update Explosion Markers to FIRE
                     updateMarkersToFire('enemy-markers', sunkCoords);
-                }
 
-                confetti({ particleCount: 100, spread: 60 });
-                document.getElementById('game-info').innerText = "¡BARCO HUNDIDO! 🔥";
+                    confetti({ particleCount: 100, spread: 60 });
+                    document.getElementById('game-info').innerText = "¡BARCO HUNDIDO! 🔥";
+                    triggerShake(); // Sunk is a big hit
+                    triggerShake(); // Sunk is a big hit
+                }
             } else {
                 document.getElementById('game-info').innerText = hit ? "¡IMPACTO! 💥" : "Agua 🌊";
+                if (hit) triggerShake();
             }
 
             // CHECK VICTORY
@@ -1789,37 +2031,82 @@
             }
         }
 
+        /* --- CHAT LOGIC --- */
+        function toggleChat() {
+            const el = document.getElementById('quick-chat-overlay');
+            el.classList.toggle('hidden');
+        }
+
+        function sendChat(msg) {
+            if (conn && conn.open) {
+                conn.send({ type: 'CHAT', msg });
+                showChatMessage(msg, true); // Show my own message too? Optional. Let's just feedback
+                toggleChat();
+            }
+        }
+
+        function showChatMessage(msg, isMe = false) {
+            const toast = document.getElementById('chat-toast');
+            toast.innerText = msg;
+            toast.style.borderColor = isMe ? '#fbbf24' : '#22c55e';
+            toast.style.color = isMe ? '#fbbf24' : '#22c55e';
+            toast.classList.add('show');
+
+            // Auto hide
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function clearLastMoveHighlights(layerId) {
+            document.querySelectorAll(`#${layerId} .marker.last-move`).forEach(el => el.classList.remove('last-move'));
+        }
+
         function updateMarkersToFire(layerId, coords) {
             const layer = document.getElementById(layerId);
-            // We need to find markers at these coords.
-            // Since markers don't have IDs easily, we can iterate children or give them data-coord
-            // Let's iterate.
-            const markers = layer.querySelectorAll('.marker.hit');
+            const markers = layer.querySelectorAll('.marker');
             markers.forEach(m => {
                 const mx = parseInt(m.dataset.gx);
                 const my = parseInt(m.dataset.gy);
 
-                // Check if this marker is in the sunkCoords list
                 const isPart = coords.some(c => c.x === mx && c.y === my);
                 if (isPart) {
-                    m.classList.remove('hit');
+                    m.innerText = "🔥";
+                    m.classList.remove('hit-anim');
                     m.classList.add('sunk-fire');
                 }
             });
         }
 
+
+
         function addMarker(layerId, x, y, isHit) {
             const layer = document.getElementById(layerId);
             const m = document.createElement('div');
-            m.className = `marker ${isHit ? 'hit' : 'miss'}`;
+            // Remove old ::after content classes if we want direct emoji control for animation simplicity, 
+            // OR keep them and just allow animation on parent. 
+            // Let's use direct content for simpler control with animations.
+            m.className = 'marker';
+            m.innerText = isHit ? "💥" : "🌊";
+
+            if (isHit) m.classList.add('hit-anim');
+            else m.classList.add('miss-anim');
+
             m.style.left = `${x * tileSize}px`;
             m.style.top = `${y * tileSize}px`;
             m.style.width = `${tileSize}px`;
             m.style.height = `${tileSize}px`;
-            // Add data attributes for later finding
             m.dataset.gx = x;
             m.dataset.gy = y;
             layer.appendChild(m);
+            return m; // Return element for further manip
+        }
+
+        function triggerShake() {
+            const layout = document.querySelector('.game-layout');
+            layout.classList.remove('shake-element');
+            void layout.offsetWidth;
+            layout.classList.add('shake-element');
         }
 
 
