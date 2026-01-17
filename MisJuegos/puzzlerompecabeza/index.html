@@ -141,12 +141,30 @@
             width: 100%;
             height: calc(100vh - 80px);
             overflow: hidden;
+            touch-action: none;
+            cursor: grab;
+            background-color: #f3f4f6;
+        }
+
+        #game-surface:active {
+            cursor: grabbing;
+        }
+
+        #game-world {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            /* Base Center */
+            width: 0;
+            height: 0;
+            overflow: visible;
         }
 
         #board {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 0;
+            left: 0;
             transform: translate(-50%, -50%);
             display: grid;
             background: rgba(255, 255, 255, 0.4);
@@ -157,9 +175,12 @@
             z-index: 10;
         }
 
+        /* #board is redefined above to be compatible with game-world structure */
+        /* Removed orphaned properties */
+
         .slot {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: 1px dashed rgba(0, 0, 0, 0.1);
+            background-color: transparent;
+            border: 1px dashed rgba(0, 0, 0, 0.2);
             box-sizing: border-box;
             position: relative;
             overflow: visible;
@@ -186,7 +207,9 @@
             /* Removed !important to allow rotation */
             z-index: 10;
             cursor: grab;
-            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+            filter: none;
+            /* Seamless join */
+            box-shadow: none;
         }
 
         .piece:active {
@@ -317,6 +340,17 @@
             padding: 2px 6px;
             border-radius: 4px;
         }
+
+        .ref-btn {
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0 4px;
+            user-select: none;
+        }
+
+        .ref-btn:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 
@@ -339,25 +373,38 @@
                 style="display:none; @media(min-width:600px){display:inline}">Subir Img</span></label>
         <input type="file" id="upload" accept="image/*">
         <div class="input-group">
-            <span>Grid:</span>
-            <input type="number" id="rows" value="3" min="2" max="10">
-            <span>x</span>
-            <input type="number" id="cols" value="3" min="2" max="10">
+            <span style="font-weight:600; font-size:0.8rem; margin-right:5px;">Alto:</span>
+            <input type="number" id="rows" value="3" min="2" max="10" title="Filas (Alto)">
+            <span style="margin:0 5px; color:#aaa;">x</span>
+            <span style="font-weight:600; font-size:0.8rem; margin-right:5px;">Ancho:</span>
+            <input type="number" id="cols" value="3" min="2" max="10" title="Columnas (Ancho)">
         </div>
         <button onclick="initGame()">Mezclar y Jugar</button>
         <button class="secondary" onclick="resetGame()">Reiniciar Juego</button>
+        <button class="secondary" onclick="resetCamera()" title="Restablecer Vista (Zoom 100% + Centro)">🔍 Reset
+            Vista</button>
         <button class="secondary" onclick="toggleReference()" id="btn-ref" style="display:none">Ver Referencia</button>
-        <div style="font-size:0.8rem; font-weight:bold; color:#555;">⏱️ <span id="timer">0</span>s</div>
+        <div style="font-size:0.8rem; font-weight:bold; color:#555;">⏱️ <span id="timer">00:00</span></div>
         <span class="tip">💡 Doble click para rotar</span>
     </div>
 
     <div id="game-surface">
-        <div id="board"></div>
-        <p id="start-msg" style="margin-top:100px; color:#6b7280;">Sube una imagen para comenzar.</p>
+        <div id="game-world">
+            <div id="board"></div>
+            <p id="start-msg" style="margin-top:100px; color:#6b7280;">Sube una imagen para comenzar.</p>
+        </div>
     </div>
 
     <div id="reference-container">
-        <div class="ref-header"><span>Referencia</span><span class="close-ref" onclick="toggleReference()">✕</span>
+        <div class="ref-header">
+            <div style="display:flex; gap:5px;">
+                <span class="ref-btn" onclick="resizeReference(1)">➕</span>
+                <span class="ref-btn" onclick="resizeReference(-1)">➖</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <span>Referencia</span>
+                <span class="close-ref" onclick="toggleReference()">✕</span>
+            </div>
         </div>
         <img id="ref-image" src="" alt="Reference">
     </div>
@@ -1339,7 +1386,7 @@
                     if (data.stats) {
                         seconds = data.stats.s;
                         moves = data.stats.m;
-                        document.getElementById('timer').innerText = seconds;
+                        document.getElementById('timer').innerText = formatTime(seconds);
                     }
                     senderConn.send({ type: 'ACK_FULL_STATE' });
                     break;
@@ -1354,7 +1401,7 @@
                     // Cliente actualiza sus stats con las del Host
                     seconds = data.s;
                     moves = data.m;
-                    document.getElementById('timer').innerText = seconds;
+                    document.getElementById('timer').innerText = formatTime(seconds);
                     break;
 
                 case 'GAME_CONFIG':
@@ -1413,6 +1460,104 @@
             });
         }
 
+
+        // --- ZOOM & PAN SYSTEM ---
+        const gameWorld = document.getElementById('game-world');
+        let zoomState = { scale: 1, x: 0, y: 0 };
+
+        function updateTransform() {
+            // gameWorld follows zoomState
+            // x, y are visual offsets applied after centering
+            gameWorld.style.transform = `translate(calc(-50% + ${zoomState.x}px), calc(-50% + ${zoomState.y}px)) scale(${zoomState.scale})`;
+        }
+
+        function resetCamera() {
+            zoomState = { scale: 1, x: 0, y: 0 };
+            updateTransform();
+        }
+
+        function setupZoomEvents() {
+            let isPanning = false;
+            let startPanX, startPanY;
+            let lastDist = 0;
+
+            // Wheel Zoom
+            gameSurface.addEventListener('wheel', (e) => {
+                if (e.ctrlKey || e.metaKey || e.deltaY) {
+                    e.preventDefault();
+                    // Reduced sensitivity: 0.9 -> 0.94, 1.1 -> 1.06 (slower)
+                    // Requested 80% sensitivity of prev (10% change) -> ~8% change
+                    // 0.92 and 1.08
+                    const delta = e.deltaY > 0 ? 0.92 : 1.08;
+                    zoomState.scale *= delta;
+                    zoomState.scale = Math.min(Math.max(0.1, zoomState.scale), 10);
+                    updateTransform();
+                }
+            }, { passive: false });
+
+            // Panning
+            gameSurface.addEventListener('pointerdown', (e) => {
+                // Allow panning if clicking on background (game-surface or game-world wrapper)
+                // BUT NOT if clicking a piece or slot.
+                if (e.target.closest('.piece') || e.target.closest('.slot') ||
+                    e.target.closest('#reference-container') || e.target.tagName === 'BUTTON') return;
+
+                isPanning = true;
+                startPanX = e.clientX - zoomState.x;
+                startPanY = e.clientY - zoomState.y;
+                try { gameSurface.setPointerCapture(e.pointerId); } catch (ex) { }
+            });
+
+            gameSurface.addEventListener('pointermove', (e) => {
+                if (!isPanning) return;
+                e.preventDefault();
+                zoomState.x = e.clientX - startPanX;
+                zoomState.y = e.clientY - startPanY;
+                updateTransform();
+            });
+
+            gameSurface.addEventListener('pointerup', (e) => {
+                isPanning = false;
+                try { gameSurface.releasePointerCapture(e.pointerId); } catch (ex) { }
+            });
+
+            gameSurface.addEventListener('pointercancel', (e) => {
+                isPanning = false;
+            });
+
+            // Touch Pinch
+            gameSurface.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    lastDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+            }, { passive: false });
+
+            gameSurface.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const dist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    if (lastDist > 0) {
+                        let delta = dist / lastDist;
+                        // Manual sensitivity dampening for pinch
+                        // NewDelta = 1 + (Raw - 1) * Sensitivity
+                        delta = 1 + (delta - 1) * 0.8;
+
+                        zoomState.scale *= delta;
+                        zoomState.scale = Math.min(Math.max(0.1, zoomState.scale), 10);
+                        updateTransform();
+                    }
+                    lastDist = dist;
+                }
+            }, { passive: false });
+        }
+        setupZoomEvents();
+
         function initGame(remoteConfig = null, initialPieces = null) {
             if (remoteConfig) {
                 console.log("Iniciando juego remoto...");
@@ -1450,7 +1595,7 @@
         function startGameLogic(initialPieces = null) {
             clearInterval(timerInterval);
             seconds = 0; moves = 0;
-            document.getElementById('timer').innerText = "0";
+            document.getElementById('timer').innerText = "00:00";
             document.getElementById('start-msg').style.display = 'none';
             document.getElementById('win-modal').style.display = 'none';
             isPlaying = true;
@@ -1541,16 +1686,17 @@
                 scatterPieces(pieces, pieceSize, pieceSize);
             }
 
-            if (isHost) {
+            // Start Timer if Host OR Single Player (not a client)
+            if (isHost || !myConn) {
                 timerInterval = setInterval(() => {
                     seconds++;
-                    document.getElementById('timer').innerText = seconds;
-                    // Broadcast Stats Periodically
-                    broadcastData({ type: 'SYNC_STATS', s: seconds, m: moves });
+                    document.getElementById('timer').innerText = formatTime(seconds);
+                    // Broadcast Stats Periodically if Host
+                    if (isHost) broadcastData({ type: 'SYNC_STATS', s: seconds, m: moves });
                 }, 1000);
             } else {
-                // Clients wait for SYNC_STATS
-                document.getElementById('timer').innerText = seconds;
+                // Clients wait for SYNC_STATS from Host
+                document.getElementById('timer').innerText = formatTime(seconds);
             }
         }
 
@@ -1585,18 +1731,24 @@
             }
         }
 
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
         function scatterPieces(piecesArray, w, h) {
-            const surfaceRect = gameSurface.getBoundingClientRect();
+            const surfaceRect = gameWorld.getBoundingClientRect(); // Use World Rect for bounds
             // Local Scatter (will be overwritten if Client joins Host)
             piecesArray.forEach(p => {
                 const rot = Math.floor(Math.random() * 4) * 90;
                 setPieceRotation(p, rot);
-                gameSurface.appendChild(p);
+                gameWorld.appendChild(p); // Append to World
 
-                const maxLeft = surfaceRect.width - w;
-                const maxTop = surfaceRect.height - h;
-                const left = 20 + Math.random() * (maxLeft - 40);
-                const top = 20 + Math.random() * (maxTop - 40);
+                // Keep close to center initially
+                // Since world is 0x0 centered, we scatter around -300 to +300
+                const left = (Math.random() - 0.5) * 600;
+                const top = (Math.random() - 0.5) * 600;
 
                 p.style.left = `${left}px`;
                 p.style.top = `${top}px`;
@@ -1608,6 +1760,15 @@
         }
 
         // --- EVENTS & SYNC ---
+
+        function setPieceRotation(piece, deg) {
+            piece.dataset.currentRotation = deg;
+            if (piece.classList.contains('in-slot')) {
+                piece.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+            } else {
+                piece.style.transform = `rotate(${deg}deg)`;
+            }
+        }
 
         function rotatePiece(piece, remoteRot = null) {
             let currentRot;
@@ -1623,14 +1784,7 @@
             checkWinCondition();
         }
 
-        function setPieceRotation(piece, deg) {
-            piece.dataset.currentRotation = deg;
-            if (piece.classList.contains('in-slot')) {
-                piece.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
-            } else {
-                piece.style.transform = `rotate(${deg}deg)`;
-            }
-        }
+        // --- DRAG SYSTEM IMPROVED ---
 
         let draggedPiece = null;
         let dragOffsetX = 0, dragOffsetY = 0;
@@ -1639,56 +1793,128 @@
         let pendingDrag = false;
         let dragSavedState = null;
 
+        function checkWinCondition() {
+            const slots = document.querySelectorAll('.slot');
+            let isFull = true, isCorrect = true;
+            slots.forEach(slot => {
+                const piece = slot.querySelector('.piece');
+                if (!piece) { isFull = false; } else {
+                    const rot = parseInt(piece.dataset.currentRotation || 0);
+                    if (piece.dataset.correctPos !== slot.dataset.pos || rot !== 0) isCorrect = false;
+                }
+            });
+            if (isFull && isCorrect) triggerWin();
+        }
+
         function onPointerDown(e) {
+            // Allow only primary button or touch
             if (e.button !== 0 && e.pointerType === 'mouse') return;
+            e.preventDefault(); // Critical for touch devices to prevent scroll
 
             draggedPiece = e.currentTarget;
-            if (draggedPiece.hasPointerCapture(e.pointerId)) draggedPiece.releasePointerCapture(e.pointerId);
-            draggedPiece.setPointerCapture(e.pointerId);
+            try { draggedPiece.setPointerCapture(e.pointerId); } catch (err) { }
 
             const rect = draggedPiece.getBoundingClientRect();
-            // Robust Center-based calculation to prevent rotation jumps
-            const cX = rect.left + rect.width / 2;
-            const cY = rect.top + rect.height / 2;
-
             dragStartX = e.clientX;
             dragStartY = e.clientY;
 
-            // Offset from Center
+            // Calculate offset based on Center to allow rotation/scaling without jumps
+            const cX = rect.left + rect.width / 2;
+            const cY = rect.top + rect.height / 2;
+
             dragOffsetX = e.clientX - cX;
             dragOffsetY = e.clientY - cY;
-
-            dragSavedState = {
-                left: draggedPiece.style.left,
-                top: draggedPiece.style.top,
-                position: draggedPiece.style.position,
-                zIndex: draggedPiece.style.zIndex,
-                transform: draggedPiece.style.transform
-            };
 
             pendingDrag = true;
             isDragging = false;
 
-            draggedPiece.addEventListener('pointermove', onPieceMove);
-            draggedPiece.addEventListener('pointerup', onPieceUp);
+            // USE GLOBAL LISTENERS (More robust against DOM moves/Capture loss)
+            document.addEventListener('pointermove', onPieceMove, { passive: false });
+            document.addEventListener('pointerup', onPieceUp);
+            document.addEventListener('pointercancel', onPieceUp);
         }
 
-        function startVisualDrag() {
+        function startVisualDrag(pointerX, pointerY) {
             if (!draggedPiece) return;
-            const rect = draggedPiece.getBoundingClientRect();
+
+            // FIX: Keep piece in gameWorld so it inherits Scale.
+            // Using 'position: absolute' inside gameWorld.
+            gameWorld.appendChild(draggedPiece);
 
             draggedPiece.classList.add('dragging');
-            draggedPiece.style.position = 'fixed';
+            draggedPiece.classList.remove('in-slot');
+            draggedPiece.style.position = 'absolute';
             draggedPiece.style.zIndex = 5000;
-
-            // Initialize fixed position based on Center to avoid jumps
-            const cX = rect.left + rect.width / 2;
-            const cY = rect.top + rect.height / 2;
-            draggedPiece.style.left = `${cX - draggedPiece.offsetWidth / 2}px`;
-            draggedPiece.style.top = `${cY - draggedPiece.offsetHeight / 2}px`;
 
             const rot = draggedPiece.dataset.currentRotation || 0;
             draggedPiece.style.transform = `rotate(${rot}deg) scale(1.1)`;
+
+            // Immediate update
+            updatePiecePosition(pointerX, pointerY);
+        }
+
+        function updatePiecePosition(pointerX, pointerY) {
+            if (!draggedPiece) return;
+
+            // Mouse is in Client Coordinates.
+            // gameWorld is Transformed: translate(Center + ZoomX, Center + ZoomY) scale(S)
+            // We need to place piece at Local (Lx, Ly) such that:
+            // ClientPos = WorldOrigin + (Lx * Scale)
+            // => Lx = (ClientPos - WorldOrigin) / Scale
+
+            // 1. Get Visual Origin of gameWorld (Top-Left of the transformed element? No, 0,0 local maps to what client coord?)
+            // The simplest way: Get boundingClientRect of gameWorld. 
+            // The Top/Left of that rect corresponds to the visual position of gameWorld's (0,0) point (since transform-origin is 0 0? No, we used default center? transform-origin defaults to 50% 50% for divs unless set).
+            // Actually, we set transform on gameWorld directly.
+            // Let's rely on getBoundingClientRect() which gives the Visual Rect of the element on screen.
+            // For an element with overflow:visible and width:0/height:0, the rect might be tiny or weird.
+            // Let's use the transform values directly for precision if rect is weird.
+            // BUT, let's try rect first. If gameWorld has children, rect covers children.
+            // Ideally we need the Screen Coordinate of (0,0) Local GameWorld.
+
+            // Alternative: use our known zoomState!
+            // valid if updateTransform() matches perfectly.
+            // VisualCenter X = ScreenWidth/2 + zoomState.x
+            // VisualCenter Y = ScreenHeight/2 + zoomState.y
+            // (Asssuming game-surface is fullscreen-ish and centered).
+            // Let's use gameSurface rect center + offset.
+
+            const surfaceRect = gameSurface.getBoundingClientRect();
+            const worldVisCenterX = surfaceRect.left + surfaceRect.width / 2 + zoomState.x;
+            const worldVisCenterY = surfaceRect.top + surfaceRect.height / 2 + zoomState.y;
+
+            // Target Visual Center of Piece (where we want piece center to be on screen)
+            const targetVisCX = pointerX - dragOffsetX;
+            const targetVisCY = pointerY - dragOffsetY;
+
+            // Offset from World Center (in Screen Pixels)
+            const distVisX = targetVisCX - worldVisCenterX;
+            const distVisY = targetVisCY - worldVisCenterY;
+
+            // Convert to Local Logical Pixels (Unscale)
+            // Since world is centered at 0,0 locally (translate(-50%, -50%)), 
+            // we are calculating offset from that center.
+            const localX = distVisX / zoomState.scale;
+            const localY = distVisY / zoomState.scale;
+
+            // Apply to style (centered)
+            // piece is position:absolute. 
+            // If we set left/top, it places the TOP-LEFT of piece.
+            // We calculated center position. So subtract half-size.
+            draggedPiece.style.left = `${localX - draggedPiece.offsetWidth / 2}px`;
+            draggedPiece.style.top = `${localY - draggedPiece.offsetHeight / 2}px`;
+
+            // Network Sync
+            const now = Date.now();
+            if (now - netThrottle > 50) {
+                sendData({
+                    type: 'MOVE',
+                    id: draggedPiece.dataset.correctPos,
+                    x: localX,
+                    y: localY
+                });
+                netThrottle = now;
+            }
         }
 
         function onPieceMove(e) {
@@ -1696,48 +1922,30 @@
             e.preventDefault();
 
             if (pendingDrag) {
-                // 8px Tolerance
+                // 5px Tolerance for "Click" vs "Drag"
                 const dist = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
-                if (dist > 8) {
+                if (dist > 5) {
                     pendingDrag = false;
                     isDragging = true;
-                    startVisualDrag();
+                    startVisualDrag(e.clientX, e.clientY);
                 } else {
                     return;
                 }
             }
 
             if (isDragging) {
-                // Determine target center based on pointer logic
-                const targetCX = e.clientX - dragOffsetX;
-                const targetCY = e.clientY - dragOffsetY;
-
-                // Convert Center back to CSS Top/Left
-                const cssLeft = targetCX - (draggedPiece.offsetWidth / 2);
-                const cssTop = targetCY - (draggedPiece.offsetHeight / 2);
-
-                draggedPiece.style.left = `${cssLeft}px`;
-                draggedPiece.style.top = `${cssTop}px`;
-
-                // Network Throttle
-                const now = Date.now();
-                if (now - netThrottle > 50) {
-                    sendData({
-                        type: 'MOVE',
-                        id: draggedPiece.dataset.correctPos,
-                        x: cssLeft / window.innerWidth,
-                        y: cssTop / window.innerHeight
-                    });
-                    netThrottle = now;
-                }
+                updatePiecePosition(e.clientX, e.clientY);
             }
         }
 
         function onPieceUp(e) {
             if (!draggedPiece) return;
-            draggedPiece.removeEventListener('pointermove', onPieceMove);
-            draggedPiece.removeEventListener('pointerup', onPieceUp);
-            draggedPiece.releasePointerCapture(e.pointerId);
+
+            document.removeEventListener('pointermove', onPieceMove);
+            document.removeEventListener('pointerup', onPieceUp);
+            document.removeEventListener('pointercancel', onPieceUp);
+
+            try { draggedPiece.releasePointerCapture(e.pointerId); } catch (err) { }
 
             if (pendingDrag) {
                 // Tap -> Rotate
@@ -1749,6 +1957,7 @@
 
             if (isDragging) {
                 draggedPiece.classList.remove('dragging');
+                draggedPiece.style.transform = `rotate(${draggedPiece.dataset.currentRotation}deg)`; // Remove scale
                 finalizeDrop(e.clientX, e.clientY);
             }
 
@@ -1760,24 +1969,29 @@
         function finalizeDrop(x, y) {
             if (!draggedPiece) return;
 
+            // Hide to see what's underneath
             draggedPiece.style.visibility = 'hidden';
             let elemBelow = document.elementFromPoint(x, y);
             draggedPiece.style.visibility = 'visible';
+
             const slot = elemBelow ? elemBelow.closest('.slot') : null;
 
-            // Prepare Data for Sync
+            // Prepare Data
             const pid = draggedPiece.dataset.correctPos;
             const dropData = { type: 'DROP', id: pid, inSlot: false, slotId: null, x: null, y: null };
+            const rot = draggedPiece.dataset.currentRotation;
 
             draggedPiece.style.zIndex = '';
-            const rot = draggedPiece.dataset.currentRotation;
             moves++;
 
             if (slot) {
+                // DROP IN SLOT (Any slot allowed)
                 const existingPiece = slot.querySelector('.piece');
                 if (existingPiece && existingPiece !== draggedPiece) {
-                    movePieceToTable(existingPiece, x + 50, y + 50);
+                    // Kick existing piece out nearby
+                    movePieceToTable(existingPiece, 0, 0);
                 }
+
                 slot.appendChild(draggedPiece);
                 draggedPiece.classList.add('in-slot');
 
@@ -1788,40 +2002,59 @@
                 dropData.inSlot = true;
                 dropData.slotId = slot.dataset.pos;
             } else {
+                // DROP ON TABLE
                 draggedPiece.classList.remove('in-slot');
-                gameSurface.appendChild(draggedPiece);
+                gameWorld.appendChild(draggedPiece);
 
-                // Convert Visual Center to CSS Position relative to Surface
+                // Calculate local position relative to gameWorld center (Offset)
+
+                // Get Visual Center of Piece
                 const rect = draggedPiece.getBoundingClientRect();
-                const sR = gameSurface.getBoundingClientRect();
+                const cX = rect.left + rect.width / 2;
+                const cY = rect.top + rect.height / 2;
 
-                const cX = (rect.left + rect.width / 2) - sR.left;
-                const cY = (rect.top + rect.height / 2) - sR.top;
+                // Get Visual Center of World
+                const surfaceRect = gameSurface.getBoundingClientRect();
+                const worldVisCenterX = surfaceRect.left + surfaceRect.width / 2 + zoomState.x;
+                const worldVisCenterY = surfaceRect.top + surfaceRect.height / 2 + zoomState.y;
 
-                const cssLeft = cX - (draggedPiece.offsetWidth / 2);
-                const cssTop = cY - (draggedPiece.offsetHeight / 2);
+                const distVisX = cX - worldVisCenterX;
+                const distVisY = cY - worldVisCenterY;
 
+                const localX = distVisX / zoomState.scale;
+                const localY = distVisY / zoomState.scale;
+
+                // Apply final style
                 draggedPiece.style.position = 'absolute';
-                draggedPiece.style.left = `${cssLeft}px`;
-                draggedPiece.style.top = `${cssTop}px`;
+                draggedPiece.style.left = `${localX - draggedPiece.offsetWidth / 2}px`;
+                draggedPiece.style.top = `${localY - draggedPiece.offsetHeight / 2}px`;
                 draggedPiece.style.transform = `rotate(${rot}deg)`;
 
-                dropData.x = cssLeft / sR.width;
-                dropData.y = cssTop / sR.height;
+                dropData.x = localX;
+                dropData.y = localY;
             }
 
             sendData(dropData);
             checkWinCondition();
         }
 
+
+
         // --- HELPERS FOR REMOTE ---
 
         function applyMove(data) {
             const p = document.getElementById(`piece-${data.id}`);
             if (p && !p.classList.contains('dragging')) {
-                p.style.left = `${data.x * window.innerWidth}px`;
-                p.style.top = `${data.y * window.innerHeight}px`;
+                // Data X/Y are Local GameWorld Offsets (float pixels)
+                p.style.position = 'absolute';
+                p.style.left = `${data.x - p.offsetWidth / 2}px`;
+                p.style.top = `${data.y - p.offsetHeight / 2}px`;
                 p.style.zIndex = 1000;
+
+                if (p.parentElement !== gameWorld) {
+                    gameWorld.appendChild(p);
+                    p.classList.remove('in-slot');
+                }
             }
         }
 
@@ -1843,12 +2076,13 @@
                     setPieceRotation(p, p.dataset.currentRotation);
                 }
             } else {
-                gameSurface.appendChild(p);
+                gameWorld.appendChild(p);
                 p.classList.remove('in-slot');
-                const surfaceRect = gameSurface.getBoundingClientRect();
                 p.style.position = 'absolute';
-                p.style.left = `${data.x * surfaceRect.width}px`;
-                p.style.top = `${data.y * surfaceRect.height}px`;
+
+                // Data X/Y are Local GameWorld Offsets
+                p.style.left = `${data.x - p.offsetWidth / 2}px`;
+                p.style.top = `${data.y - p.offsetHeight / 2}px`;
                 setPieceRotation(p, p.dataset.currentRotation);
             }
             if (isPlaying) moves++;
@@ -1880,14 +2114,12 @@
                         p.style.position = '';
                         p.style.left = ''; p.style.top = '';
                     } else {
-                        gameSurface.appendChild(p);
+                        gameWorld.appendChild(p);
                         p.classList.remove('in-slot');
                         p.style.position = 'absolute';
-                        const pxX = d.x * sR.width;
-                        const pxY = d.y * sR.height;
-                        if (index === 0) console.log(`Piece ${d.id} -> X:${d.x} -> ${pxX}px`);
-                        p.style.left = `${pxX}px`;
-                        p.style.top = `${pxY}px`;
+                        // State x/y are local
+                        p.style.left = `${d.x - p.offsetWidth / 2}px`;
+                        p.style.top = `${d.y - p.offsetHeight / 2}px`;
                     }
                     setPieceRotation(p, d.rot);
                 } else {
@@ -1903,8 +2135,13 @@
                 const slotId = isSlot ? p.parentElement.dataset.pos : null;
                 const rect = p.getBoundingClientRect();
                 const sR = gameSurface.getBoundingClientRect();
-                const rx = (rect.left - sR.left) / sR.width;
-                const ry = (rect.top - sR.top) / sR.height;
+
+                // Calculate Normalized Center
+                const cX = rect.left + rect.width / 2;
+                const cY = rect.top + rect.height / 2;
+
+                const rx = (cX - sR.left) / sR.width;
+                const ry = (cY - sR.top) / sR.height;
 
                 state.push({
                     id: p.dataset.correctPos,
@@ -1920,11 +2157,15 @@
 
         function movePieceToTable(piece, x, y) {
             piece.classList.remove('in-slot');
-            gameSurface.appendChild(piece);
+            gameWorld.appendChild(piece);
             piece.style.position = 'absolute';
             const rot = piece.dataset.currentRotation;
             piece.style.transform = `rotate(${rot}deg)`;
-            piece.style.left = `20px`; piece.style.top = `20px`;
+
+            // Random scatter near center if kicked
+            const lx = (Math.random() - 0.5) * 400;
+            const ly = (Math.random() - 0.5) * 400;
+            piece.style.left = `${lx}px`; piece.style.top = `${ly}px`;
         }
 
         function checkWinCondition() {
@@ -1942,7 +2183,7 @@
 
         function triggerWin(isRemote = false) {
             clearInterval(timerInterval);
-            document.getElementById('final-time').innerText = `${seconds}s`;
+            document.getElementById('final-time').innerText = formatTime(seconds);
             document.getElementById('final-moves').innerText = moves;
             document.getElementById('win-modal').style.display = 'flex';
             if (!isRemote) sendData({ type: 'WIN' });
@@ -1975,10 +2216,22 @@
         const refContainer = document.getElementById('reference-container');
         let refVisible = false;
         function toggleReference() { refVisible = !refVisible; refContainer.style.display = refVisible ? 'block' : 'none'; }
+
+        // Resize Logic
+        let currentRefWidth = 200;
+        function resizeReference(dir) {
+            currentRefWidth += dir * 40;
+            if (currentRefWidth < 100) currentRefWidth = 100;
+            if (currentRefWidth > 8000) currentRefWidth = 8000;
+            refContainer.style.width = `${currentRefWidth}px`;
+        }
+
         let isDraggingRef = false;
         let refStartX, refStartY, refInitLeft, refInitTop;
         refContainer.addEventListener('pointerdown', (e) => {
-            if (e.target.classList.contains('close-ref')) return;
+            // Ignore if clicking buttons
+            if (e.target.closest('.ref-btn') || e.target.classList.contains('close-ref')) return;
+
             isDraggingRef = true;
             refContainer.setPointerCapture(e.pointerId);
             const r = refContainer.getBoundingClientRect();
