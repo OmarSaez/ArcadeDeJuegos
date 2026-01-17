@@ -351,7 +351,46 @@
         .ref-btn:hover {
             transform: scale(1.1);
         }
+
+        .ref-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Toolbar Minimize Logic */
+        .controls.minimized .hides-on-minimize {
+            display: none !important;
+        }
+
+        .toggle-toolbar-btn {
+            background: none;
+            border: 1px solid #ccc;
+            padding: 2px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-left: auto;
+            /* Push to right */
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .toggle-toolbar-btn:hover {
+            background: #eee;
+        }
     </style>
+    <script>
+        function toggleToolbar() {
+            const c = document.querySelector('.controls');
+            const b = document.getElementById('toggle-bar-btn');
+            c.classList.toggle('minimized');
+            if (c.classList.contains('minimized')) {
+                b.innerText = '🔽';
+                b.title = "Expandir Barra";
+            } else {
+                b.innerText = '🔼';
+                b.title = "Minimizar Barra";
+            }
+        }
+    </script>
 </head>
 
 <body>
@@ -366,32 +405,41 @@
                     Archivos</strong>. Abre el archivo desde la app "Archivos".
             </div>
         </noscript>
-        <h1 style="font-size:1.2rem; margin:0; margin-right:15px;">🧩 MasterPuzzle</h1>
-        <button id="btn-multi" onclick="showMultiplayerModal()" style="margin-bottom:5px; background: #8b5cf6;">👥
+        <h1 class="hides-on-minimize" style="font-size:1.2rem; margin:0; margin-right:15px;">🧩 MasterPuzzle</h1>
+        <button id="btn-multi" class="hides-on-minimize" onclick="showMultiplayerModal()"
+            style="margin-bottom:5px; background: #8b5cf6;">👥
             Multijugador</button>
-        <label for="upload" class="custom-file-upload">📂 <span
+        <span id="room-display"
+            style="display:none; font-weight:bold; margin-right:10px; color:#6d28d9; background:#ede9fe; padding:4px 8px; border-radius:6px; border:1px solid #8b5cf6;">
+            Sala: <span id="room-code-display" style="font-family:monospace; font-size:1.1em;"></span>
+        </span>
+        <label for="upload" class="custom-file-upload hides-on-minimize">📂 <span
                 style="display:none; @media(min-width:600px){display:inline}">Subir Img</span></label>
-        <input type="file" id="upload" accept="image/*">
-        <div class="input-group">
+        <input type="file" id="upload" accept="image/*" class="hides-on-minimize">
+        <div class="input-group hides-on-minimize">
             <span style="font-weight:600; font-size:0.8rem; margin-right:5px;">Alto:</span>
             <input type="number" id="rows" value="3" min="2" max="10" title="Filas (Alto)">
             <span style="margin:0 5px; color:#aaa;">x</span>
             <span style="font-weight:600; font-size:0.8rem; margin-right:5px;">Ancho:</span>
             <input type="number" id="cols" value="3" min="2" max="10" title="Columnas (Ancho)">
         </div>
-        <button onclick="initGame()">Mezclar y Jugar</button>
-        <button class="secondary" onclick="resetGame()">Reiniciar Juego</button>
+        <button class="hides-on-minimize" onclick="initGame()">Mezclar y Jugar</button>
+        <button class="secondary hides-on-minimize" onclick="resetGame()">Reiniciar Juego</button>
         <button class="secondary" onclick="resetCamera()" title="Restablecer Vista (Zoom 100% + Centro)">🔍 Reset
             Vista</button>
         <button class="secondary" onclick="toggleReference()" id="btn-ref" style="display:none">Ver Referencia</button>
         <div style="font-size:0.8rem; font-weight:bold; color:#555;">⏱️ <span id="timer">00:00</span></div>
-        <span class="tip">💡 Doble click para rotar</span>
+        <span class="tip hides-on-minimize">💡 Doble click para rotar</span>
+        <button id="toggle-bar-btn" class="toggle-toolbar-btn" onclick="toggleToolbar()"
+            title="Minimizar Barra">🔼</button>
     </div>
 
     <div id="game-surface">
         <div id="game-world">
             <div id="board"></div>
-            <p id="start-msg" style="margin-top:100px; color:#6b7280;">Sube una imagen para comenzar.</p>
+            <p id="start-msg"
+                style="position: absolute; top: 0; left: 0; transform: translate(-50%, -50%); width: 300px; text-align: center; color:#6b7280; font-size: 1.1rem; pointer-events: none; margin: 0;">
+                Sube una imagen para comenzar.</p>
         </div>
     </div>
 
@@ -1246,6 +1294,11 @@
             peer.on('open', (id) => {
                 myPeerId = id;
                 console.log('Mi ID P2P:', id);
+
+                // Mostrar código de sala en la barra superior
+                document.getElementById('room-display').style.display = 'inline-block';
+                document.getElementById('room-code-display').innerText = id;
+
                 if (isHost) {
                     document.getElementById('p2p-step-1').style.display = 'none';
                     document.getElementById('p2p-step-waiting').style.display = 'block';
@@ -1256,7 +1309,7 @@
             peer.on('connection', (conn) => {
                 if (isHost) {
                     setupConnection(conn);
-                    alert(`¡${conn.peer} se ha unido!`);
+                    // Silently accept. setupConnection handles auto-sync.
                     closeP2PModal();
                 } else {
                     conn.close();
@@ -1285,6 +1338,11 @@
             const code = document.getElementById('room-code-input').value.toUpperCase();
             if (!code) return;
             isHost = false;
+
+            // Mostrar código en la barra superior (asumimos éxito, si falla se puede alertar)
+            document.getElementById('room-display').style.display = 'inline-block';
+            document.getElementById('room-code-display').innerText = code;
+
             peer = new Peer();
             peer.on('open', () => {
                 const conn = peer.connect(code);
@@ -1300,10 +1358,13 @@
                 console.log("Conexión abierta con", conn.peer);
                 if (isHost) {
                     connectedPeers.push(conn);
+                    // AUTO-SYNC: Send full state immediately when a peer connects
+                    // No waiting for acceptance.
+                    startSyncWithPeer(conn);
                 } else {
                     myConn = conn;
                     closeP2PModal();
-                    console.log("Enviando HELLO...");
+                    console.log("Enviando HELO..."); // Typp fixed
                     conn.send({ type: 'HELLO' });
                 }
             });
@@ -1397,6 +1458,41 @@
                     startGameLogic();
                     break;
 
+                case 'FULL_STATE':
+                    // Recibir estado completo (autoconexión)
+                    console.log("Recibiendo Estado Completo...", data);
+
+                    // 1. Configurar Juego
+                    if (data.config) {
+                        rows = data.config.rows;
+                        cols = data.config.cols;
+                        imgUrl = data.config.img;
+                        // Actualizar UI referencia si es necesario
+                        const refImg = document.getElementById('ref-image');
+                        if (refImg) refImg.src = imgUrl;
+                        document.getElementById('btn-ref').style.display = 'inline-block';
+
+                        // Reiniciar tablero visualmente (sin lógica de mezcla nueva aun)
+                        initGame(data.config, data.pieces);
+                    }
+
+                    // 2. Aplicar Piezas (Positions & Rotations)
+                    if (data.pieces) {
+                        // initGame ya aplica los estados iniciales si se le pasan.
+                        // No es necesario llamar a applyDrop nuevamente.
+                        // Solo nos aseguramos de que el DOM esté listo si fuera necesario, 
+                        // pero initGame es sincrono en creación de elementos.
+                    }
+
+                    // 3. Stats
+                    if (data.stats) {
+                        seconds = data.stats.s;
+                        moves = data.stats.m;
+                        document.getElementById('timer').innerText = formatTime(seconds);
+                    }
+                    if (isHost) broadcastData(data, senderConn); // Propagar? Normalmente solo el host envía Full State.
+                    break;
+
                 case 'SYNC_STATS':
                     // Cliente actualiza sus stats con las del Host
                     seconds = data.s;
@@ -1450,15 +1546,36 @@
             reader.readAsDataURL(file);
         }
 
-        function broadcastFullState() {
-            if (!isHost) return;
-            sendData({
+        function startSyncWithPeer(conn) {
+            // Enviar todo el estado actual al nuevo peer
+            if (!imgUrl) return; // No game running
+
+            const fullState = {
                 type: 'FULL_STATE',
                 config: { rows, cols, img: imgUrl },
                 pieces: gatherPieceState(),
                 stats: { s: seconds, m: moves }
-            });
+            };
+
+            try {
+                conn.send(fullState);
+                console.log("Estado Completo enviado a", conn.peer);
+            } catch (e) {
+                console.error("Error enviando estado:", e);
+            }
         }
+
+        function broadcastFullState() {
+            if (!isHost) return;
+            const fullState = {
+                type: 'FULL_STATE',
+                config: { rows, cols, img: imgUrl },
+                pieces: gatherPieceState(),
+                stats: { s: seconds, m: moves }
+            };
+            broadcastData(fullState);
+        }
+
 
 
         // --- ZOOM & PAN SYSTEM ---
@@ -1679,10 +1796,35 @@
             }
 
             if (initialPieces && initialPieces.length > 0) {
-                console.log("Aplicando estado inicial de piezas recibido:", initialPieces.length);
-                applyPieceState(initialPieces);
+                // Sincronización P2P: Aplicar posiciones recibidas del Host inmediatamente
+                console.log("Aplicando estado inicial de piezas P2P...");
+                pieces.forEach(p => {
+                    const pData = initialPieces.find(d => d.id === p.dataset.correctPos);
+                    if (pData) {
+                        // Aplicar lógica de posición (similar a applyDrop pero instantáneo)
+                        if (pData.inSlot) {
+                            const slot = document.querySelector(`.slot[data-pos="${pData.slotId}"]`);
+                            if (slot) {
+                                slot.appendChild(p);
+                                p.classList.add('in-slot');
+                                p.style.transform = `translate(-50%, -50%) rotate(${pData.rot || 0}deg)`;
+                            }
+                        } else {
+                            gameWorld.appendChild(p);
+                            p.classList.remove('in-slot');
+                            p.style.position = 'absolute';
+                            p.style.left = `${pData.x - p.offsetWidth / 2}px`;
+                            p.style.top = `${pData.y - p.offsetHeight / 2}px`;
+                            p.style.transform = `rotate(${pData.rot || 0}deg)`;
+                        }
+                        p.dataset.currentRotation = pData.rot || 0;
+                    } else {
+                        // Fallback si falta data
+                        gameWorld.appendChild(p);
+                    }
+                });
             } else {
-                console.log("Esparciendo piezas localmente (sin estado inicial)");
+                // Modo Local o Host Nuevo: Esparcir
                 scatterPieces(pieces, pieceSize, pieceSize);
             }
 
@@ -2133,27 +2275,33 @@
             document.querySelectorAll('.piece').forEach(p => {
                 const isSlot = p.classList.contains('in-slot');
                 const slotId = isSlot ? p.parentElement.dataset.pos : null;
-                const rect = p.getBoundingClientRect();
-                const sR = gameSurface.getBoundingClientRect();
+                const rot = parseInt(p.dataset.currentRotation || 0);
 
-                // Calculate Normalized Center
-                const cX = rect.left + rect.width / 2;
-                const cY = rect.top + rect.height / 2;
+                let x = 0, y = 0;
 
-                const rx = (cX - sR.left) / sR.width;
-                const ry = (cY - sR.top) / sR.height;
+                if (!isSlot) {
+                    // Calculate Local GameWorld Offset (Same logic as finalizeDrop)
+                    const rect = p.getBoundingClientRect();
+                    const cX = rect.left + rect.width / 2;
+                    const cY = rect.top + rect.height / 2;
 
-                state.push({
-                    id: p.dataset.correctPos,
-                    rot: p.dataset.currentRotation,
-                    inSlot: isSlot,
-                    slotId: slotId,
-                    x: rx,
-                    y: ry
-                });
+                    const surfaceRect = gameSurface.getBoundingClientRect();
+                    const worldVisCenterX = surfaceRect.left + surfaceRect.width / 2 + zoomState.x;
+                    const worldVisCenterY = surfaceRect.top + surfaceRect.height / 2 + zoomState.y;
+
+                    const distVisX = cX - worldVisCenterX;
+                    const distVisY = cY - worldVisCenterY;
+
+                    x = distVisX / zoomState.scale;
+                    y = distVisY / zoomState.scale;
+                }
+
+                state.push({ id: p.dataset.correctPos, inSlot: isSlot, slotId, x, y, rot });
             });
             return state;
         }
+
+
 
         function movePieceToTable(piece, x, y) {
             piece.classList.remove('in-slot');
