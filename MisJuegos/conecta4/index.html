@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conecta 4 Online - Arcade</title>
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style>
+        /* --- RESET & BASE STYLES --- */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --primary: #3b82f6;
+            --accent: #ef4444;
+            /* P1 Red */
+            --accent-2: #eab308;
+            /* P2 Yellow */
+            --board-blue: #2563eb;
+            --cell-empty: #1e293b;
+            --glass: rgba(30, 41, 59, 0.7);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- UI COMPONENTS --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-color);
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1,
+        h2 {
+            margin: 0.5rem 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--board-blue);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: #94a3b8;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #1d4ed8;
+            transition: transform 0.1s, box-shadow 0.1s;
+            width: 250px;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 transparent;
+        }
+
+        .btn.secondary {
+            background: #475569;
+            box-shadow: 0 4px 0 #334155;
+        }
+
+        .btn.red {
+            background: var(--accent);
+            box-shadow: 0 4px 0 #b91c1c;
+        }
+
+        .btn:disabled {
+            background: #94a3b8;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        input[type="text"] {
+            padding: 15px;
+            font-size: 1.5rem;
+            text-align: center;
+            border-radius: 8px;
+            border: 2px solid #475569;
+            background: #1e293b;
+            color: white;
+            width: 250px;
+            text-transform: uppercase;
+            outline: none;
+            margin-bottom: 20px;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        /* --- GAME BOARD --- */
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .status-bar {
+            background: #1e293b;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #334155;
+            min-height: 50px;
+        }
+
+        .turn-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #475569;
+            display: inline-block;
+        }
+
+        /* Tablero: Azul Clásico */
+        .board {
+            background-color: var(--board-blue);
+            padding: 10px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            box-shadow:
+                0 10px 0 #1d4ed8,
+                0 20px 20px rgba(0, 0, 0, 0.5);
+            /* Tilt effect slightly */
+            /* transform: perspective(1000px) rotateX(2deg); */
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+            /* Hover effect area */
+            padding-top: 10px;
+            padding-bottom: 5px;
+        }
+
+        .column:hover .cell:not(.taken) {
+            /* No fill - only line/ring indication */
+            box-shadow: inset 0 0 0 4px rgba(59, 130, 246, 0.6);
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: var(--bg-color);
+            /* Agujero oscuro */
+            border-radius: 50%;
+            position: relative;
+            box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.5);
+            transition: background 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Mobile resizing */
+        @media (max-width: 500px) {
+            .cell {
+                width: 40px;
+                height: 40px;
+            }
+
+            .board {
+                gap: 5px;
+                padding: 8px;
+            }
+
+            .column {
+                gap: 5px;
+            }
+        }
+
+        /* Chips */
+        .cell.p1 {
+            background-color: var(--accent);
+            /* Red */
+            box-shadow:
+                inset 0 -5px 5px rgba(0, 0, 0, 0.2),
+                inset 0 2px 5px rgba(255, 255, 255, 0.3);
+        }
+
+        .cell.p2 {
+            background-color: var(--accent-2);
+            /* Yellow */
+            box-shadow:
+                inset 0 -5px 5px rgba(0, 0, 0, 0.2),
+                inset 0 2px 5px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Winning animation */
+        .cell.winner {
+            animation: pulse-win 1s infinite alternate;
+            filter: brightness(1.3);
+        }
+
+        @keyframes pulse-win {
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.1);
+            }
+        }
+
+        .animate-pulse {
+            animation: text-pulse 1.5s infinite;
+        }
+
+        /* --- DROP ANIMATION --- */
+        .anim-drop {
+            animation: dropIn 0.5s cubic-bezier(0.5, 0.05, 0.6, 1.4);
+            /* Slight bounce end */
+            z-index: 5;
+        }
+
+        @keyframes dropIn {
+            0% {
+                transform: translateY(var(--drop-dist));
+                opacity: 0.5;
+            }
+
+            60% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+
+            80% {
+                transform: translateY(-20px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes text-pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SCREEN 1: MENU -->
+    <div id="screen-menu" class="screen">
+        <h1 style="color:var(--accent);">CONECTA <span style="color:var(--accent-2)">4</span></h1>
+        <h2 style="font-size:1rem; letter-spacing:4px; margin-bottom:40px;">ONLINE EDITION</h2>
+
+        <button class="btn" onclick="startHost()">CREAR SALA</button>
+        <button class="btn secondary" onclick="showJoin()">UNIRSE</button>
+    </div>
+
+    <!-- SCREEN 2: LOBBY (HOST) -->
+    <div id="screen-lobby" class="screen hidden">
+        <p>COMPARTE ESTE CÓDIGO:</p>
+        <h1 id="lobby-code" style="font-size:4rem; user-select:text; margin:20px;">...</h1>
+        <p class="animate-pulse">Esperando rival...</p>
+        <button class="btn secondary" onclick="resetGame()">CANCELAR</button>
+    </div>
+
+    <!-- SCREEN 3: JOIN (CLIENT) -->
+    <div id="screen-join" class="screen hidden">
+        <h2>INGRESA CÓDIGO</h2>
+        <input type="text" id="join-code-input" placeholder="CÓDIGO" maxlength="4">
+        <button class="btn" onclick="connectToHost()">CONECTAR</button>
+        <button class="btn secondary" onclick="showMenu()">ATRÁS</button>
+    </div>
+
+    <!-- SCREEN 4: GAME -->
+    <div id="screen-game" class="screen hidden">
+        <div class="status-bar">
+            <span id="p1-indicator" class="turn-dot" style="background:var(--accent);"></span>
+            <span id="game-status">Esperando...</span>
+            <span id="p2-indicator" class="turn-dot" style="background:var(--accent-2);"></span>
+        </div>
+
+        <div class="board" id="game-board">
+            <!-- Columns generated by JS -->
+        </div>
+
+        <button id="btn-restart" class="btn secondary hidden" onclick="requestRestart()" style="margin-top:20px;">JUGAR
+            OTRA VEZ</button>
+        <button class="btn secondary" onclick="if(confirm('¿Salir?')) location.reload()"
+            style="background:transparent; border:1px solid #475569; position:absolute; bottom:10px; width:auto; font-size:0.8rem;">SALIR</button>
+    </div>
+
+    <script>
+        // --- GAME CONSTANTS ---
+        const ROWS = 6;
+        const COLS = 7;
+        const P1 = 1; // Red (Host usually)
+        const P2 = 2; // Yellow
+
+        // --- STATE ---
+        let boardState = []; // matrix [row][col]
+        let isMyTurn = false;
+        let myPlayerId = 0; // 1 or 2
+        let gameActive = false;
+
+        // --- P2P VARS ---
+        let peer;
+        let conn;
+        let isHost = false;
+
+        // --- DOM ---
+        const uiBoard = document.getElementById('game-board');
+        const uiStatus = document.getElementById('game-status');
+
+        // ==========================================
+        // P2P LOGIC (Based on Standard Fast-Dual)
+        // ==========================================
+
+        function show(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function showMenu() { show('screen-menu'); }
+        function showJoin() { show('screen-join'); }
+
+        function initPeer() {
+            // Generate Short ID
+            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+            peer = new Peer(shortId);
+
+            peer.on('open', (id) => {
+                isHost = true;
+                myPlayerId = P1; // Host is P1 (Red)
+                document.getElementById('lobby-code').innerText = id;
+                show('screen-lobby');
+            });
+
+            peer.on('connection', (c) => handleConnection(c));
+
+            peer.on('error', (err) => {
+                console.error(err);
+                if (err.type === 'unavailable-id') initPeer(); // Retry collision
+                else alert("Error P2P: " + err);
+            });
+        }
+
+        function connectToHost() {
+            const code = document.getElementById('join-code-input').value.toUpperCase();
+            if (!code) return;
+
+            isHost = false;
+            myPlayerId = P2; // Client is P2 (Yellow)
+
+            peer = new Peer(); // Auto ID
+            peer.on('open', () => {
+                const c = peer.connect(code);
+                handleConnection(c);
+            });
+            peer.on('error', (err) => alert("Error conectando: " + err));
+        }
+
+        function handleConnection(c) {
+            conn = c;
+
+            conn.on('open', () => {
+                console.log("Conectado!");
+                if (isHost) {
+                    // Host starts game
+                    setTimeout(() => {
+                        conn.send({ type: 'INIT_GAME' });
+                        startGame(true); // Host starts first
+                    }, 500);
+                }
+            });
+
+            conn.on('data', (data) => {
+                switch (data.type) {
+                    case 'INIT_GAME':
+                        startGame(false); // Client goes second
+                        break;
+                    case 'MOVE':
+                        handleRemoteMove(data.col);
+                        break;
+                    case 'RESTART_REQ':
+                        if (confirm("El rival quiere reiniciar. ¿Aceptas?")) {
+                            restartGame();
+                            conn.send({ type: 'RESTART_ACK' });
+                        }
+                        break;
+                    case 'RESTART_ACK':
+                        restartGame();
+                        break;
+                }
+            });
+
+            conn.on('close', () => alert("Rival desconectado"));
+        }
+
+        // Bridges
+        function startHost() { initPeer(); }
+        function resetGame() { location.reload(); }
+
+        // ==========================================
+        // GAME LOGIC
+        // ==========================================
+
+        function startGame(isMyTurnNow) {
+            show('screen-game');
+            resetBoardState();
+            renderBoard();
+
+            gameActive = true;
+            isMyTurn = isMyTurnNow; // Host always starts? Let's say yes for simplicity (Red starts)
+            updateStatus();
+        }
+
+        function resetBoardState() {
+            boardState = [];
+            for (let r = 0; r < ROWS; r++) {
+                const row = new Array(COLS).fill(0);
+                boardState.push(row);
+            }
+        }
+
+        function renderBoard() {
+            uiBoard.innerHTML = '';
+            // We verify columns instead of rows to handle click zones better? 
+            // Actually, HTML structure: 7 Column divs, each having 6 cells reversed (visual stack)
+
+            for (let c = 0; c < COLS; c++) {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'column';
+                colDiv.onclick = () => handleColumnClick(c);
+
+                for (let r = 0; r < ROWS; r++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    // Add cell to column
+                    colDiv.appendChild(cell);
+                }
+                uiBoard.appendChild(colDiv);
+            }
+            redrawCells();
+        }
+
+        function redrawCells() {
+            // Iterate our matrix and update classes
+            // Matrix [0][0] is top-left usually in array logic, but let's map it.
+            // boardState[r][c]: 0=empty, 1=Red, 2=Yellow
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                    cell.className = 'cell'; // reset
+                    if (boardState[r][c] === 1) cell.classList.add('p1');
+                    if (boardState[r][c] === 2) cell.classList.add('p2');
+                }
+            }
+        }
+
+        function updateStatus() {
+            const p1Dot = document.getElementById('p1-indicator');
+            const p2Dot = document.getElementById('p2-indicator');
+
+            if (!gameActive) {
+                // Determine restart text or win text
+                return;
+            }
+
+            // Simplification: Red (1) always starts. Logic determines whose turn based on moves made or forced state.
+            // For now, relies on isMyTurn toggle which is sync.
+            // Better: Host=Red, Client=Yellow. Red always tracks turn 1.
+
+            if (isMyTurn) {
+                uiStatus.innerText = "TU TURNO";
+                uiStatus.style.color = myPlayerId === P1 ? "var(--accent)" : "var(--accent-2)";
+            } else {
+                uiStatus.innerText = "TURNO RIVAL";
+                uiStatus.style.color = "#94a3b8";
+            }
+
+            // Highlight visual indicator
+            p1Dot.style.opacity = (isMyTurn && myPlayerId === 1) || (!isMyTurn && myPlayerId === 2) ? 1 : 0.3;
+            p2Dot.style.opacity = (isMyTurn && myPlayerId === 2) || (!isMyTurn && myPlayerId === 1) ? 1 : 0.3;
+        }
+
+        function handleColumnClick(c) {
+            if (!gameActive || !isMyTurn) return;
+
+            // Find valid row (lowest empty)
+            const r = getLowestEmptyRow(c);
+            if (r === -1) return; // Column full
+
+            // Execute Move
+            makeMove(r, c, myPlayerId);
+
+            // Send to Network
+            conn.send({ type: 'MOVE', col: c });
+
+            isMyTurn = false;
+            updateStatus();
+        }
+
+        function handleRemoteMove(c) {
+            const r = getLowestEmptyRow(c);
+            if (r !== -1) {
+                const oppId = myPlayerId === 1 ? 2 : 1;
+                makeMove(r, c, oppId);
+                isMyTurn = true;
+                updateStatus();
+            }
+        }
+
+        function getLowestEmptyRow(c) {
+            // Check from bottom (ROWS-1) up to 0
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (boardState[r][c] === 0) return r;
+            }
+            return -1;
+        }
+
+        function makeMove(r, c, playerId) {
+            boardState[r][c] = playerId;
+
+            // ANIMATE CELL
+            const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+            cell.className = 'cell'; // reset
+            cell.classList.add(playerId === 1 ? 'p1' : 'p2');
+
+            // Calc drop distance: (row_index * 58px + 60px) approximately from top
+            // Negative value to start from above
+            const dist = -1 * (r * 60 + 100) + 'px';
+            cell.style.setProperty('--drop-dist', dist);
+            cell.classList.add('anim-drop');
+
+            // Remove animation class after finish to clean up? Optional.
+            setTimeout(() => cell.classList.remove('anim-drop'), 1000);
+
+            // Check Win
+            const win = checkWin(r, c, playerId);
+            if (win) {
+                setTimeout(() => {
+                    gameActive = false;
+                    highlightWin(win);
+                    uiStatus.innerText = playerId === myPlayerId ? "¡GANASTE!" : "¡DERROTA!";
+                    document.getElementById('btn-restart').classList.remove('hidden');
+                }, 600); // Wait for drop
+            } else if (checkDraw()) {
+                gameActive = false;
+                uiStatus.innerText = "EMPATE";
+                document.getElementById('btn-restart').classList.remove('hidden');
+            }
+        }
+
+        function checkWin(r, c, p) {
+            // Directions: [dr, dc]
+            const directions = [
+                [0, 1], // Horizontal
+                [1, 0], // Vertical
+                [1, 1], // Diag Down-Right
+                [1, -1] // Diag Down-Left
+            ];
+
+            for (let d of directions) {
+                let count = 1;
+                let cells = [[r, c]];
+
+                // Check forward
+                for (let i = 1; i < 4; i++) {
+                    const nr = r + d[0] * i;
+                    const nc = c + d[1] * i;
+                    if (isValid(nr, nc) && boardState[nr][nc] === p) {
+                        count++;
+                        cells.push([nr, nc]);
+                    } else break;
+                }
+                // Check backward
+                for (let i = 1; i < 4; i++) {
+                    const nr = r - d[0] * i;
+                    const nc = c - d[1] * i;
+                    if (isValid(nr, nc) && boardState[nr][nc] === p) {
+                        count++;
+                        cells.push([nr, nc]);
+                    } else break;
+                }
+
+                if (count >= 4) return cells;
+            }
+            return null;
+        }
+
+        function isValid(r, c) {
+            return r >= 0 && r < ROWS && c >= 0 && c < COLS;
+        }
+
+        function checkDraw() {
+            return boardState[0].every(cell => cell !== 0);
+        }
+
+        function highlightWin(cells) {
+            cells.forEach(([r, c]) => {
+                const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                cell.classList.add('winner');
+            });
+        }
+
+        function requestRestart() {
+            conn.send({ type: 'RESTART_REQ' });
+            uiStatus.innerText = "Esperando confirmación...";
+        }
+
+        function restartGame() {
+            document.getElementById('btn-restart').classList.add('hidden');
+            // Host restarts -> Host Turn (Red)
+            // Or default to P1 always starts
+            startGame(myPlayerId === P1);
+        }
+
+    </script>
+</body>
+
+</html>
