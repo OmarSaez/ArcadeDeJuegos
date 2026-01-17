@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STOP - Tutti Frutti</title>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --primary-color: #ff4757;
+            --secondary-color: #2ed573;
+            --text-color: #2f3542;
+            --card-bg: #ffffff;
+            --accent: #5352ed;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- Screens --- */
+        .screen {
+            display: none;
+            /* Hidden by default */
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .active-screen {
+            display: flex;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+            color: var(--text-color);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
+
+        /* --- Controls --- */
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background-color: var(--accent);
+        }
+
+        button.success {
+            background-color: var(--secondary-color);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            font-size: 1.1rem;
+            width: 100%;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        /* --- Lobby --- */
+        .player-list {
+            width: 100%;
+            list-style: none;
+            padding: 0;
+        }
+
+        .player-list li {
+            background: var(--card-bg);
+            padding: 10px 20px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .my-player {
+            border: 2px solid var(--accent);
+        }
+
+        /* --- Config --- */
+        .config-panel {
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .category-tag {
+            display: inline-block;
+            background: #dfe4ea;
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin: 2px;
+            font-size: 0.9rem;
+        }
+
+        /* --- Game --- */
+        .letter-display {
+            font-size: 5rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            background: white;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .game-grid {
+            width: 100%;
+            display: grid;
+            gap: 15px;
+        }
+
+        .category-input {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .category-input label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #747d8c;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .category-input input {
+            margin: 0;
+            border: 2px solid #f1f2f6;
+            transition: border-color 0.2s;
+        }
+
+        .category-input input:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        #btn-stop {
+            width: 100%;
+            background: var(--primary-color);
+            font-size: 2rem;
+            font-weight: 900;
+            padding: 20px;
+            margin-top: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        /* --- Results / Voting --- */
+        .results-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: var(--accent);
+            color: white;
+        }
+
+        .vote-btn {
+            background: none;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            opacity: 0.3;
+            transition: opacity 0.2s;
+            box-shadow: none;
+            margin: 0;
+        }
+
+        .vote-btn.rejected {
+            opacity: 1;
+            filter: grayscale(0);
+        }
+
+        .vote-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .score-val {
+            font-weight: bold;
+        }
+
+        .score-val.zero {
+            color: #e74c3c;
+            text-decoration: line-through;
+        }
+
+        .word-cell {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2f3542;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .letter-display {
+                width: 80px;
+                height: 80px;
+                font-size: 3rem;
+            }
+
+            .category-input {
+                padding: 10px;
+            }
+
+            input[type="text"] {
+                padding: 10px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="toast" class="toast">Mensaje</div>
+
+    <!-- MAIN MENU -->
+    <div id="screen-menu" class="screen active-screen">
+        <h1>STOP!</h1>
+        <p>El clásico juego de categorías</p>
+
+        <input type="text" id="nickname" placeholder="Tu Nombre (Ej: Elias)"
+            style="text-align: center; border: 2px solid var(--accent); font-weight: bold;">
+
+        <button onclick="createRoom()">Crear Sala</button>
+        <div style="display: flex; gap: 10px; width: 100%;">
+            <input type="text" id="room-code-input" placeholder="Código de Sala" style="margin-bottom: 0;">
+            <button class="secondary" onclick="joinRoom()" style="margin: 0; flex-shrink: 0;">Unirse</button>
+        </div>
+        <br>
+        <a href="../../index.html" style="color: #747d8c; text-decoration: none;">← Volver al Arcade</a>
+    </div>
+
+    <!-- LOBBY -->
+    <div id="screen-lobby" class="screen">
+        <h2>Sala: <span id="lobby-code" onclick="copyCode()"
+                style="font-family: monospace; background: #dfe4ea; padding: 2px 8px; border-radius: 4px; cursor: pointer; color: var(--accent);">CODE</span>
+        </h2>
+
+        <div class="config-panel" id="host-config">
+            <h3>Configuración</h3>
+            <label>Rondas para ganar:</label>
+            <input type="number" id="cfg-rounds" value="5" min="1" max="20" style="margin-bottom: 10px;">
+            <label>Agregar Categoría Extra:</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="cfg-custom-cat" placeholder="Ej: Marcas de Auto">
+                <button class="secondary" onclick="addCustomCat()" style="padding: 10px; margin: 0;">+</button>
+            </div>
+            <div id="active-categories" style="margin-top: 10px;">
+                <!-- Tags populated by JS -->
+            </div>
+        </div>
+
+        <h3>Jugadores</h3>
+        <ul id="player-list" class="player-list"></ul>
+
+        <button id="btn-start" onclick="startGame()" disabled>Iniciar Partida</button>
+    </div>
+
+    <!-- GAME -->
+    <div id="screen-game" class="screen">
+        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <span>Ronda <b id="round-current">1</b>/<span id="round-total">5</span></span>
+            <span id="timer" style="font-family: monospace; font-size: 1.2rem;">⏱️ --</span>
+        </div>
+
+        <div id="letter-display" class="letter-display">?</div>
+
+        <div id="game-inputs" class="game-grid">
+            <!-- Inputs generated here -->
+        </div>
+
+        <button id="btn-stop" onclick="pressStop()">¡ STOP !</button>
+    </div>
+
+    <!-- RESULTS / VOTING -->
+    <div id="screen-results" class="screen">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <h2>Resultados</h2>
+            <div style="text-align: right;">
+                <span style="font-size: 0.8rem; color: #7f8c8d;">Siguiente en:</span><br>
+                <span id="vote-timer"
+                    style="font-weight:bold; font-size:1.5rem; color: var(--primary-color);">40s</span>
+            </div>
+        </div>
+        <p>¡Vota las respuestas incorrectas!</p>
+
+        <div id="results-content" class="game-grid">
+            <!-- Tables for each category -->
+        </div>
+
+        <button class="success" id="btn-next-round" onclick="clickReady()"
+            style="width: 100%; margin-top: 20px; font-size: 1.5rem;">Siguiente Ronda (0/0)</button>
+    </div>
+
+    <script>
+        // --- GAME CONFIG ---
+        const DEFAULT_CATEGORIES = ['Nombre', 'Apellido', 'Ciudad/País', 'Animal', 'Color', 'Fruta/Comida'];
+        let categories = [...DEFAULT_CATEGORIES];
+        let activeCategories = [...DEFAULT_CATEGORIES];
+
+        // --- STATE ---
+        let peer = null;
+        let myId = null;
+        let connections = {}; // id -> conn
+        let players = []; // { id, name, score, isHost }
+        let isHost = false;
+        let hostConn = null; // Client's connection to host
+        let roomCode = null;
+
+        let gameState = {
+            round: 1,
+            maxRounds: 5,
+            letter: null,
+            answers: {},
+            scores: {}, // playerId -> roundScore
+            totalScores: {}, // playerId -> totalScore
+            phase: 'LOBBY'
+        };
+
+        let readyPlayers = new Set();
+        let voteInterval = null;
+
+        // --- DOM ---
+        const screens = document.querySelectorAll('.screen');
+
+        function showScreen(id) {
+            screens.forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(id).classList.add('active-screen');
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.opacity = 1;
+            setTimeout(() => t.style.opacity = 0, 3000);
+        }
+
+        function updateCategoriesUI() {
+            const container = document.getElementById('active-categories');
+            container.innerHTML = activeCategories.map(cat =>
+                `<span class="category-tag">${cat} <span onclick="removeCat('${cat}')" style="cursor:pointer; color:#ff4757; margin-left:5px; font-weight:bold;">×</span></span>`
+            ).join('');
+        }
+        updateCategoriesUI();
+
+        function addCustomCat() {
+            const input = document.getElementById('cfg-custom-cat');
+            if (input.value.trim()) {
+                activeCategories.push(input.value.trim());
+                updateCategoriesUI();
+                input.value = '';
+                broadcastState({ type: 'LOBBY_UPDATE', players: players, config: { cats: activeCategories, rounds: gameState.maxRounds } });
+            }
+        }
+
+        function removeCat(cat) {
+            if (activeCategories.length <= 1) {
+                return showToast("Mínimo 1 categoría requerida");
+            }
+            activeCategories = activeCategories.filter(c => c !== cat);
+            updateCategoriesUI();
+            broadcastState({ type: 'LOBBY_UPDATE', players: players, config: { cats: activeCategories, rounds: gameState.maxRounds } });
+        }
+
+        // --- PEERJS & NETWORKING ---
+        function initPeer(id = null) {
+            peer = new Peer(id);
+
+            peer.on('open', (id) => {
+                myId = id;
+                console.log('My ID:', id);
+            });
+
+            peer.on('connection', (conn) => {
+                handleConnection(conn);
+            });
+
+            peer.on('error', err => {
+                console.error(err);
+                showToast("Error de conexión: " + err.type);
+            });
+        }
+
+        function handleConnection(conn) {
+            conn.on('open', () => {
+                connections[conn.peer] = conn;
+
+                if (isHost) {
+                    // Initial placeholder if new
+                    if (!players.find(p => p.id === conn.peer)) {
+                        players.push({ id: conn.peer, name: "...", score: 0 });
+                    }
+                    broadcastState({ type: 'LOBBY_UPDATE', players: players, config: { cats: activeCategories, rounds: gameState.maxRounds } });
+                } else {
+                    // Client: Send Identity immediately upon open
+                    conn.send({ type: 'HELLO', name: myNickname });
+                }
+            });
+
+            conn.on('data', (data) => {
+                handleData(data, conn.peer);
+            });
+
+            conn.on('close', () => {
+                players = players.filter(p => p.id !== conn.peer);
+                if (isHost) {
+                    broadcastState({ type: 'LOBBY_UPDATE', players: players });
+                }
+            });
+
+            conn.on('error', err => console.error("Conn Error:", err));
+        }
+
+        function broadcastState(data) {
+            for (let id in connections) {
+                connections[id].send(data);
+            }
+            // Process locally too
+            handleData(data, myId);
+        }
+
+        function handleData(data, senderId) {
+            switch (data.type) {
+                case 'HELLO':
+                    if (isHost) {
+                        // Update player name
+                        const p = players.find(x => x.id === senderId);
+                        if (p) {
+                            p.name = data.name || "Jugador";
+                        } else {
+                            // Should not happen if open handled it, but safety net
+                            players.push({ id: senderId, name: data.name, score: 0 });
+                        }
+                        // Force update to everyone
+                        broadcastState({ type: 'LOBBY_UPDATE', players: players, config: { cats: activeCategories, rounds: gameState.maxRounds } });
+                        if (players.length > 1) document.getElementById('btn-start').disabled = false;
+                    }
+                    break;
+                case 'LOBBY_UPDATE':
+                    players = data.players;
+                    updateLobbyUI();
+                    if (data.config) {
+                        activeCategories = data.config.cats;
+                        gameState.maxRounds = parseInt(data.config.rounds) || 5;
+                        updateCategoriesUI();
+                    }
+                    break;
+                case 'GAME_START':
+                    gameState.letter = data.letter;
+                    gameState.round = data.round;
+                    gameState.maxRounds = data.maxRounds; // SYNC FIX
+                    activeCategories = data.cats;
+                    startGameUI();
+                    break;
+                case 'STOP_CALLED':
+                    onStopCalled(data.stopperId, data.stopperName);
+                    break;
+                case 'SUBMIT_ANSWERS':
+                    if (isHost && gameState.phase === 'GAME') {
+                        gameState.answers[senderId] = data.answers;
+                        checkAllAnswers();
+                    }
+                    break;
+                case 'SHOW_RESULTS':
+                    gameState.answers = data.answers;
+                    gameState.scores = data.scores;
+                    showResultsUI();
+                    break;
+                case 'UPDATE_SCORES':
+                    gameState.scores = data.scores;
+                    gameState.answers = data.answers;
+                    renderResultsTable();
+                    break;
+                case 'GAME_OVER':
+                    players = data.players;
+                    updateLobbyUI();
+                    showScreen('screen-lobby');
+                    showToast("¡Juego Terminado!");
+                    break;
+                case 'READY_UPDATE':
+                    const btn = document.getElementById('btn-next-round');
+                    btn.innerText = `Siguiente Ronda (${data.count}/${data.total})`;
+                    if (data.readyIds && data.readyIds.includes(myId)) {
+                        btn.style.opacity = '0.5';
+                        btn.disabled = true;
+                    } else {
+                        btn.style.opacity = '1';
+                        btn.disabled = false;
+                    }
+                    break;
+                case 'PLAYER_READY':
+                    if (isHost) handlePlayerReady(senderId);
+                    break;
+            }
+        }
+
+        // --- HOST LOGIC ---
+        function createRoom() {
+            const nick = document.getElementById('nickname').value.trim() || "Anfitrión";
+            myNickname = nick;
+
+            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+            initPeer("stop_game_" + code);
+            roomCode = code;
+            isHost = true;
+            players = [{ id: "HOST", name: nick, score: 0 }]; // Will update ID later
+            showScreen('screen-lobby');
+            document.getElementById('lobby-code').innerText = code;
+            document.getElementById('host-config').style.display = 'block';
+
+            // Wait for ID then update self
+            setTimeout(() => { if (myId) { players[0].id = myId; updateLobbyUI(); } }, 1000);
+        }
+
+        function joinRoom() {
+            const nick = document.getElementById('nickname').value.trim() || "Jugador";
+            myNickname = nick;
+
+            const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+            if (!code) return showToast("Ingresa un código");
+            const peerId = "stop_game_" + code;
+            initPeer();
+
+            // Wait for open
+            setTimeout(() => {
+                const conn = peer.connect(peerId);
+                hostConn = conn;
+
+                conn.on('open', () => {
+                    isHost = false;
+                    showScreen('screen-lobby');
+                    document.getElementById('lobby-code').innerText = code;
+                    document.getElementById('host-config').style.display = 'none';
+                    document.getElementById('btn-start').style.display = 'none';
+                    conn.send({ type: 'HELLO', name: myNickname });
+                });
+
+                conn.on('data', data => handleData(data, peerId));
+            }, 1000);
+        }
+
+        function updateLobbyUI() {
+            const list = document.getElementById('player-list');
+            list.innerHTML = players.map(p =>
+                `<li class="${p.id === myId ? 'my-player' : ''}">
+                    ${p.name} ${p.id === players[0].id ? '👑' : ''}
+                    <span>${p.totalScore || 0} pts</span>
+                </li>`
+            ).join('');
+        }
+
+        // --- GAME LOGIC ---
+        function startGame() {
+            if (!isHost) return;
+            if (activeCategories.length < 1) return showToast("Mínimo 1 categoría");
+
+            // Config
+            gameState.maxRounds = parseInt(document.getElementById('cfg-rounds').value) || 5;
+            startRound();
+        }
+
+        function startRound() {
+            if (!isHost) return;
+            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const letter = letters[Math.floor(Math.random() * letters.length)];
+
+            gameState.answers = {};
+            gameState.phase = 'GAME';
+
+            broadcastState({
+                type: 'GAME_START',
+                letter: letter,
+                round: gameState.round,
+                maxRounds: gameState.maxRounds, // SYNC FIX
+                cats: activeCategories
+            });
+        }
+
+        function startGameUI() {
+            showScreen('screen-game');
+            document.getElementById('letter-display').innerText = gameState.letter;
+            document.getElementById('round-current').innerText = gameState.round;
+            document.getElementById('round-total').innerText = gameState.maxRounds;
+
+            // Re-enable STOP button
+            document.getElementById('btn-stop').disabled = false;
+
+            // Build Inputs
+            const grid = document.getElementById('game-inputs');
+            grid.innerHTML = activeCategories.map(cat => `
+                <div class="category-input">
+                    <label>${cat}</label>
+                    <input type="text" data-cat="${cat}" autocomplete="off" placeholder="Empieza con ${gameState.letter}...">
+                </div>
+            `).join('');
+
+            // Focus first
+            setTimeout(() => grid.querySelector('input').focus(), 100);
+        }
+
+        function pressStop() {
+            // Validate at least one answer?
+            // Notify Host
+            if (isHost) {
+                onStopCalled(myId, myNickname);
+            } else {
+                hostConn.send({ type: 'STOP_CALLED', stopperId: myId, stopperName: myNickname });
+            }
+        }
+
+        function onStopCalled(stopperId, stopperName) {
+            const name = stopperName || "Alguien"; // Fallback
+            showToast(`¡ ${name} ha dicho STOP !`);
+
+            // 1. Lock Inputs IMMEDIATELY (Freeze state)
+            const inputs = document.querySelectorAll('#game-inputs input');
+            inputs.forEach(inp => inp.disabled = true);
+            document.getElementById('btn-stop').disabled = true;
+
+            // Collect my answers
+            const myAnswers = {};
+            inputs.forEach(inp => {
+                myAnswers[inp.dataset.cat] = inp.value.trim();
+            });
+
+            if (isHost) {
+                gameState.answers[myId] = myAnswers;
+                checkAllAnswers();
+            }
+
+            // Send to Host
+            if (!isHost) {
+                hostConn.send({ type: 'SUBMIT_ANSWERS', answers: myAnswers });
+            } else {
+                // Broadcast who stopped it to everyone else
+                broadcastState({ type: 'STOP_CALLED', stopperId: stopperId, stopperName: stopperName });
+            }
+        }
+
+        function checkAllAnswers() {
+            if (!isHost) return;
+            const receivedCount = Object.keys(gameState.answers).length;
+            const totalPlayers = players.length;
+
+            if (receivedCount >= totalPlayers) {
+                finalizeRound();
+            }
+        }
+
+        function finalizeRound() {
+            gameState.phase = 'RESULTS';
+
+            // Host Only: Calculate initial scores
+            // 1. Group answers by category
+            // 2. Assign points
+            // 100: Unique valied
+            // 50: Repeated valid
+            // 0: Empty or invalid (checked later)
+
+            // Init scores structure: { playerId: { cat: { word: "X", score: 0, invalid: false } } }
+            // Simplifying: just send the raw answers and default scores, let clients render
+
+            let roundScores = {}; // playerId -> totalRound
+            let processedAnswers = {}; // playerId -> { category: { word: "X", score: 100, flagged: false } }
+
+            players.forEach(p => processedAnswers[p.id] = {});
+
+            activeCategories.forEach(cat => {
+                // Collect all words for this cat
+                let words = [];
+                players.forEach(p => {
+                    const ans = gameState.answers[p.id] ? gameState.answers[p.id][cat] : "";
+                    words.push({ pid: p.id, word: ans.toLowerCase(), raw: ans });
+                });
+
+                // Count frequencies
+                let counts = {};
+                words.forEach(w => {
+                    if (w.word) counts[w.word] = (counts[w.word] || 0) + 1;
+                });
+
+                // Assign Points
+                words.forEach(w => {
+                    let pts = 0;
+                    if (!w.word || w.word.charAt(0).toUpperCase() !== gameState.letter) pts = 0;
+                    else if (counts[w.word] > 1) pts = 50;
+                    else pts = 100;
+
+                    processedAnswers[w.pid][cat] = {
+                        word: w.raw,
+                        score: pts,
+                        flagged: false
+                    };
+                });
+            });
+
+            broadcastState({ type: 'SHOW_RESULTS', answers: processedAnswers, scores: roundScores });
+        }
+
+        function showResultsUI() {
+            showScreen('screen-results');
+            renderResultsTable();
+            // Reset Ready State
+            readyPlayers.clear();
+            const btn = document.getElementById('btn-next-round');
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.innerText = `Siguiente Ronda (0/${players.length})`;
+
+            startVotingTimer();
+        }
+
+        function clickReady() {
+            if (isHost) {
+                handlePlayerReady(myId);
+            } else {
+                hostConn.send({ type: 'PLAYER_READY' });
+                // Optimistic UI
+                document.getElementById('btn-next-round').disabled = true;
+            }
+        }
+
+        function handlePlayerReady(pid) {
+            readyPlayers.add(pid);
+            // Broadcast progress
+            broadcastState({
+                type: 'READY_UPDATE',
+                count: readyPlayers.size,
+                total: players.length,
+                readyIds: Array.from(readyPlayers)
+            });
+
+            if (readyPlayers.size >= players.length) {
+                if (voteInterval) clearInterval(voteInterval);
+                requestNextRound();
+            }
+        }
+
+        function startVotingTimer() {
+            const el = document.getElementById('vote-timer');
+            let timeLeft = 40;
+            el.innerText = timeLeft + "s";
+
+            if (voteInterval) clearInterval(voteInterval);
+
+            voteInterval = setInterval(() => {
+                timeLeft--;
+                el.innerText = timeLeft + "s";
+                if (timeLeft <= 0) {
+                    clearInterval(voteInterval);
+                    if (isHost) requestNextRound();
+                }
+            }, 1000);
+        }
+
+        function renderResultsTable() {
+            const container = document.getElementById('results-content');
+            container.innerHTML = activeCategories.map(cat => {
+                let rows = players.map(p => {
+                    const data = gameState.answers[p.id][cat];
+                    const isZero = data.score === 0 || data.flagged;
+                    return `
+                        <tr>
+                            <td>${p.id === myId ? '<b>' + p.name + '</b>' : p.name}</td>
+                            <td>
+                                <div class="word-cell">
+                                    <span style="${isZero ? 'text-decoration:line-through; color:#aaa;' : ''}">${data.word || '-'}</span>
+                                    <button class="vote-btn ${data.flagged ? 'rejected' : ''}" onclick="toggleFlag('${p.id}', '${cat}')">🚫</button>
+                                </div>
+                            </td>
+                            <td class="score-val ${isZero ? 'zero' : ''}">${isZero ? 0 : data.score}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="category-input">
+                        <h3>${cat}</h3>
+                        <table>
+                            ${rows}
+                        </table>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleFlag(targetId, cat) {
+            // Client side toggle -> send request to host
+            // Ideally, simple toggle for everyone? Syncing "flagged" state.
+            // For simplicity, let's treat every client as authoritative for visuals, 
+            // but HOST is authority for scores.
+            // We send "TOGGLE_FLAG" to host.
+
+            if (isHost) {
+                applyFlag(targetId, cat);
+            } else {
+                hostConn.send({ type: 'TOGGLE_FLAG', targetId: targetId, cat: cat });
+            }
+        }
+
+        // Host logic for flag receive (hook into handleData)
+        // Missing "TOGGLE_FLAG" in handleData... let's add logic here or patch.
+        // Actually I'll patch handleData logic in next iteration or just assume HOST runs this.
+    </script>
+    <script>
+        // Additional Host Logic Injection
+        const originalHandleData = handleData;
+        handleData = function (data, senderId) {
+            originalHandleData(data, senderId);
+
+            if (isHost && data.type === 'TOGGLE_FLAG') {
+                applyFlag(data.targetId, data.cat);
+            }
+        };
+
+        function applyFlag(pid, cat) {
+            const ans = gameState.answers[pid][cat];
+            ans.flagged = !ans.flagged; // Toggle
+
+            // Recalculate scores if needed? 
+            // Scores are visual mostly now, final sum happens at 'Next Round'
+
+            broadcastState({ type: 'UPDATE_SCORES', answers: gameState.answers, scores: gameState.scores });
+        }
+
+        function requestNextRound() {
+            // Sum scores to total
+            players.forEach(p => {
+                let roundTotal = 0;
+                activeCategories.forEach(cat => {
+                    const a = gameState.answers[p.id][cat];
+                    if (!a.flagged) roundTotal += a.score;
+                });
+                p.totalScore = (p.totalScore || 0) + roundTotal;
+            });
+
+            if (gameState.round < gameState.maxRounds) {
+                gameState.round++;
+                startRound();
+            } else {
+                // Game Over
+                broadcastState({ type: 'GAME_OVER', players: players });
+                showScreen('screen-lobby');
+                updateLobbyUI();
+            }
+        }
+    </script>
+</body>
+
+</html>

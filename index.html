@@ -128,8 +128,78 @@
             <h2>Tic-Tac-Boom</h2>
             <p>Explosión de Palabras</p>
         </a>
+        <a href="MisJuegos/stop/" class="card">
+            <div class="icon">📝</div>
+            <h2>STOP!</h2>
+            <p>El clásico Tutti Frutti</p>
+        </a>
     </div>
 
+    <style>
+        .help-fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #2f3542;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+
+        .help-fab:hover {
+            transform: scale(1.1);
+        }
+
+        .help-tooltip {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: white;
+            color: #333;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            max-width: 250px;
+            display: none;
+            z-index: 1000;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .help-tooltip.visible {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
+    <div class="help-fab" onclick="document.getElementById('wifi-help').classList.toggle('visible')">?</div>
+    <div id="wifi-help" class="help-tooltip">
+        <strong>Nota Multijugador:</strong><br><br>
+        El modo multijugador requiere que todos los jugadores estén conectados a la misma red.<br>
+        Esto se puede lograr usando una red Wi-Fi o compartiendo internet entre los dispositivos 📶
+    </div>
 </body>
 
 </html>
