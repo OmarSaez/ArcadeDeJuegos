@@ -298,6 +298,223 @@
             }
         }
     </style>
+    <style>
+        /* --- EXTRAS: GHOST, CHAT, FX --- */
+
+        /* GHOST PIECE */
+        .cell.ghost {
+            opacity: 0.4;
+            transform: scale(0.9);
+            box-shadow: none;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+
+        /* SHAKE EFFECT */
+        .shake-board {
+            animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translate3d(-0.5px, 0, 0);
+            }
+
+            20%,
+            80% {
+                transform: translate3d(1px, 0, 0);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translate3d(-1.5px, 0, 0);
+            }
+
+            40%,
+            60% {
+                transform: translate3d(1.5px, 0, 0);
+            }
+        }
+
+        /* CHAT UI */
+        .chat-container {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            max-width: 500px;
+        }
+
+        .chat-btn {
+            background: #334155;
+            border: 1px solid #475569;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .chat-btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .chat-bubble {
+            position: absolute;
+            background: white;
+            color: #0f172a;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1rem;
+            pointer-events: none;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: pop-fade 3s forwards;
+            white-space: nowrap;
+            z-index: 50;
+            max-width: 250px;
+        }
+
+        /* Tail for bubble */
+        .chat-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px 8px 0;
+            border-style: solid;
+            border-color: white transparent transparent transparent;
+        }
+
+        @keyframes pop-fade {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.8);
+            }
+
+            10% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            80% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+
+        /* CONFETTI CANVAS */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 150;
+        }
+    </style>
+    <style>
+        /* --- MODAL RESULT --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            border: 2px solid var(--primary);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(59, 130, 246, 0.3);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 90%;
+            width: 450px;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .stat-box {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #334155;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .score-pill {
+            background: #0f172a;
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .score-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+    </style>
 </head>
 
 <body>
@@ -343,6 +560,62 @@
             OTRA VEZ</button>
         <button class="btn secondary" onclick="if(confirm('¿Salir?')) location.reload()"
             style="background:transparent; border:1px solid #475569; position:absolute; bottom:10px; width:auto; font-size:0.8rem;">SALIR</button>
+
+        <!-- CHAT BUTTONS -->
+        <div class="chat-container">
+            <button class="chat-btn" onclick="sendChat('¡Buena Jugada! 😎')">¡Buena Jugada! 😎</button>
+            <button class="chat-btn" onclick="sendChat('¡Buena Partida! 🎮')">¡Buena Partida! 🎮</button>
+            <button class="chat-btn" onclick="sendChat('¡Qué suerte! 🍀')">¡Qué suerte! 🍀</button>
+            <button class="chat-btn" onclick="sendChat('¡Jaja! 😂')">¡Jaja! 😂</button>
+            <button class="chat-btn" onclick="sendChat('¿Viste esa jugada? 🔥')">¿Viste esa jugada? 🔥</button>
+            <button class="chat-btn" onclick="sendChat('¡Mira y aprende! 🎓')">¡Mira y aprende! 🎓</button>
+            <button class="chat-btn" onclick="sendChat('¡No la viste venir! 👻')">¡No la viste venir! 👻</button>
+            <button class="chat-btn" onclick="sendChat('💀💀💀')">💀💀💀</button>
+        </div>
+    </div>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- SCREEN 5: RESULT MODAL -->
+    <div id="result-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h1 id="result-title" style="margin-bottom: 20px;">VICTORIA</h1>
+
+            <div class="score-board">
+                <div class="score-pill">
+                    <span class="score-dot" style="background:var(--accent)"></span>
+                    <span style="color:var(--accent)">TU: <span id="score-p1">0</span></span>
+                </div>
+                <div class="score-pill">
+                    <span class="score-dot" style="background:var(--accent-2)"></span>
+                    <span style="color:var(--accent-2)">RIVAL: <span id="score-p2">0</span></span>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <span class="stat-label">Tiempo Total</span>
+                <span class="stat-value" id="res-time">00:00</span>
+            </div>
+
+            <div class="stat-box">
+                <span class="stat-label">Tus Piezas</span>
+                <span class="stat-value" id="res-p1">0</span>
+            </div>
+
+            <div class="stat-box">
+                <span class="stat-label">Piezas Rival</span>
+                <span class="stat-value" id="res-p2">0</span>
+            </div>
+
+            <div style="margin-top: 30px;">
+                <button class="btn" onclick="requestRestart()">REVANCHA</button>
+                <button class="btn secondary"
+                    onclick="window.location.href='https://omarsaez.github.io/ArcadeDeJuegos/'"
+                    style="font-size: 1rem; padding: 10px 20px;">VOLVER AL ARCADE</button>
+            </div>
+            <p id="wait-msg" class="hidden" style="color:#94a3b8; margin-top:10px; font-size:0.9rem;">Esperando al
+                anfitrión...</p>
+        </div>
     </div>
 
     <script>
@@ -357,6 +630,9 @@
         let isMyTurn = false;
         let myPlayerId = 0; // 1 or 2
         let gameActive = false;
+        let gameStartTime = 0;
+        let pieceCounts = { 1: 0, 2: 0 };
+        let sessionWins = { 1: 0, 2: 0 };
 
         // --- P2P VARS ---
         let peer;
@@ -437,6 +713,15 @@
                     case 'MOVE':
                         handleRemoteMove(data.col);
                         break;
+                    case 'HOVER':
+                        handleRemoteHover(data.col);
+                        break;
+                    case 'Chat': // Case sensitive protection
+                    case 'CHAT':
+                        showChatBubble(data.msg, data.isHost ? 1 : 2); // Identify by role roughly or pass ID
+                        // Simplification: if I receive CHAT, it's from OPPONENT.
+                        showChatBubble(data.msg, isHost ? 2 : 1); // If I am host, opp is 2.
+                        break;
                     case 'RESTART_REQ':
                         if (confirm("El rival quiere reiniciar. ¿Aceptas?")) {
                             restartGame();
@@ -467,6 +752,13 @@
 
             gameActive = true;
             isMyTurn = isMyTurnNow; // Host always starts? Let's say yes for simplicity (Red starts)
+
+            // Stats Reset
+            gameStartTime = Date.now();
+            pieceCounts = { 1: 0, 2: 0 };
+            document.getElementById('result-modal').classList.remove('active');
+            document.getElementById('wait-msg').classList.add('hidden');
+
             updateStatus();
         }
 
@@ -487,6 +779,8 @@
                 const colDiv = document.createElement('div');
                 colDiv.className = 'column';
                 colDiv.onclick = () => handleColumnClick(c);
+                colDiv.onmouseenter = () => handleMouseEnter(c);
+                colDiv.onmouseleave = () => handleMouseLeave(c);
 
                 for (let r = 0; r < ROWS; r++) {
                     const cell = document.createElement('div');
@@ -508,11 +802,18 @@
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                    cell.className = 'cell'; // reset
+                    // Preserve ghost if active? No, redraw clears ghosts usually.
+                    // We remove everything and re-apply permanent states
+                    cell.className = 'cell';
+                    cell.style.removeProperty('opacity'); // Clear ghost opacity
+
                     if (boardState[r][c] === 1) cell.classList.add('p1');
                     if (boardState[r][c] === 2) cell.classList.add('p2');
                 }
             }
+            // Re-apply local ghost if mouse is still hovering? 
+            // Complex to track exact mouse pos, but on next move 'onmouseenter' might not trigger if mouse didn't move.
+            // We'll leave it simple.
         }
 
         function updateStatus() {
@@ -559,6 +860,8 @@
         }
 
         function handleRemoteMove(c) {
+            // Remove previous ghost
+            clearGhosts();
             const r = getLowestEmptyRow(c);
             if (r !== -1) {
                 const oppId = myPlayerId === 1 ? 2 : 1;
@@ -566,6 +869,112 @@
                 isMyTurn = true;
                 updateStatus();
             }
+        }
+
+        // --- GHOST LOGIC ---
+        function clearGhosts() {
+            document.querySelectorAll('.cell.ghost').forEach(el => {
+                el.classList.remove('ghost', 'p1', 'p2');
+                el.style.opacity = '';
+            });
+        }
+
+        function handleMouseEnter(c) {
+            if (!gameActive || !isMyTurn) return;
+            showGhost(c, myPlayerId);
+            if (conn && conn.open) conn.send({ type: 'HOVER', col: c });
+        }
+
+        function handleMouseLeave(c) {
+            // We just clear all ghosts for simplicity
+            clearGhosts();
+        }
+
+        function handleRemoteHover(c) {
+            // Only show if it's NOT my turn (so it means it is Rival's turn)
+            if (isMyTurn) return; // Weird state?
+            const oppId = myPlayerId === 1 ? 2 : 1;
+            showGhost(c, oppId);
+        }
+
+        function showGhost(c, playerId) {
+            clearGhosts();
+            const r = getLowestEmptyRow(c);
+            if (r === -1) return;
+
+            const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+            cell.classList.add('ghost');
+            cell.classList.add(playerId === 1 ? 'p1' : 'p2');
+        }
+
+        // --- CHAT LOGIC ---
+        function sendChat(msg) {
+            if (!conn || !conn.open) return;
+            showChatBubble(msg, myPlayerId);
+            conn.send({ type: 'CHAT', msg: msg, isHost: isHost });
+        }
+
+        function showChatBubble(msg, playerId) {
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble';
+            bubble.innerText = msg;
+
+            // Position near the player indicator
+            // We use the status bar dots as anchors
+            const indicator = document.getElementById(playerId === 1 ? 'p1-indicator' : 'p2-indicator');
+            const rect = indicator.getBoundingClientRect();
+
+            // Adjust position
+            bubble.style.top = (rect.top - 60) + 'px';
+            bubble.style.left = (rect.left - 20) + 'px';
+
+            document.body.appendChild(bubble);
+
+            setTimeout(() => {
+                bubble.remove();
+            }, 3000);
+        }
+
+        // --- CONFETTI LOGIC (Simple) ---
+        function fireConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#ef4444', '#3b82f6', '#eab308', '#22c55e', '#a855f7'];
+
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: window.innerWidth / 2,
+                    y: window.innerHeight / 2,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.5) * 15 - 5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 100
+                });
+            }
+
+            function update() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+                particles.forEach(p => {
+                    if (p.life > 0) {
+                        active = true;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.5; // Gravity
+                        p.life--;
+
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(p.x, p.y, 8, 8);
+                    }
+                });
+                if (active) requestAnimationFrame(update);
+                else ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            update();
         }
 
         function getLowestEmptyRow(c) {
@@ -578,6 +987,7 @@
 
         function makeMove(r, c, playerId) {
             boardState[r][c] = playerId;
+            pieceCounts[playerId]++;
 
             // ANIMATE CELL
             const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
@@ -589,6 +999,14 @@
             const dist = -1 * (r * 60 + 100) + 'px';
             cell.style.setProperty('--drop-dist', dist);
             cell.classList.add('anim-drop');
+            clearGhosts(); // clear any ghosts before animating
+
+            // Screen Shake
+            const board = document.getElementById('game-board');
+            setTimeout(() => {
+                board.classList.add('shake-board');
+                setTimeout(() => board.classList.remove('shake-board'), 300);
+            }, 500); // Sync with drop end roughly
 
             // Remove animation class after finish to clean up? Optional.
             setTimeout(() => cell.classList.remove('anim-drop'), 1000);
@@ -599,13 +1017,14 @@
                 setTimeout(() => {
                     gameActive = false;
                     highlightWin(win);
-                    uiStatus.innerText = playerId === myPlayerId ? "¡GANASTE!" : "¡DERROTA!";
-                    document.getElementById('btn-restart').classList.remove('hidden');
+                    sessionWins[playerId]++;
+                    fireConfetti(); // JUICE
+                    showResult(playerId === myPlayerId ? "VICTORIA" : "DERROTA");
                 }, 600); // Wait for drop
             } else if (checkDraw()) {
                 gameActive = false;
-                uiStatus.innerText = "EMPATE";
-                document.getElementById('btn-restart').classList.remove('hidden');
+                showResult("EMPATE");
+                //uiStatus.innerText = "EMPATE";
             }
         }
 
@@ -663,14 +1082,62 @@
 
         function requestRestart() {
             conn.send({ type: 'RESTART_REQ' });
-            uiStatus.innerText = "Esperando confirmación...";
+            document.getElementById('wait-msg').classList.remove('hidden');
+            document.getElementById('wait-msg').innerText = "Esperando al rival...";
         }
 
         function restartGame() {
-            document.getElementById('btn-restart').classList.add('hidden');
             // Host restarts -> Host Turn (Red)
             // Or default to P1 always starts
             startGame(myPlayerId === P1);
+        }
+
+        function showResult(title) {
+            const now = Date.now();
+            const diff = now - gameStartTime;
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            document.getElementById('result-title').innerText = title;
+            // Colors: Victory=Green/Blue(Primary), Defeat=Red(Accent), Draw=Gray
+            let color = "white";
+            if (title === "VICTORIA") color = "var(--primary)"; // Blue
+            else if (title === "DERROTA") color = "var(--accent)"; // Red
+
+            document.getElementById('result-title').style.color = color;
+
+            document.getElementById('res-time').innerText = timeStr;
+
+            // My pieces vs Opponent pieces
+            document.getElementById('res-p1').innerText = pieceCounts[myPlayerId];
+            document.getElementById('res-p2').innerText = pieceCounts[myPlayerId === 1 ? 2 : 1];
+
+            // Scores
+            document.getElementById('score-p1').innerText = sessionWins[myPlayerId];
+            document.getElementById('score-p2').innerText = sessionWins[myPlayerId === 1 ? 2 : 1];
+
+            // Adjust label colors to match dots
+            const p1Dot = document.querySelector('.score-pill:nth-child(1) .score-dot');
+            const p2Dot = document.querySelector('.score-pill:nth-child(2) .score-dot');
+            const p1Text = document.querySelector('.score-pill:nth-child(1) span:nth-child(2)');
+            const p2Text = document.querySelector('.score-pill:nth-child(2) span:nth-child(2)');
+
+            if (myPlayerId === 1) {
+                // I am Red (Accent 1), Rival is Yellow (Accent 2)
+                p1Dot.style.background = "var(--accent)";
+                p1Text.style.color = "var(--accent)";
+                p2Dot.style.background = "var(--accent-2)";
+                p2Text.style.color = "var(--accent-2)";
+            } else {
+                // I am Yellow (Accent 2), Rival is Red (Accent 1)
+                p1Dot.style.background = "var(--accent-2)";
+                p1Text.style.color = "var(--accent-2)";
+                p2Dot.style.background = "var(--accent)";
+                p2Text.style.color = "var(--accent)";
+            }
+
+            document.getElementById('result-modal').classList.add('active');
         }
 
     </script>
