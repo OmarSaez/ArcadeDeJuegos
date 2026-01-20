@@ -349,9 +349,12 @@
             display: flex;
             align-items: center;
             padding: 10px;
-            gap: 15px;
+            /* gap: 15px; */
+            /* Gap irrelevant if absolute, but keeps initial items spaced */
             overflow-x: auto;
             z-index: 50;
+            position: relative;
+            /* Allow absolute positioning inside */
         }
 
         .inventory-item {
@@ -1340,17 +1343,21 @@
             inv.innerHTML = '';
 
             let shipIdCounter = 0;
+            let currentX = 10; // Start padding
             fleetConfig.forEach(cfg => {
                 for (let i = 0; i < cfg.count; i++) {
                     // Deep copy matrix
                     const m = JSON.parse(JSON.stringify(cfg.matrix));
-                    createInteractableShip(inv, m, `ship_${shipIdCounter++}`);
+                    const widthPx = m[0].length * 35; // Approx width (30px size + margin) 
+
+                    createInteractableShip(inv, m, `ship_${shipIdCounter++}`, currentX);
+                    currentX += widthPx + 20; // Add width + spacing
                 }
             });
             checkSetupReady();
         }
 
-        function createInteractableShip(container, matrix, id) {
+        function createInteractableShip(container, matrix, id, startX) {
             const el = document.createElement('div');
             el.className = 'ship-visual';
             el.dataset.id = id;
@@ -1360,10 +1367,13 @@
 
             el.dataset.location = 'inventory';
 
-            const wrapper = document.createElement('div');
-            wrapper.className = 'inventory-item';
-            wrapper.appendChild(el);
-            container.appendChild(wrapper);
+            // Initial Absolute Position
+            el.style.position = 'absolute';
+            el.style.left = `${startX}px`;
+            el.style.top = '10px'; // Centered-ish vertically or top aligned with padding
+            el.style.zIndex = '10';
+
+            container.appendChild(el);
 
             setupDrag(el);
             el.addEventListener('pointerdown', (e) => selectShip(e, el));
@@ -1533,34 +1543,91 @@
             const iRect = inv.getBoundingClientRect();
             if (rect.right > iRect.left && rect.left < iRect.right &&
                 rect.bottom > iRect.top && rect.top < iRect.bottom) {
-                moveToInventory(dragEl);
+
+                // Calculate relative position within inventory
+                const relX = rect.left - iRect.left;
+                const relY = rect.top - iRect.top;
+
+                moveToInventory(dragEl, relX + inv.scrollLeft, relY);
                 return;
             }
+
+            // --- RECOVERY LOGIC ---
+            // If we are here, we are NOT on the board and NOT in the inventory.
+            // But getting strict "hit" on inventory is hard if we just dropped it "near" or "in" the general table area.
+            // As per user request: "Everything is a table except the board".
+            // So if it's NOT on the board, it should go to inventory/table logic, BUT we must ensure coords are safe.
+
+            // Let's assume if it is NOT on the board, we try to put it in the inventory (table).
+            // But we need to calculate where it is relative to the inventory container to keep it there.
+            // If it is completely off screen, then Return To Origin.
+
+            // Note: inv and iRect are already defined above.
+
+            // Calculate position relative to Inventory Container
+            // We treat the inventory container as the "reference frame" for the 'Table'.
+            // Even if we drop it above the inventory, we can map it.
+            let tableX = rect.left - iRect.left + inv.scrollLeft;
+            let tableY = rect.top - iRect.top;
+
+            // Simple Safety Check: Is it at least partially visible on screen?
+            if (rect.right < 0 || rect.left > window.innerWidth || rect.bottom < 0 || rect.top > window.innerHeight) {
+                returnToOrigin();
+                return;
+            }
+
+            // If it's not on board, move to inventory with absolute coords
+            moveToInventory(dragEl, tableX, tableY);
 
             returnToOrigin();
         }
 
-        function moveToInventory(el) {
+        function moveToInventory(el, x = 0, y = 0) {
             // Remove from board logic
             placedShips = placedShips.filter(s => s.id !== el.dataset.id);
 
             el.dataset.location = 'inventory';
-            el.style.position = 'relative';
-            el.style.left = '0';
-            el.style.top = '0';
-            el.style.zIndex = '';
 
             // Restore visual
             updateShipVisual(el, el.matrix, 30);
 
-            // Check if it needs a wrapper (if coming from board, it has none in DOM tree context)
-            // But dragging removes it from parent.
-            // We should put it in a wrapper to match structure
-            const wrapper = document.createElement('div');
-            wrapper.className = 'inventory-item';
-            wrapper.appendChild(el);
+            // Free Placement Logic with Constraints
+            // Ensure it doesn't vanish.
+            const container = document.getElementById('inventory-container');
 
-            document.getElementById('inventory-container').appendChild(wrapper);
+            // We don't strictly clamp X because scroll is allowed, but we should clamp Y to not be super far off.
+            // And maybe clamp X to min 0.
+            if (x < 0) x = 0;
+            if (y < -300) y = -300; // Arbitrary top limit (visual sanity)
+            // Actually, if we want it to be "in the inventory area", y should be somewhat bounded.
+            // But user wants "the whole area is a table".
+            // The issue is if they drop it WAY up, `inventory-container` with `overflow: visible` (or hidden) might cut it off?
+            // `inventory-container` has `overflow-x: auto` and fixed height 120px. 
+            // If we place it absolute at y = -200, it might be invisible if container clips Y.
+            // Container styles: `height: 120px; overflow-x: auto;`.
+            // Usually `overflow-x: auto` implies `overflow-y: hidden` or auto.
+            // If we want "Whole Screen" table effect, the inventory container is not the best parent.
+            // BUT re-architecting to a global layer is complex.
+            // WORKAROUND: Clamp Y to be inside the inventory strip (0 to ~80).
+            // This forces the "Table" to be just the bottom strip.
+            // If user wants "Gray Zone" (everything else), we can't easily parent it to inventory which is a small scrolling strip.
+            // Compelling compromise: If dropped outside board, snap to Inventory Box, but keep X. Clamp Y.
+
+            if (y < 0) y = 0;
+            if (y > 80) y = 80; // Keep roughly in strip
+
+            el.style.position = 'absolute';
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.zIndex = '';
+            el.style.margin = '0';
+
+            container.appendChild(el);
+
+            // Clean up empty wrappers if any
+            document.querySelectorAll('.inventory-item').forEach(item => {
+                if (item.children.length === 0) item.remove();
+            });
 
             selectShip(null, el);
             checkSetupReady();
@@ -1773,8 +1840,8 @@
 
             if (bx < 0 || by < 0 || bx >= gridSize || by >= gridSize) return;
 
-            // Check if already shot
-            if (document.querySelector(`#enemy-markers .marker[data-x="${bx}"][data-y="${by}"]`)) return;
+            // Check if already shot using GX/GY
+            if (document.querySelector(`#enemy-markers .marker[data-gx="${bx}"][data-gy="${by}"]`)) return;
 
             sendShot(bx, by);
         }
