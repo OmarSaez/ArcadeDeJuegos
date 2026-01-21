@@ -747,8 +747,8 @@
         <p style="color:#64748b; font-size:0.9rem; margin-bottom:30px;">Comandante de Flota P2P</p>
         <button class="btn" onclick="toConfig()">Crear Flota</button>
         <button class="btn" onclick="toJoin()">Unirse</button>
-        <a href="../" style="margin-top:20px; color:#64748b; font-size:0.8rem; text-decoration:none;">&larr; Volver al
-            Arcade</a>
+        <button class="btn secondary" onclick="window.location.href='https://omarsaez.github.io/ArcadeDeJuegos/'"
+            style="margin-top:20px;">Volver al Arcade</button>
     </div>
 
     <!-- SCREEN: CONFIG HOST -->
@@ -939,7 +939,10 @@
             <p>Disparos Totales: <span id="stat-shots">0</span></p>
             <p>Aciertos: <span id="stat-hits">0</span></p>
         </div>
-        <button class="btn" onclick="location.reload()">Jugar de Nuevo</button>
+        <div style="margin-top:20px;">
+            <button class="btn" onclick="location.reload()">Jugar de Nuevo</button>
+            <button class="btn secondary" onclick="window.location.href='../../index.html'">Volver al Arcade</button>
+        </div>
     </div>
 
     <script>
