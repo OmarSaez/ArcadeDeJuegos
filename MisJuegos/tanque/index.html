@@ -130,6 +130,300 @@
             }
         }
 
+        /* Landscape Mobile Optimization (e.g. 880x400) */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .menu-screen {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                transform: none !important;
+                width: 100% !important;
+                height: 100% !important;
+                max-height: 100% !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                padding: 10px !important;
+                min-width: unset !important;
+
+                display: flex !important;
+                flex-direction: column !important;
+                flex-wrap: nowrap !important;
+                justify-content: flex-start !important;
+                padding-top: 0 !important;
+                align-items: center;
+                overflow-y: auto !important;
+            }
+
+            /* FIX: Ensure hidden screens stay hidden */
+            .menu-screen[style*="none"] {
+                display: none !important;
+            }
+
+            /* FORCE RESET on IDs to beat PC specificity and fix "decentered" offset */
+            #login-screen,
+            #lobby-screen {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100% !important;
+                min-width: 0 !important;
+                /* Critical Fix: Override desktop min-width */
+                min-height: 0 !important;
+                /* Critical Fix: Override desktop min-height */
+                max-width: none !important;
+                transform: none !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                box-sizing: border-box !important;
+            }
+
+            #login-screen {
+                justify-content: flex-start !important;
+                /* Visual align top */
+                padding-top: 25px !important;
+            }
+
+            #lobby-screen {
+                justify-content: flex-start !important;
+                /* Top-align Lobby */
+                padding: 5px !important;
+            }
+
+            /* Compact Lobby Headers specifically */
+            /* SUPER COMPACT LOBBY HEADER: One line */
+            #lobby-screen h1,
+            #lobby-screen h2,
+            #lobby-screen #lobby-code-display {
+                display: inline-block !important;
+                vertical-align: middle !important;
+                margin: 2px 5px !important;
+            }
+
+            #lobby-screen h1 {
+                font-size: 0.9rem !important;
+                /* Smaller Label */
+                color: #888 !important;
+                /* Muted */
+            }
+
+            #lobby-screen h2 {
+                font-size: 0.8rem !important;
+                /* CÓDIGO label small */
+                color: #aaa !important;
+            }
+
+            #lobby-screen #lobby-code-display {
+                font-size: 1.5rem !important;
+                /* CODE VALUE LARGE */
+                color: #4caf50 !important;
+                font-weight: bold !important;
+            }
+
+            /* FLOATING READY BUTTON (Always visible) */
+            #lobby-screen div[style*="margin-top"] {
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                margin: 0 !important;
+                width: 100% !important;
+                text-align: center !important;
+                z-index: 100 !important;
+                background: rgba(16, 16, 20, 0.95) !important;
+                /* Match bg to cover scroll */
+                padding: 5px !important;
+                border-top: 1px solid #333;
+            }
+
+            #lobby-screen button {
+                font-size: 1rem !important;
+                padding: 5px 20px !important;
+            }
+
+            .team-container {
+                margin-bottom: 50px !important;
+                /* Space for the button */
+            }
+
+            /* REMOVE BR tags in flex layout to save space */
+            .menu-screen br {
+                display: none !important;
+            }
+
+            /* Shrink Separator */
+            .menu-screen div[style*="margin"] {
+                margin: 2px 0 !important;
+                font-size: 0.8rem;
+            }
+
+            /* Move "Back to Arcade" button out of flow */
+            .menu-screen button[style*="#607d8b"] {
+                position: absolute !important;
+                bottom: 5px !important;
+                right: 5px !important;
+                margin: 0 !important;
+                font-size: 0.7rem !important;
+                padding: 2px 6px !important;
+                width: auto !important;
+            }
+
+            .menu-screen h1 {
+                font-size: 1.5rem !important;
+                /* Larger Title */
+                margin-bottom: 10px !important;
+                line-height: 1;
+                flex: 0 0 auto;
+            }
+
+            .menu-screen h2 {
+                font-size: 1.2rem !important;
+                margin: 5px !important;
+                flex: 0 0 auto;
+            }
+
+            .menu-screen input {
+                font-size: 1.1rem !important;
+                padding: 6px !important;
+                width: 240px !important;
+                /* Wider */
+                margin-bottom: 8px !important;
+                flex: 0 0 auto;
+            }
+
+            .menu-screen button {
+                font-size: 1rem !important;
+                padding: 6px 14px !important;
+                margin: 4px !important;
+                flex: 0 0 auto;
+            }
+
+            .team-container {
+                margin: 2px 0 !important;
+                gap: 5px;
+                width: 98% !important;
+                flex: 1 1 auto !important;
+                /* Fill space */
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: stretch !important;
+                overflow: hidden;
+            }
+
+            .team-box {
+                min-height: 0 !important;
+                height: auto !important;
+                padding: 2px !important;
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow-y: auto !important;
+            }
+
+            /* Compact Team Buttons */
+            .team-box button {
+                padding: 4px !important;
+                font-size: 0.8rem !important;
+                margin: 2px !important;
+                width: 90% !important;
+            }
+
+            .team-header {
+                font-size: 0.9rem !important;
+                margin-bottom: 2px;
+            }
+
+            #lobby-code-display {
+                font-size: 1.2rem !important;
+            }
+
+            /* Bring Ready Button closer */
+            #lobby-screen div[style*="margin-top"] {
+                margin-top: 5px !important;
+            }
+
+            .player-slot {
+                padding: 2px !important;
+                font-size: 0.8rem !important;
+                margin: 2px 0 !important;
+            }
+
+            .color-dot {
+                width: 15px !important;
+                height: 15px !important;
+            }
+
+            #lobby-tip {
+                display: none !important;
+            }
+
+            /* Hide tip to save space */
+
+            #lobby-screen {
+                overflow-y: auto;
+                /* display: block !important; removed to fix overlap bug */
+                padding-top: 10px !important;
+            }
+
+            /* In-Game UI for Landscape Mobile */
+            .turn-banner {
+                font-size: 1.2rem !important;
+                top: 5px !important;
+                width: auto !important;
+                left: 50%;
+                transform: translateX(-50%);
+                white-space: nowrap;
+            }
+
+            #stats-panel {
+                font-size: 0.8rem !important;
+                top: 5px !important;
+                left: 5px !important;
+                line-height: 1.1;
+            }
+
+            #winner-text {
+                font-size: 1.5rem !important;
+            }
+
+            #match-time {
+                font-size: 1rem !important;
+                margin-bottom: 5px !important;
+            }
+
+            #stats-table {
+                font-size: 0.7rem !important;
+                margin: 5px 0 !important;
+            }
+
+            /* Move Turn Timer to Top Right */
+            #turn-timer-disp {
+                position: fixed !important;
+                top: 5px !important;
+                right: 15px !important;
+                font-size: 1.5rem !important;
+                text-align: right !important;
+                z-index: 20 !important;
+            }
+
+            /* Hide the container wrapper if it interferes */
+            .info-panel {
+                position: static !important;
+                /* Ensure timer escapes if using absolute inside relative? No, fixed beats relative. */
+                margin: 0 !important;
+                padding: 0 !important;
+                background: none !important;
+                border: none !important;
+            }
+
+            #game-over-screen {
+                padding: 10px !important;
+                width: 95% !important;
+            }
+        }
+
         h1 {
             color: #4caf50;
             font-size: 3.5rem;
@@ -424,12 +718,13 @@
             z-index: 50;
         }
 
-        /* Show in landscape on mobile-ish screens */
-        @media (max-width: 1024px) and (orientation: landscape) {
+        /* Show in landscape on mobile-ish screens ONLY IF GAME IS PLAYING (Handled via JS class) */
+        /* We remove the CSS-only display:block to prevent it showing in lobby */
+        /* @media (max-width: 1024px) and (orientation: landscape) {
             #touch-controls {
                 display: block;
             }
-        }
+        } */
 
         .touch-group {
             position: absolute;
@@ -634,7 +929,8 @@
     <div id="ui-layer" style="pointer-events:none;">
         <div id="main-hud">
             <div class="info-panel">
-                <span id="p-name-disp" style="color:#fff">JUGADOR</span>
+                <!-- Removed Player Name as per user request -->
+                <span id="p-name-disp" style="display:none"></span>
                 <span id="turn-timer-disp">--</span>
             </div>
             <div class="turn-banner" id="turn-banner">ESPERANDO...</div>
@@ -1181,26 +1477,44 @@
             const isMobile = window.innerWidth <= 1024 || window.innerHeight <= 500;
             camera.zoom = isMobile ? 0.6 : 1.0;
 
+            // Show touch controls if mobile/tablet
+            if (isMobile) {
+                document.getElementById('touch-controls').style.display = 'block';
+            }
+
             // INITIAL CAMERA SETUP
             const me = tanks.find(t => t.id === myPeerId);
             let target = me || tanks[0];
             if (projectiles.length > 0) target = projectiles[0]; // Follow bullet if active
 
             if (target) {
-                // Determine screen center in world units
-                // CenterX = (TargetX - CamX) * Zoom
-                // WinWidth/2 = (TargetX - CamX) * Zoom
-                // CamX = TargetX - (WinWidth / (2 * Zoom))
-                camera.x = target.x - (CANVAS.width / (2 * camera.zoom));
+                // NEW CENTER-BASED CAMERA LOGIC
+                // camera.x/y is the world point we want at the center of the screen.
 
-                // Align Y slightly above (look ahead) or center
-                camera.y = target.y - (CANVAS.height / (2 * camera.zoom));
+                // If there's a specific target (our tank), focus on it.
+                if (target) {
+                    camera.x = target.x;
+                    camera.y = Math.min(target.y, 800); // Don't go too deep into void
+                } else {
+                    // Default to center of map
+                    camera.x = WIDTH / 2;
+                    camera.y = 500; // Reasonable surface height
+                }
 
-                // Clamp immediately so we don't start in void
-                // (Optional, drawGame loop will also clamp but good for clean start)
-                const vw = CANVAS.width / camera.zoom;
-                if (WIDTH < vw) camera.x = (WIDTH - vw) / 2;
-                else camera.x = Math.max(0, Math.min(camera.x, WIDTH - vw));
+                // Immediate Clamp to bounds
+                // World Bounds: 0 to WIDTH
+                // View Half-Width in World Units: (CANVAS.width / 2) / zoom
+                const halfW = (CANVAS.width / 2) / camera.zoom;
+                const halfH = (CANVAS.height / 2) / camera.zoom;
+
+                // If world is smaller than view, center it
+                if (WIDTH < halfW * 2) {
+                    camera.x = WIDTH / 2;
+                } else {
+                    camera.x = Math.max(halfW, Math.min(camera.x, WIDTH - halfW));
+                }
+                // Vertical clamp (simple)
+                camera.y = Math.max(halfH, Math.min(camera.y, 2000));
             }
 
             // Sync Resize
@@ -1867,17 +2181,19 @@
 
 
         function clampCamera() {
-            const vw = CANVAS.width / camera.zoom;
-            const vh = CANVAS.height / camera.zoom;
+            // Half Width/Height in World Units
+            const halfW = (CANVAS.width / 2) / camera.zoom;
+            const halfH = (CANVAS.height / 2) / camera.zoom;
 
             // X Clamp
-            if (WIDTH < vw) camera.x = (WIDTH - vw) / 2;
-            else camera.x = Math.max(0, Math.min(camera.x, WIDTH - vw));
+            if (WIDTH < halfW * 2) {
+                camera.x = WIDTH / 2; // Map smaller than screen -> Center
+            } else {
+                camera.x = Math.max(halfW, Math.min(camera.x, WIDTH - halfW));
+            }
 
-            // Y Clamp: Don't let bottom of view go below WORLD_HEIGHT
-            const maxCamY = WORLD_HEIGHT - vh;
-            // Allow looking up freely (negative y), but cap bottom
-            camera.y = Math.min(camera.y, maxCamY);
+            // Y Clamp (Simple)
+            camera.y = Math.max(halfH, Math.min(camera.y, 2000));
         }
 
         function drawGame() {
@@ -1887,10 +2203,10 @@
             clampCamera();
 
             CTX.save();
+            // Center-based Camera Transform
+            CTX.translate(CANVAS.width / 2, CANVAS.height / 2);
+            CTX.scale(camera.zoom, camera.zoom);
             CTX.translate(-camera.x, -camera.y);
-            CTX.scale(camera.zoom, camera.zoom);
-
-            CTX.scale(camera.zoom, camera.zoom);
 
             // 1. Draw Stone Layer (Grey)
             CTX.fillStyle = '#757575'; // Stone Grey
@@ -2210,7 +2526,10 @@
                 else if (data.type === 'LOBBY_UPDATE') { players = data.players; updateLobbyUI(); }
                 else if (data.type === 'GAME_START_COUNTDOWN') { document.getElementById('start-timer').innerText = data.sec === "CANCELADO" ? "" : "INICIANDO EN " + data.sec; }
                 else if (data.type === 'GAMEOVER') { gameState = 'GAMEOVER'; gameOver(data.winner, data.stats, data.duration); }
-                else if (data.type === 'RETURN_TO_LOBBY') { resetToLobby(); }
+                else if (data.type === 'RETURN_TO_LOBBY') {
+                    resetToLobby();
+                    document.getElementById('touch-controls').style.display = 'none'; // Hide touch controls
+                }
             }
         }
 
@@ -2239,43 +2558,66 @@
             btn.addEventListener('mouseleave', deactivate);
         });
 
-        // --- CAMERA PAN HANDLER (TOUCH) ---
-        // Basic drag logic for the camera
+        // --- CAMERA TOUCH HANDLERS (PAN & ZOOM) ---
+        let lastPinchDist = null;
+
         window.addEventListener('touchstart', e => {
-            // If touching a control, ignore drag
+            // Ignore if touching controls
             if (e.target.closest('#touch-controls') || e.target.closest('#ui-layer')) return;
 
-            // Only consider single touch for dragging
             if (e.touches.length === 1) {
+                // Pan Start
                 isDraggingRaw = true;
                 lastTouch.x = e.touches[0].clientX;
                 lastTouch.y = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                // Pinch Start
+                isDraggingRaw = false; // Stop panning when pinching
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastPinchDist = Math.sqrt(dx * dx + dy * dy);
             }
         }, { passive: false });
 
         window.addEventListener('touchmove', e => {
-            if (!isDraggingRaw) return;
-            // Prevent scrolling page
-            if (e.cancelable) e.preventDefault();
+            if (e.cancelable) e.preventDefault(); // Prevent browser zoom/scroll
 
-            const tx = e.touches[0].clientX;
-            const ty = e.touches[0].clientY;
+            if (e.touches.length === 1 && isDraggingRaw) {
+                // Pan Logic
+                const tx = e.touches[0].clientX;
+                const ty = e.touches[0].clientY;
+                const dx = (tx - lastTouch.x) / camera.zoom; // Scale pan by zoom
+                const dy = (ty - lastTouch.y) / camera.zoom;
 
-            const dx = tx - lastTouch.x;
-            const dy = ty - lastTouch.y;
+                camera.x -= dx;
+                camera.y -= dy;
 
-            camera.x -= dx; // Dragging moves camera opposite
-            camera.y -= dy;
+                lastTouch.x = tx;
+                lastTouch.y = ty;
+            } else if (e.touches.length === 2 && lastPinchDist) {
+                // Pinch Logic
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
-            lastTouch.x = tx;
-            lastTouch.y = ty;
+                if (dist > 0 && lastPinchDist > 0) {
+                    const zoomFactor = dist / lastPinchDist;
+                    const newZoom = camera.zoom * zoomFactor;
+                    // Clamp Zoom (0.5x to 3.0x)
+                    camera.zoom = Math.max(0.5, Math.min(3.0, newZoom));
+                    lastPinchDist = dist;
+                }
+            }
         }, { passive: false });
 
         window.addEventListener('touchend', () => {
             isDraggingRaw = false;
+            lastPinchDist = null;
         });
+
         window.addEventListener('touchcancel', () => {
             isDraggingRaw = false;
+            lastPinchDist = null;
         });
 
 
