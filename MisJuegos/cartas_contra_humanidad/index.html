@@ -525,10 +525,16 @@
         <p id="wait-msg">Esperando al anfitrión...</p>
 
         <!-- Universal Create Card Button -->
-        <div style="margin-top: 15px; margin-bottom: 30px; display: flex; justify-content: center;">
+        <div
+            style="margin-top: 15px; margin-bottom: 30px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
             <button class="btn secondary" style="width: auto; padding: 10px 20px; font-size: 0.9rem;"
                 onclick="showCreateCardMenu()">
                 + Crear Carta
+            </button>
+
+            <button class="btn secondary" onclick="openBanMenu()"
+                style="width: auto; padding: 8px 16px; font-size: 0.8rem; background: #450a0a; border: 1px solid #ef4444; color: #fca5a5;">
+                🚫 Banear Cartas
             </button>
         </div>
 
@@ -597,6 +603,71 @@
             </div>
         </div>
     </div> <!-- Close Help Modal -->
+
+    <!-- SCREEN: BAN MANAGER -->
+    <div id="screen-ban-menu" class="screen hidden">
+        <div style="max-width: 800px; margin: 0 auto; width: 100%;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <h1>Banear Cartas</h1>
+                <button onclick="exitBanMenu()"
+                    style="background:transparent; border:none; font-size:1.5rem; color:white; cursor:pointer;">✕</button>
+            </div>
+            <p style="opacity:0.7; font-size:0.9rem;">Haz click en una carta para bloquearla/desbloquearla en esta
+                partida.</p>
+
+            <div style="display:flex; justify-content:center; gap:20px; margin: 20px 0; border-bottom:1px solid #333;">
+                <div id="tab-ban-black" class="ban-tab active" onclick="setBanView('black')">Ver Cartas Negras</div>
+                <div id="tab-ban-white" class="ban-tab" onclick="setBanView('white')">Ver Cartas Blancas</div>
+            </div>
+
+            <!-- Cards Container -->
+            <div id="ban-list-container"
+                style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-height: 60vh; overflow-y: auto; padding: 10px;">
+                <!-- Injected via JS -->
+            </div>
+
+            <button class="main-btn" onclick="exitBanMenu()" style="margin-top:20px;">Volver al Lobby</button>
+        </div>
+    </div>
+
+    <style>
+        .card.banned {
+            opacity: 0.5;
+            filter: grayscale(100%);
+            border: 2px solid #ef4444 !important;
+            /* Red border or distinct grey */
+            position: relative;
+        }
+
+        .card.banned::after {
+            content: "BLOQUEADA";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            color: #ef4444;
+            font-weight: 800;
+            font-size: 1.2rem;
+            border: 2px solid #ef4444;
+            padding: 5px 10px;
+            background: rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+        }
+
+        .ban-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            opacity: 0.6;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+
+        .ban-tab.active {
+            opacity: 1;
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+    </style>
 
     <!-- CREATE CARD MENU MODAL -->
     <div id="modal-create-card-menu" class="hidden"
@@ -1045,7 +1116,7 @@
             }
 
             // Filter
-            const uniqueCards = potentialCards.filter(c => !cardsInUse.has(c));
+            const uniqueCards = potentialCards.filter(c => !cardsInUse.has(c) && !bannedCards.white.has(c));
 
             if (uniqueCards.length > 0) {
                 whiteCards = uniqueCards;
@@ -1077,6 +1148,10 @@
                     }
                 });
             }
+
+            // BAN FILTER
+            blackCards = blackCards.filter(c => !bannedCards.black.has(c.text));
+
             blackCards.sort(() => Math.random() - 0.5);
             console.log("Black Deck Refilled. Size:", blackCards.length);
         }
@@ -1097,12 +1172,140 @@
         // Structure: { "PLAYER_ID": { white: [], black: [] }, ... }
         let serverPlayerCards = {};
 
+        // --- BAN SYSTEM ---
+        let bannedCards = { white: new Set(), black: new Set() };
+        let currentBanView = 'black'; // 'white', 'black'
+
         let deleteMode = { white: false, black: false };
         let editingIndex = { white: -1, black: -1 };
 
         function showCreateCardMenu() {
             document.getElementById('modal-create-card-menu').classList.remove('hidden');
         }
+
+        /* --- BAN SYSTEM LOGIC --- */
+        function openBanMenu() {
+            document.getElementById('screen-lobby').classList.add('hidden');
+            document.getElementById('screen-ban-menu').classList.remove('hidden');
+            setBanView('black'); // Default
+        }
+
+        function exitBanMenu() {
+            document.getElementById('screen-ban-menu').classList.add('hidden');
+            document.getElementById('screen-lobby').classList.remove('hidden');
+        }
+
+        function setBanView(type) {
+            currentBanView = type;
+            // Update tabs
+            document.querySelectorAll('.ban-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-ban-${type}`).classList.add('active');
+
+            renderBanUi();
+        }
+
+        function renderBanUi() {
+            const container = document.getElementById('ban-list-container');
+            container.innerHTML = '';
+
+            // Aggregate ALL known cards for this view
+            const type = currentBanView;
+            const sourceArray = (type === 'black') ? CAH_BLACK : [...CAH_WHITE]; // Copy base
+            const allCards = [];
+
+            // 1. Add Base Cards
+            sourceArray.forEach(c => {
+                const t = (typeof c === 'string') ? c : c.text;
+                allCards.push({ text: t, isCustom: false });
+            });
+
+            // 2. Add My Custom Cards
+            if (myCreatedCards[type]) {
+                myCreatedCards[type].forEach(c => allCards.push({ text: c.text, isCustom: true }));
+            }
+
+            // 3. (Host Only) Add Review of Other Player Cards
+            if (isHost && serverPlayerCards) {
+                Object.values(serverPlayerCards).forEach(pc => {
+                    if (pc[type]) {
+                        pc[type].forEach(c => allCards.push({ text: c.text, isCustom: true }));
+                    }
+                });
+            }
+
+            // Deduplicate by text
+            const unique = [];
+            const seen = new Set();
+            allCards.forEach(c => {
+                if (!seen.has(c.text)) {
+                    seen.add(c.text);
+                    unique.push(c);
+                }
+            });
+
+            // Render
+            unique.forEach(c => {
+                // Determine if banned
+                const isBanned = bannedCards[type].has(c.text);
+
+                // Create Card Element (Mini version)
+                const cardEl = document.createElement('div');
+                cardEl.className = 'card ' + type + (isBanned ? ' banned' : '');
+                cardEl.style.width = '140px';
+                cardEl.style.height = '180px';
+                cardEl.style.fontSize = '0.9rem';
+                cardEl.style.cursor = 'pointer';
+                cardEl.style.position = 'relative';
+
+                // Content
+                let htmlContent = c.text;
+                if (type === 'black') {
+                    htmlContent = htmlContent.replace(/_/g, "____");
+                }
+                cardEl.innerHTML = htmlContent;
+
+                // Logo/Watermark
+                const logo = document.createElement('div');
+                logo.className = 'card-logo';
+                logo.innerHTML = (type === 'black') ? '◼' : '◻';
+                logo.style.fontSize = '1rem';
+                cardEl.appendChild(logo);
+
+                // Click Action
+                cardEl.onclick = () => toggleBan(type, c.text);
+
+                container.appendChild(cardEl);
+            });
+        }
+
+        function toggleBan(type, text) {
+            if (isHost) {
+                // Host logic immediate
+                if (bannedCards[type].has(text)) {
+                    bannedCards[type].delete(text);
+                } else {
+                    bannedCards[type].add(text);
+                }
+                // Broadcast Update
+                broadcastBanList();
+                renderBanUi();
+            } else {
+                // Client Request
+                if (hostConn && hostConn.open) {
+                    hostConn.send({ type: 'TOGGLE_BAN', category: type, text: text });
+                }
+            }
+        }
+
+        function broadcastBanList() {
+            const payload = {
+                white: Array.from(bannedCards.white),
+                black: Array.from(bannedCards.black)
+            };
+            broadcast({ type: 'UPDATE_BANNED_LIST', list: payload });
+        }
+
+        // --- END BAN SYSTEM ---
 
         function openCreateCardForm(type) {
             document.getElementById('modal-create-card-menu').classList.add('hidden');
@@ -2393,6 +2596,13 @@
                                 const conn = connections[senderId];
                                 if (conn && conn.open) {
                                     conn.send({ type: 'UPDATE_SETTINGS', pointsToWin: pointsToWin, gameMode: gameMode, timerSetting: timerSetting });
+
+                                    // Send Ban List
+                                    const bans = {
+                                        white: Array.from(bannedCards.white),
+                                        black: Array.from(bannedCards.black)
+                                    };
+                                    conn.send({ type: 'UPDATE_BANNED_LIST', list: bans });
                                 }
                             }
                         }
@@ -2549,6 +2759,22 @@
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
+                        break;
+
+                    // --- BAN SYSTEM HANDLERS ---
+                    case 'TOGGLE_BAN':
+                        if (isHost) {
+                            toggleBan(data.category, data.text);
+                        }
+                        break;
+                    case 'UPDATE_BANNED_LIST':
+                        // Receive arrays, convert to Sets
+                        bannedCards.white = new Set(data.list.white);
+                        bannedCards.black = new Set(data.list.black);
+                        // Refresh UI if open
+                        if (!document.getElementById('screen-ban-menu').classList.contains('hidden')) {
+                            renderBanUi();
+                        }
                         break;
                 }
             } catch (e) {
