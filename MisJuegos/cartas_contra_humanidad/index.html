@@ -1005,13 +1005,44 @@
 
         /* --- DECK MANAGEMENT HELPERS --- */
         function refillWhiteDeck() {
-            whiteCards = [...CAH_WHITE];
+            let potentialCards = [...CAH_WHITE];
+
+            // Add custom cards
             const boostFactor = 3;
             if (myCreatedCards.white.length > 0) {
                 for (let i = 0; i < boostFactor; i++) {
-                    whiteCards.push(...myCreatedCards.white.map(c => c.text));
+                    potentialCards.push(...myCreatedCards.white.map(c => c.text));
                 }
             }
+
+            // Identify cards currently in play to avoid duplicates
+            // We only care about this if the game has started (players exist)
+            const cardsInUse = new Set();
+            if (typeof players !== 'undefined') {
+                players.forEach(p => {
+                    if (p.hand && Array.isArray(p.hand)) {
+                        p.hand.forEach(c => cardsInUse.add(c));
+                    }
+                });
+            }
+            if (typeof gameState !== 'undefined' && gameState.submissions) {
+                gameState.submissions.forEach(s => {
+                    if (s.cards && Array.isArray(s.cards)) {
+                        s.cards.forEach(c => cardsInUse.add(c));
+                    }
+                });
+            }
+
+            // Filter
+            const uniqueCards = potentialCards.filter(c => !cardsInUse.has(c));
+
+            if (uniqueCards.length > 0) {
+                whiteCards = uniqueCards;
+            } else {
+                console.warn("Deck exhaustion: Not enough unique cards. Allowing duplicates.");
+                whiteCards = potentialCards;
+            }
+
             whiteCards.sort(() => Math.random() - 0.5);
             console.log("White Deck Refilled. Size:", whiteCards.length);
         }
@@ -2087,29 +2118,37 @@
             // Assign points
             if (maxVotes > 0) {
                 // Winner(s)
-                winners.forEach(wIdx => {
-                    const sub = gameState.submissions[wIdx];
-                    const p = players.find(x => x.id === sub.playerId);
-                    // Democracy mode winning point
-                    if (p) p.score++;
+                // Remove automatic point increment for all "winners" array in first pass
+                // winners.forEach(...) -> Removed. 
+                // We handle point assignment in single winner logic below.
 
-                    // Note: original game might give point to everyone who voted for winner?
-                    // Simplifying to just winner gets point.
-                });
+                // Winners check
+                if (winners.length > 1) {
+                    // TIE
+                    gameState.winningSubmissionIndex = -1; // No single winner highlight
+                    gameState.winnerName = "¡EMPATE! Nadie gana puntos";
+                    // No points added
+                    gameState.phase = 'SCORE';
+                    broadcast({ type: 'PLAYER_UPDATE', players: players });
+                    broadcast({ type: 'SITUATION_UPDATE', state: gameState });
 
-                gameState.winningSubmissionIndex = winners[0]; // Highlight first winner
-                const wSub = gameState.submissions[winners[0]];
-                const wPlayer = players.find(p => p.id === wSub.playerId);
-                gameState.winnerName = wPlayer ? wPlayer.name : "Nadie";
+                    // Delay next round
+                    setTimeout(() => startRound(), 5000);
 
-                gameState.phase = 'SCORE';
-                broadcast({ type: 'PLAYER_UPDATE', players: players });
-                broadcast({
-                    type: 'SITUATION_UPDATE',
-                    state: gameState
-                });
+                } else {
+                    // Single Winner
+                    gameState.winningSubmissionIndex = winners[0]; // Highlight first winner
+                    const wSub = gameState.submissions[winners[0]];
+                    const wPlayer = players.find(p => p.id === wSub.playerId);
+                    gameState.winnerName = wPlayer ? wPlayer.name : "Nadie";
+                    if (wPlayer) wPlayer.score++; // Point awarded to single winner
 
-                checkGameEnd(wPlayer); // Check if they reached winning score
+                    gameState.phase = 'SCORE';
+                    broadcast({ type: 'PLAYER_UPDATE', players: players });
+                    broadcast({ type: 'SITUATION_UPDATE', state: gameState });
+
+                    if (wPlayer) checkGameEnd(wPlayer);
+                }
             } else {
                 gameState.winnerName = "Nadie (0 votos)";
                 gameState.phase = 'SCORE';
@@ -2131,7 +2170,10 @@
             if (p.score >= pointsToWin) {
                 // Game Over
                 setTimeout(() => {
-                    showGameOverScreen(p);
+                    const durationMs = Date.now() - gameStartTime;
+                    showGameOverScreen(p, durationMs);
+                    // Broadcast to clients
+                    broadcast({ type: 'GAME_OVER', winner: p, duration: durationMs });
                 }, 1000);
             } else {
                 // Wait then next round
@@ -2141,18 +2183,63 @@
             }
         }
 
-        function showGameOverScreen(winner) {
+        function showGameOverScreen(winner, durationMsOverride = null) {
             // Calculate Stats
-            const durationMs = Date.now() - gameStartTime;
+            const durationMs = durationMsOverride || (Date.now() - gameStartTime);
             const minutes = Math.floor(durationMs / 60000);
             const seconds = Math.floor((durationMs % 60000) / 1000);
 
+            // Conditional Title
+            const titleEl = document.querySelector('#screen-game-over h1');
+            if (winner.id === myId) {
+                titleEl.innerHTML = '🏆 ¡VICTORIA! 🏆';
+                titleEl.style.color = '#fbbf24';
+            } else {
+                titleEl.innerHTML = 'FIN DEL JUEGO';
+                titleEl.style.color = 'white';
+            }
+
             document.getElementById('go-winner-name').innerText = winner.name + " GANÓ";
-            document.getElementById('go-stats').innerHTML = `
-                <p>Puntuación Final: ${winner.score}</p>
-                <p>Duración: ${minutes}m ${seconds}s</p>
-                <p>Rondas Jugadas: ${gameState.round}</p>
+
+            // Leaderboard Generation
+            // Ensure players list is up to date (it should be as we broadcast updates)
+            const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+
+            let tableHtml = `
+            <div style="margin-bottom: 15px; font-size: 1.1rem; opacity: 0.8">
+               ⏱️ ${minutes}m ${seconds}s  •  🔄 ${gameState.round} Rondas
+            </div>
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 1rem;">
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.3);">
+                    <th style="padding: 8px;">#</th>
+                    <th style="padding: 8px;">Jugador</th>
+                    <th style="padding: 8px; text-align: right;">Puntos</th>
+                </tr>
             `;
+
+            sortedPlayers.forEach((p, index) => {
+                const isWinner = p.id === winner.id;
+                const isMe = p.id === myId;
+
+                let rowBg = '';
+                if (isMe) rowBg = 'background: rgba(255,255,255,0.15);';
+                else if (isWinner) rowBg = 'background: rgba(251, 191, 36, 0.1);';
+
+                const nameStyle = isWinner ? 'color: #fbbf24; font-weight: 800;' : (isMe ? 'font-weight: bold;' : '');
+                const icon = isWinner ? '👑 ' : '';
+                const meTag = isMe ? ' <span style="font-size:0.8em; opacity:0.7">(Tú)</span>' : '';
+
+                tableHtml += `
+                <tr style="${rowBg}">
+                    <td style="padding: 8px; opacity: 0.7;">${index + 1}</td>
+                    <td style="padding: 8px; ${nameStyle}">${icon}${p.name}${meTag}</td>
+                    <td style="padding: 8px; text-align: right; font-weight: bold;">${p.score}</td>
+                </tr>
+                `;
+            });
+            tableHtml += '</table>';
+
+            document.getElementById('go-stats').innerHTML = tableHtml;
 
             showScreen('screen-game-over');
         }
@@ -2251,6 +2338,10 @@
                         players = data.players;
                         if (gameState) gameState.players = data.players;
                         updateTableUI();
+                        break;
+                    case 'GAME_OVER':
+                        // Client receives end game
+                        showGameOverScreen(data.winner, data.duration);
                         break;
                     case 'SUBMIT_CARDS': // Host receives
                         if (isHost) handleSubmission(senderId, data.cards);
