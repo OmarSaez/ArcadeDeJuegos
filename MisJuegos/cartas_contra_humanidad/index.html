@@ -107,24 +107,34 @@
             width: 180px;
             height: 250px;
             border-radius: var(--border-radius);
-            padding: 20px;
+            padding: 15px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
+            justify-content: space-between;
+            /* Push logo to bottom */
             font-weight: 700;
-            font-size: 0.95rem;
-            line-height: 1.4;
+            font-size: 0.9rem;
+            line-height: 1.3;
             position: relative;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             transition: transform 0.2s, z-index 0.2s;
             cursor: pointer;
             margin: 5px;
             flex-shrink: 0;
-            overflow-wrap: break-word;
-            word-wrap: break-word;
-            hyphens: auto;
-            /* Prevent shrinking in hand */
+            overflow: hidden;
+            /* Clip overflow */
+            white-space: normal;
+        }
+
+        .card-text-content {
+            flex: 1;
+            overflow-y: auto;
+            /* Scroll if absolutely necessary */
+            margin-bottom: 20px;
+            /* Space above logo */
+            /* Hide scrollbar visually but keep functionality */
+            scrollbar-width: thin;
         }
 
         .card.black {
@@ -248,6 +258,88 @@
             margin-bottom: 20px;
         }
 
+        /* --- STARS --- */
+        .star-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 5px;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+
+        .star-icon {
+            font-size: 1.2rem;
+            display: inline-block;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+            margin-right: 2px;
+            transform: scale(0);
+            /* Start Invisible */
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .star-gold {
+            color: #fbbf24;
+            text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .star-grey {
+            color: #9ca3af;
+        }
+
+        .star-black {
+            color: #1f2937;
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes winnerGlow {
+            0% {
+                border-color: transparent;
+                background-color: transparent;
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+
+            100% {
+                border-color: gold;
+                background-color: rgba(255, 215, 0, 0.2);
+                transform: scale(1);
+            }
+        }
+
+        .star-black {
+            color: #1f2937;
+            text-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
+        }
+
+        color: #9ca3af;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
         #lobby-list li {
             background: white;
             padding: 10px 15px;
@@ -346,58 +438,149 @@
         <h2>SALA: <span id="lobby-code"
                 style="font-family:monospace; background:#e5e5e5; padding:2px 8px; border-radius:4px;">CODE</span></h2>
         <ul id="lobby-list"></ul>
-        <div id="host-controls" class="hidden">
+        <div id="host-controls" class="hidden" style="width: 100%; max-width: 300px;">
             <div
-                style="background: white; padding: 10px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <label style="color:#666; font-size:0.9rem; font-weight:bold;">PUNTOS PARA GANAR</label>
-                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 5px;">
-                    <button class="btn secondary" style="width: 40px; height: 40px; padding:0; font-size:1.2rem;"
+                style="background: white; padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                <label style="color:#666; font-size:0.8rem; font-weight:bold; display:block; margin-bottom: 2px;">PUNTOS
+                    PARA GANAR</label>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <button class="btn secondary" style="width: 30px; height: 30px; padding:0; font-size:1rem;"
                         onclick="changePoints(-1)">-</button>
                     <span id="points-display-host"
-                        style="font-size: 1.5rem; font-weight: bold; min-width: 30px;">3</span>
-                    <button class="btn secondary" style="width: 40px; height: 40px; padding:0; font-size:1.2rem;"
+                        style="font-size: 1.2rem; font-weight: bold; min-width: 20px;">3</span>
+                    <button class="btn secondary" style="width: 30px; height: 30px; padding:0; font-size:1rem;"
                         onclick="changePoints(1)">+</button>
                 </div>
             </div>
 
+            <div
+                style="background: white; padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                <label style="color:#666; font-size:0.8rem; font-weight:bold; display:block; margin-bottom: 2px;">MODO
+                    DE JUEGO</label>
+                <div style="display: flex; justify-content: center; gap: 5px;">
+                    <button id="btn-mode-judge" class="btn" style="flex:1; font-size:0.75rem; padding: 5px;"
+                        onclick="changeGameMode('JUDGE')">Juez</button>
+                    <button id="btn-mode-demo" class="btn secondary" style="flex:1; font-size:0.75rem; padding: 5px;"
+                        onclick="changeGameMode('DEMOC')">Democracia</button>
+                </div>
+            </div>
+
+            <div
+                style="background: white; padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                <label style="color:#666; font-size:0.8rem; font-weight:bold; display:block; margin-bottom: 2px;">TIEMPO
+                    POR RONDA</label>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <button class="btn secondary" style="width: 30px; height: 30px; padding:0; font-size:1rem;"
+                        onclick="changeTimer(-10)">-</button>
+                    <span id="timer-display-host"
+                        style="font-size: 1.2rem; font-weight: bold; min-width: 60px;">40s</span>
+                    <button class="btn secondary" style="width: 30px; height: 30px; padding:0; font-size:1rem;"
+                        onclick="changeTimer(10)">+</button>
+                </div>
+                <button id="btn-timer-toggle" class="btn secondary"
+                    style="width:100%; margin-top:5px; font-size:0.8rem; padding: 2px;" onclick="toggleTimerLimit()">Sin
+                    Límite</button>
+            </div> <!-- Close Timer Panel -->
+
             <p style="color:#666; font-size:0.9rem;">Se recomiendan 3+ jugadores</p>
             <button class="btn" onclick="startGame()">Comenzar Juego</button>
-        </div>
+        </div> <!-- Close Host Controls -->
+
         <div id="client-settings-view" class="hidden" style="margin-bottom: 20px;">
             <p style="color:#666; font-weight:bold;">Puntos para ganar: <span id="points-display-client"
                     style="font-size:1.2rem; color:black;">3</span></p>
+            <p style="color:#666; font-weight:bold;">Modo: <span id="mode-display-client"
+                    style="font-size:1.2rem; color:black;">Juez Clásico</span></p>
+            <p style="color:#666; font-weight:bold;">Tiempo: <span id="timer-setting-client"
+                    style="font-size:1.2rem; color:black;">40s</span></p>
         </div>
         <p id="wait-msg">Esperando al anfitrión...</p>
-    </div>
+    </div> <!-- Close Screen Lobby -->
 
     <!-- SCREEN 3: GAME -->
-    <div id="screen-game" class="screen hidden" style="background: #e5e5e5;">
-        <div id="info-bar">Puntos: <span id="my-score">0</span></div>
-        <div id="czar-indicator">CZAR: <span id="czar-name">...</span></div>
+    <div id="screen-game" class="screen hidden"
+        style="background: #e5e5e5; display: flex; flex-direction: column; overflow: hidden;">
+        <!-- Unified Game Header -->
+        <div id="unified-game-header"
+            style="flex: 0 0 auto; width: 100%; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 20; box-sizing: border-box;">
+            <!-- Top Row: Stats -->
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; border-bottom: 1px solid #f0f0f0;">
+                <div
+                    style="flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem;">
+                    <strong>Tú:</strong> <span id="my-score" style="font-weight:bold; color:#2563eb;">0</span>
+                </div>
+                <div style="font-weight:bold; color:#e11d48; min-width: 50px; text-align:center; font-size: 1rem;">
+                    <span id="game-timer">--</span>
+                </div>
+                <div
+                    style="flex: 1; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem;">
+                    <strong>Juez:</strong> <span id="czar-name" style="font-weight:bold;">...</span>
+                </div>
+            </div>
+            <!-- Bottom Row: Status -->
+            <div id="status-display"
+                style="text-align: center; padding: 8px 10px; font-size: 0.95rem; color: #1f2937; font-weight: 600; background: #fdfdfd; width: 100%; box-sizing: border-box;">
+                Estado...
+            </div>
+        </div>
+
+        <!-- Player List (Floating but smaller) -->
         <div id="ingame-player-list"
-            style="position: absolute; top: 70px; right: 20px; text-align: right; pointer-events: none;"></div>
+            style="position: absolute; top: 100px; right: 10px; text-align: right; pointer-events: none; z-index: 15; opacity: 0.8; transform: scale(0.8); transform-origin: top right;">
+        </div>
 
-        <div id="game-layout">
-            <div id="table-area">
-                <div id="status-display" class="status-msg">Esperando...</div>
+        <!-- SCROLLABLE CONTENT AREA -->
+        <!-- SCROLLABLE CONTENT AREA -->
+        <div
+            style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; padding-top: 20px; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 100%; box-sizing: border-box;">
 
-                <!-- Black Card -->
-                <div id="black-card-spot"></div>
+            <!-- 1. BLACK CARD (Always Top) -->
+            <div id="black-card-spot" style="margin-bottom: 15px; flex: 0 0 auto;"></div>
 
-                <!-- Played Cards (Face down initially, then revealed) -->
-                <div id="played-cards-area"></div>
+            <!-- 2. MY HAND & CONTROLS (Priority View) -->
+            <!-- Wrapped in container to toggle visibility easily -->
+            <div id="hand-container"
+                style="width: 100%; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center;">
+                <h3 id="hand-title" style="color:#666; font-size:0.9rem; margin-bottom:5px;">Tu Mano</h3>
+                <div id="hand-scroll-area"
+                    style="width: 100%; overflow-x: auto; padding: 5px; border-radius: 8px; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.05); white-space: nowrap; box-sizing: border-box;">
+                    <div id="hand-area" style="display: flex; gap: 8px; padding-bottom: 5px;">
+                        <!-- Cards injected here -->
+                    </div>
+                </div>
 
-                <button id="btn-confirm-selection" class="btn hidden"
-                    style="margin-top:20px; width:auto; background:#2563eb;">CONFIRMAR SELECCIÓN</button>
+                <!-- Helper Buttons -->
+                <div id="player-controls"
+                    style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                    <button id="btn-confirm-selection" class="btn hidden" onclick="submitSelection()"
+                        style="background:#2563eb; width: auto; padding: 8px 20px;">CONFIRMAR SELECCIÓN</button>
 
-                <button id="btn-swap-mode" class="btn secondary" onclick="toggleSwapMode()"
-                    style="margin-top:10px; width:auto; font-size: 0.9rem; padding: 10px 20px;">Cambiar 2
-                    Cartas</button>
+                    <!-- Swap UI -->
+                    <button id="btn-swap-cards" class="btn secondary" onclick="enableSwapMode()"
+                        style="width: auto; font-size: 0.8rem;">Cambiar 2 Cartas</button>
+                    <button id="btn-cancel-swap" class="btn hidden" onclick="resetSwapUI(false)"
+                        style="background:#ef4444; width: auto;">Cancelar</button>
+                    <!-- Fixed ID below -->
+                </div>
+                <button id="btn-confirm-swap" class="btn hidden" onclick="submitSwap()"
+                    style="background:#e11d48; margin-top:5px; width:auto;">CONFIRMAR CAMBIO</button>
+                <p id="swap-msg" class="hidden"
+                    style="color:#e11d48; font-weight:bold; font-size:0.9rem; margin-top:5px;">Selecciona 2 cartas...
+                </p>
             </div>
 
-            <div id="hand-area">
-                <!-- My White Cards -->
+            <!-- 3. PLAYED CARDS (Bottom) -->
+            <div
+                style="width: 100%; border-top: 1px solid #ddd; margin-top: 10px; padding-top: 10px; text-align: center;">
+                <h3 style="color:#666; font-size:1rem; margin-bottom:10px;">Cartas en la Mesa</h3>
+                <div id="played-cards-area"
+                    style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; width: 100%;">
+                    <!-- Submitted/Played cards go here -->
+                </div>
             </div>
+
+            <br><br>
         </div>
     </div>
 
@@ -431,12 +614,17 @@
         let connections = {};
         let players = []; // {id, name, score, hand: []}
         let pointsToWin = 3;
+        let gameMode = 'JUDGE'; // 'JUDGE' or 'DEMOC'
+        let timerSetting = 40; // Seconds, -1 for infinite
+        let currentTimer = 0;
+        let timerInterval = null;
 
         let gameState = {
-            phase: 'LOBBY', // LOBBY, SELECTION, JUDGING, SCORE
+            phase: 'LOBBY', // LOBBY, SELECTION, JUDGING, SCORE, VOTING
+            gameMode: 'JUDGE',
             czarIndex: 0,
             blackCard: null,
-            submissions: [], // {playerId, cards: []}
+            submissions: [], // {playerId, cards: [], votes: []}
             round: 0
         };
 
@@ -611,32 +799,25 @@
 
             // Next Black Card
             gameState.blackCard = blackCards.pop();
+            gameState.gameMode = gameMode; // Lock in mode for the round
 
-            // Next Czar
-            if (gameState.round === 0) {
-                // First round: Random Czar
-                gameState.czarIndex = 0;
+            // Next Czar (Only for JUDGE mode)
+            if (gameMode === 'JUDGE') {
+                if (gameState.round === 0) {
+                    gameState.czarIndex = 0;
+                } else {
+                    if (gameState.czarIndex >= players.length) gameState.czarIndex = -1;
+                    gameState.czarIndex = gameState.round % players.length;
+                }
+
+                if (!players[gameState.czarIndex]) {
+                    gameState.czarIndex = 0;
+                }
+                gameState.czarId = players[gameState.czarIndex].id;
             } else {
-                // Ensure current index is valid before rotating (in case players left)
-                if (gameState.czarIndex >= players.length) gameState.czarIndex = -1;
-
-                // Rotate
-                gameState.czarIndex = gameState.round % players.length;
+                gameState.czarIndex = -1;
+                gameState.czarId = null; // No czar
             }
-
-            // Safety Check
-            if (!players[gameState.czarIndex]) {
-                console.error(`Critical: Czar Index ${gameState.czarIndex} invalid. Players:`, players);
-                gameState.czarIndex = 0;
-            }
-
-            // Final check to prevent crash
-            if (!players[gameState.czarIndex]) {
-                alert("Error crítico: No hay jugadores válidos para ser Czar.");
-                return;
-            }
-
-            gameState.czarId = players[gameState.czarIndex].id;
 
             const isFirstRound = (gameState.round === 0);
 
@@ -663,6 +844,74 @@
 
             // We must update the local round variable if it was overwritten by handleData/stateSnapshot
             gameState.round = (gameState.round || 0) + 1;
+
+            if (isHost && timerSetting !== -1) {
+                startTimerSequence();
+            }
+        }
+
+        let currentStateTimer = null;
+        function startTimerSequence() {
+            if (currentStateTimer) clearInterval(currentStateTimer);
+            let timeLeft = timerSetting;
+
+            // Broadcast initial time
+            broadcast({ type: 'SITUATION_UPDATE', state: gameState, timeLeft: timeLeft }); // Reuse situation update to sync time
+
+            currentStateTimer = setInterval(() => {
+                timeLeft--;
+                // Broadcast time tick (optimize? maybe every 5s or just local countdown? 
+                // Let's broadcast every second for sync primarily for now, optimization later if needed)
+                // Actually, sending state every second is heavy. Let's send TIME_TICK.
+                broadcast({ type: 'TIME_TICK', timeLeft: timeLeft });
+
+                if (timeLeft <= 0) {
+                    clearInterval(currentStateTimer);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function handleTimeout() {
+            console.log("Timer Expired for phase:", gameState.phase);
+            if (gameState.phase === 'SELECTION') {
+                // Force submit for players who haven't submitted
+                const submittedIds = gameState.submissions.map(s => s.playerId);
+                players.forEach(p => {
+                    if (p.id === gameState.czarId && gameMode === 'JUDGE') return; // Czar safe
+                    if (!submittedIds.includes(p.id)) {
+                        // Auto pick random
+                        const required = gameState.blackCard.blanks || 1;
+                        // Clone hand to avoid mutation issues during splice loop
+                        const available = [...p.hand];
+                        const picks = [];
+                        for (let i = 0; i < required; i++) {
+                            if (available.length > 0) {
+                                const ridx = Math.floor(Math.random() * available.length);
+                                picks.push(available[ridx]);
+                                available.splice(ridx, 1);
+                            }
+                        }
+                        console.log(`Auto-picked for ${p.name}:`, picks);
+                        handleSubmission(p.id, picks);
+                    }
+                });
+            } else if (gameState.phase === 'JUDGING' || gameState.phase === 'VOTING') {
+                // Force winner selection
+                if (gameMode === 'JUDGE') {
+                    // Host (Czar?) picks random if Czar didn't pick
+                    // Actually handleTimeout is Host logic.
+                    // If Czar hasn't picked...
+                    const count = gameState.submissions.length;
+                    if (count > 0) {
+                        const ridx = Math.floor(Math.random() * count);
+                        hostSelectWinner(ridx);
+                    }
+                } else {
+                    // Voting: Time is up, score with current votes
+                    scoreVotingRound();
+                }
+            }
         }
 
 
@@ -672,24 +921,83 @@
             let newP = pointsToWin + delta;
             if (newP < 2) newP = 2;
             if (newP > 15) newP = 15;
-
             if (pointsToWin !== newP) {
                 pointsToWin = newP;
-                updateLobbySettingsUI();
-                broadcast({ type: 'UPDATE_SETTINGS', pointsToWin: pointsToWin });
+                syncSettings();
             }
         }
 
+        function changeGameMode(mode) {
+            if (!isHost) return;
+            if (gameMode !== mode) {
+                gameMode = mode;
+                syncSettings();
+            }
+        }
+
+        function changeTimer(delta) {
+            if (!isHost) return;
+            if (timerSetting === -1) timerSetting = 40; // Restore if coming from infinite
+            else {
+                let newT = timerSetting + delta;
+                if (newT < 20) newT = 20;
+                if (newT > 120) newT = 120;
+                timerSetting = newT;
+            }
+            syncSettings();
+        }
+
+        function toggleTimerLimit() {
+            if (!isHost) return;
+            if (timerSetting === -1) timerSetting = 40;
+            else timerSetting = -1;
+            syncSettings();
+        }
+
+        function syncSettings() {
+            updateLobbySettingsUI();
+            broadcast({ type: "UPDATE_SETTINGS", pointsToWin: pointsToWin, gameMode: gameMode, timerSetting: timerSetting });
+        }
+
         function updateLobbySettingsUI() {
-            document.getElementById('points-display-host').innerText = pointsToWin;
-            document.getElementById('points-display-client').innerText = pointsToWin;
+            document.getElementById("points-display-host").innerText = pointsToWin;
+            document.getElementById("points-display-client").innerText = pointsToWin;
+            const modeText = (gameMode === "JUDGE") ? "Juez Clásico" : "Democracia";
+            document.getElementById("mode-display-client").innerText = modeText;
+
+            // Timer UI
+            const timeStr = (timerSetting === -1) ? "∞" : timerSetting + "s";
+            document.getElementById("timer-display-host").innerText = timeStr;
+            document.getElementById("timer-setting-client").innerText = timeStr;
+            const timerBtn = document.getElementById("btn-timer-toggle");
+            if (timerBtn) {
+                if (timerSetting === -1) {
+                    timerBtn.innerText = "Activar Límite";
+                    timerBtn.classList.remove('secondary');
+                } else {
+                    timerBtn.innerText = "Sin Límite";
+                    timerBtn.classList.add('secondary');
+                }
+            }
+
+            const btnJudge = document.getElementById("btn-mode-judge");
+            const btnDemo = document.getElementById("btn-mode-demo");
+            if (btnJudge && btnDemo) {
+                if (gameMode === "JUDGE") {
+                    btnJudge.classList.remove("secondary");
+                    btnDemo.classList.add("secondary");
+                } else {
+                    btnJudge.classList.add("secondary");
+                    btnDemo.classList.remove("secondary");
+                }
+            }
         }
 
         /* --- SWAP CARDS LOGIC --- */
         let isSwapping = false;
         let hasSwappedThisRound = false;
 
-        function toggleSwapMode() {
+        function enableSwapMode() {
             if (gameState.phase !== 'SELECTION') return alert("Solo puedes cambiar cartas en tu turno.");
             if (gameState.czarId === myId) return alert("El Czar no puede cambiar cartas.");
             if (hasSwappedThisRound) return alert("Ya cambiaste cartas en esta ronda.");
@@ -698,7 +1006,7 @@
             selectedCards = [];
             updateHandUIHelper();
 
-            const btn = document.getElementById('btn-swap-mode');
+            const btn = document.getElementById('btn-swap-cards');
             if (isSwapping) {
                 btn.style.background = '#e11d48'; // Red warning color
                 btn.innerText = "CANCELAR CAMBIO";
@@ -782,7 +1090,7 @@
             isSwapping = false;
             selectedCards = [];
 
-            const btn = document.getElementById('btn-swap-mode');
+            const btn = document.getElementById('btn-swap-cards');
             if (!btn) return;
 
             if (newRound) {
@@ -848,7 +1156,8 @@
 
             // Update UI to show "Player X submitted" (masked)
             const submissionCount = gameState.submissions.length;
-            const expected = players.length - 1; // Czar doesn't play
+            let expected = players.length;
+            if (gameMode === 'JUDGE') expected = players.length - 1; // Czar doesn't play
 
             // Broadcast progress - MASKED to clients only
             const safeSubs = gameState.submissions.map(s => ({ playerId: s.playerId, status: 'HIDDEN' }));
@@ -866,8 +1175,12 @@
             updateTableUI();
 
             if (submissionCount >= expected) {
-                // All in! Switch to Judging
-                startJudging();
+                // All in! Switch to phase
+                if (gameMode === 'JUDGE') {
+                    startJudging();
+                } else {
+                    startVoting();
+                }
             }
         }
 
@@ -879,8 +1192,25 @@
             // Broadcast fully revealed submissions
             broadcast({
                 type: 'SITUATION_UPDATE',
-                state: gameState // Now mapped correctly reveal
+                state: gameState
             });
+
+            if (isHost && timerSetting !== -1) startTimerSequence();
+        }
+
+        function startVoting() {
+            gameState.phase = 'VOTING';
+            // Shuffle submissions
+            gameState.submissions.forEach(s => s.votes = []); // Init votes
+            gameState.submissions.sort(() => Math.random() - 0.5);
+
+            // Broadcast fully revealed submissions
+            broadcast({
+                type: 'SITUATION_UPDATE',
+                state: gameState
+            });
+
+            if (isHost && timerSetting !== -1) startTimerSequence();
         }
 
         function hostSelectWinner(submissionIndex) {
@@ -900,6 +1230,121 @@
                 }
             });
 
+            checkGameEnd(p);
+        }
+
+        function handleVote(voterId, subIndex) {
+            // Find who is voting
+            // Allow self-votes (but they count as 0 later)
+            const targetSub = gameState.submissions[subIndex];
+            if (!targetSub) return;
+
+            // Self-Vote Penalty Logic (Host Side)
+            if (targetSub.playerId === voterId) {
+                const voter = players.find(p => p.id === voterId);
+                if (voter) {
+                    voter.selfVoteCount = (voter.selfVoteCount || 0) + 1;
+                    console.log(`Player ${voter.name} self-voted! Count: ${voter.selfVoteCount}`);
+
+                    if (voter.selfVoteCount >= 3) {
+                        voter.score--;
+                        console.log(`Penalty applied to ${voter.name}. New Score: ${voter.score}`);
+                        // Broadcast score update immediately
+                        broadcast({ type: 'PLAYER_UPDATE', players: players });
+                    }
+                }
+            }
+
+            // Check if already voted? (Scan all submissions for this voterId in votes array)
+            let alreadyVoted = false;
+            gameState.submissions.forEach(s => {
+                if (s.votes && s.votes.includes(voterId)) alreadyVoted = true;
+            });
+            if (alreadyVoted) return;
+
+            // Record vote
+            if (!targetSub.votes) targetSub.votes = [];
+            targetSub.votes.push(voterId);
+
+            console.log(`Vote recorded from ${voterId} for sub ${subIndex}`);
+
+            // Check if all players have voted
+            // Count total votes
+            let totalVotes = 0;
+            gameState.submissions.forEach(s => {
+                if (s.votes) totalVotes += s.votes.length;
+            });
+
+            // Need votes from everyone? Or everyone except... no everyone votes in Democracy usually?
+            // "y una vez votan todos sale el ganador"
+            if (totalVotes >= players.length) {
+                scoreVotingRound();
+            }
+        }
+
+        function scoreVotingRound() {
+            // Tally votes
+            let maxVotes = -1;
+            let winners = []; // Indices
+
+            gameState.submissions.forEach((sub, idx) => {
+                // Calculate valid votes (exclude self-votes)
+                let validVotes = 0;
+                if (sub.votes) {
+                    sub.votes.forEach(voterId => {
+                        if (voterId !== sub.playerId) validVotes++;
+                    });
+                }
+
+                if (validVotes > maxVotes) {
+                    maxVotes = validVotes;
+                    winners = [idx];
+                } else if (validVotes === maxVotes) {
+                    winners.push(idx);
+                }
+            });
+
+            // Assign points
+            if (maxVotes > 0) {
+                // Winner(s)
+                winners.forEach(wIdx => {
+                    const sub = gameState.submissions[wIdx];
+                    const p = players.find(x => x.id === sub.playerId);
+                    // Democracy mode winning point
+                    if (p) p.score++;
+
+                    // Note: original game might give point to everyone who voted for winner?
+                    // Simplifying to just winner gets point.
+                });
+
+                gameState.winningSubmissionIndex = winners[0]; // Highlight first winner
+                const wSub = gameState.submissions[winners[0]];
+                const wPlayer = players.find(p => p.id === wSub.playerId);
+                gameState.winnerName = wPlayer ? wPlayer.name : "Nadie";
+
+                gameState.phase = 'SCORE';
+                broadcast({ type: 'PLAYER_UPDATE', players: players });
+                broadcast({
+                    type: 'SITUATION_UPDATE',
+                    state: gameState
+                });
+
+                checkGameEnd(wPlayer); // Check if they reached winning score
+            } else {
+                gameState.winnerName = "Nadie (0 votos)";
+                gameState.phase = 'SCORE';
+                broadcast({ type: 'PLAYER_UPDATE', players: players });
+                broadcast({
+                    type: 'SITUATION_UPDATE',
+                    state: gameState
+                });
+
+                // No score update, just wait
+                setTimeout(() => startRound(), 5000);
+            }
+        }
+
+        function checkGameEnd(p) {
             // Check for Game Winner
             if (p.score >= pointsToWin) {
                 // Game Over
@@ -921,6 +1366,9 @@
             document.getElementById('host-controls').classList.add('hidden');
             document.getElementById('client-settings-view').classList.remove('hidden');
         }
+
+        let lastRoundId = -1;
+        let myVotedIndex = -1; // Local state for voting
 
         function broadcast(msg, excludeLocal = false) {
             console.log("Broadcasting:", msg.type, "ExcludeLocal:", excludeLocal);
@@ -953,7 +1401,7 @@
                                 // Sync settings to the new player personally
                                 const conn = connections[senderId];
                                 if (conn && conn.open) {
-                                    conn.send({ type: 'UPDATE_SETTINGS', pointsToWin: pointsToWin });
+                                    conn.send({ type: 'UPDATE_SETTINGS', pointsToWin: pointsToWin, gameMode: gameMode, timerSetting: timerSetting });
                                 }
                             }
                         }
@@ -964,6 +1412,10 @@
                         break;
                     case 'UPDATE_SETTINGS':
                         pointsToWin = data.pointsToWin;
+                        if (data.gameMode) gameMode = data.gameMode;
+                        if (data.timerSetting !== undefined) {
+                            timerSetting = data.timerSetting;
+                        }
                         updateLobbySettingsUI();
                         break;
                     case 'GAME_START':
@@ -977,10 +1429,29 @@
                         break;
                     case 'SITUATION_UPDATE':
                         console.log("Processing SITUATION_UPDATE...");
+
+                        // Detect New Round
+                        if (data.state.round !== lastRoundId) {
+                            console.log("New Round Detected:", data.state.round);
+                            lastRoundId = data.state.round;
+                            // Reset local round state
+                            hasSwappedThisRound = false;
+                            resetSwapUI(true);
+                            selectedCards = [];
+                            myVotedIndex = -1; // Reset vote
+                            // Removing 'selected' class from visual cards is handled by updateHandUI if hand updates, 
+                            // but if hand doesn't update (no cards played?), we should clear selection visually.
+                            document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
+                            document.getElementById('btn-confirm-selection').classList.add('hidden');
+                        }
+
                         gameState = data.state;
                         updateTableUI();
+                        if (data.timeLeft !== undefined) updateTimerUI(data.timeLeft);
                         break;
                     case 'PLAYER_UPDATE':
+                        // Sync both global players list and gameState players
+                        players = data.players;
                         if (gameState) gameState.players = data.players;
                         updateTableUI();
                         break;
@@ -995,10 +1466,16 @@
                     case 'REQUEST_SWAP':
                         if (isHost) processSwap(senderId, data.cards);
                         break;
+                    case 'SUBMIT_VOTE':
+                        if (isHost) handleVote(senderId, data.submissionIndex);
+                        break;
                     case 'SWAP_SUCCESS':
                         // Reset my UI
                         hasSwappedThisRound = true;
                         resetSwapUI(false);
+                        break;
+                    case 'TIME_TICK':
+                        updateTimerUI(data.timeLeft);
                         break;
                 }
             } catch (e) {
@@ -1110,17 +1587,91 @@
             document.getElementById('btn-confirm-selection').classList.add('hidden');
 
             // Only hide hand for clients who are waiting for network response
-            // Host has already updated their hand via handleSubmission synchronously
             if (!isHost) {
                 document.getElementById('hand-area').innerHTML = '<h3 style="margin:auto; color:#666;">Cartas Enviadas. Esperando...</h3>';
             }
         }
 
+        // Memoized star delays
+        let starDelayCache = { round: -1, phase: '', voteCount: -1, map: new Map() };
+
+        function getStarDelays() {
+            // Cache invalidation conditions
+            const currentVoteCount = countTotalVotes();
+            if (starDelayCache.round === gameState.round &&
+                starDelayCache.phase === gameState.phase &&
+                starDelayCache.voteCount === currentVoteCount) {
+                return starDelayCache.map;
+            }
+
+            // Compute
+            const delayMap = new Map();
+
+            // Find max depth (max number of votes any card has)
+            let maxDepth = 0;
+            if (gameState.submissions) {
+                gameState.submissions.forEach(sub => {
+                    if (sub.votes && sub.votes.length > maxDepth) maxDepth = sub.votes.length;
+                });
+            }
+
+            // Assign delays based on Waves
+            // Wave N: All stars at index N appear together.
+            // Self-votes appear AFTER all possible normal waves.
+            const waveDuration = 0.6; // Seconds between waves
+            const selfVoteOffset = (maxDepth * waveDuration) + 0.5;
+
+            if (gameState.submissions) {
+                gameState.submissions.forEach((sub, sIdx) => {
+                    if (sub.votes) {
+                        // We want self votes to be visually last? 
+                        // The DOM order is determined by sub.votes array order.
+                        // But we can just delay the animation heavily.
+
+                        let selfCountInThisCard = 0;
+
+                        sub.votes.forEach((vId, vIdx) => {
+                            const isSelf = (vId === sub.playerId);
+                            let delay = 0;
+
+                            if (!isSelf) {
+                                // Wave based on index
+                                delay = vIdx * waveDuration;
+                                // Add slight organic jitter
+                                delay += (Math.random() * 0.2);
+                            } else {
+                                // Self vote: Push to end
+                                delay = selfVoteOffset + (selfCountInThisCard * 0.5);
+                                selfCountInThisCard++;
+                            }
+
+                            delayMap.set(`${sIdx}-${vIdx}`, delay);
+                        });
+                    }
+                });
+            }
+
+            starDelayCache = {
+                round: gameState.round,
+                phase: gameState.phase,
+                voteCount: currentVoteCount,
+                map: delayMap
+            };
+            return delayMap;
+        }
+
+        function countTotalVotes() {
+            let c = 0;
+            if (gameState.submissions) gameState.submissions.forEach(s => { if (s.votes) c += s.votes.length; });
+            return c;
+        }
+
         function createCard(type, text) {
             const div = document.createElement('div');
             div.className = `card ${type} deal-anim`;
-            // CAH JSON sometimes has HTML? usually plain text.
-            div.innerHTML = text.replace(/_+/g, '_______') + '<div class="card-logo">Cartas Contra la Humanidad</div>';
+            // Wrap text in container
+            const textHTML = text.replace(/_+/g, '_______');
+            div.innerHTML = `<div class="card-text-content">${textHTML}</div><div class="card-logo">Cartas Contra la Humanidad</div>`;
             return div;
         }
 
@@ -1143,8 +1694,12 @@
                 }).join('');
             }
             // Update Czar Info
-            const czarPlayer = gameState.players.find(p => p.id === gameState.czarId);
-            document.getElementById('czar-name').innerText = czarPlayer ? czarPlayer.name : "???";
+            if (gameMode === 'DEMOC') {
+                document.getElementById('czar-name').innerText = "Todos";
+            } else {
+                const czarPlayer = gameState.players.find(p => p.id === gameState.czarId);
+                document.getElementById('czar-name').innerText = czarPlayer ? czarPlayer.name : "???";
+            }
 
             // Update My Score
             const me = gameState.players.find(p => p.id === myId);
@@ -1153,11 +1708,40 @@
             // Status Msg
             const status = document.getElementById('status-display');
             if (gameState.phase === 'SELECTION') {
-                status.innerText = (gameState.czarId === myId) ? "Eres el CZAR. Espera a que los plebeyos elijan." : "Elige tus cartas más graciosas.";
+                if (gameMode === 'DEMOC') {
+                    status.innerText = "¡DEMOCRACIA! Elige tus cartas más graciosas.";
+                } else {
+                    status.innerText = (gameState.czarId === myId) ? "Eres el JUEZ. Espera a que los plebeyos elijan." : "Elige tus cartas más graciosas.";
+                }
+                // Show Hand
+                const hc = document.getElementById('hand-container');
+                if (hc) hc.style.display = 'block';
+
+                // Hand Title Hint
+                const hTitle = document.getElementById('hand-title');
+                if (hTitle) {
+                    if (gameState.czarId === myId) {
+                        hTitle.innerText = "Tu Mano (Esperando a que elijan...)";
+                    } else {
+                        const count = (gameState.blackCard && gameState.blackCard.blanks) ? gameState.blackCard.blanks : 1;
+                        hTitle.innerText = `Tu Mano (Elige ${count} de cartas)`;
+                    }
+                }
             } else if (gameState.phase === 'JUDGING') {
-                status.innerText = (gameState.czarId === myId) ? "¡JUZGA! Elige la ganadora." : "El Czar está juzgando...";
+                status.innerText = (gameState.czarId === myId) ? "¡JUZGA! Elige la ganadora." : "El Juez está eligiendo...";
+                // Hide Hand
+                const hc = document.getElementById('hand-container');
+                if (hc) hc.style.display = 'none';
             } else if (gameState.phase === 'SCORE') {
                 status.innerText = `¡${gameState.winnerName} gana la ronda!`;
+                // Hide Hand
+                const hc = document.getElementById('hand-container');
+                if (hc) hc.style.display = 'none';
+            } else if (gameState.phase === 'VOTING') {
+                status.innerText = "¡DEMOCRACIA! Vota por la mejor carta.";
+                // Hide Hand
+                const hc = document.getElementById('hand-container');
+                if (hc) hc.style.display = 'none';
             }
 
             // Black Card
@@ -1187,26 +1771,49 @@
                     }
                     pcArea.appendChild(group);
                 });
-            } else if (gameState.phase === 'JUDGING' || gameState.phase === 'SCORE') {
+            } else if (gameState.phase === 'JUDGING' || gameState.phase === 'SCORE' || gameState.phase === 'VOTING') {
                 // Show real cards
                 gameState.submissions.forEach((sub, idx) => {
                     const group = document.createElement('div');
                     group.style.display = 'flex';
                     group.style.gap = '5px';
 
-                    // Add shuffle animation if entering Judging
-                    if (gameState.phase === 'JUDGING') {
+                    // Add shuffle animation if entering Judging/Voting
+                    if (gameState.phase === 'JUDGING' || gameState.phase === 'VOTING') {
                         group.style.animation = 'shuffleDeal 0.6s ease-out backwards';
                         group.style.animationDelay = (idx * 0.15) + 's';
                     }
 
-                    // If SCORING, highlight winner
+                    // If SCORING, highlight winner AFTER stars
                     if (gameState.phase === 'SCORE' && idx === gameState.winningSubmissionIndex) {
-                        group.style.border = '2px solid gold';
+                        group.style.border = '2px solid transparent'; // Start invisible
                         group.style.borderRadius = '10px';
                         group.style.padding = '5px';
-                        group.style.background = 'rgba(255, 215, 0, 0.2)';
+                        group.style.background = 'transparent'; // Start invisible
+
+                        // Calculate delay based on total votes
+                        // We know delay is index * 0.5s. 
+                        const totalVotes = countTotalVotes();
+                        const delaySeconds = (totalVotes * 0.5) + 0.5; // Wait for all stars + 0.5s buffer
+
+                        group.style.animation = `winnerGlow 0.8s ease-out forwards ${delaySeconds}s`;
                     }
+
+                    // VOTING: Highlight my choice in blue
+                    if (gameState.phase === 'VOTING' && idx === myVotedIndex) {
+                        group.style.border = '3px solid #3b82f6';
+                        group.style.borderRadius = '10px';
+                        group.style.padding = '5px';
+                        group.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
+                    }
+
+                    // Create a wrapper for cards to separate them from stars
+                    const cardWrapper = document.createElement('div');
+                    cardWrapper.style.display = 'flex';
+                    cardWrapper.style.gap = '5px';
+                    group.style.flexDirection = 'column'; // Allow stars below
+                    group.style.alignItems = 'center';
+                    group.appendChild(cardWrapper);
 
                     sub.cards.forEach(text => {
                         const c = createCard('white', text);
@@ -1227,11 +1834,81 @@
                                 }
                             };
                         }
-                        group.appendChild(c);
+
+                        // VOTING Phase Logic
+                        if (gameState.phase === 'VOTING') {
+                            // Enable click ONLY if I haven't voted yet
+                            if (myVotedIndex === -1) {
+                                c.style.cursor = 'pointer';
+                                c.onmouseenter = () => c.style.transform = 'scale(1.05)';
+                                c.onmouseleave = () => c.style.transform = 'scale(1)';
+
+                                c.onclick = () => {
+                                    const isMyCard = (myId === sub.playerId);
+                                    const warning = isMyCard
+                                        ? "¿Votar por ti mismo? (No contara el voto, y si lo haces mucho te restará puntos)"
+                                        : "¿Votar por esta carta? No podrás cambiar tu voto.";
+                                    if (confirm(warning)) {
+                                        myVotedIndex = idx; // Lock locally
+                                        updateTableUI(); // Re-render to show blue
+
+                                        // Send vote
+                                        if (isHost) handleVote(myId, idx);
+                                        else hostConn.send({ type: 'SUBMIT_VOTE', submissionIndex: idx });
+                                    }
+                                };
+                            } else {
+                                // Disabled state
+                                c.style.opacity = '0.9';
+                                c.style.cursor = 'default';
+                            }
+                        }
+
+                        cardWrapper.appendChild(c);
                     });
+
+                    // Append Stars if applicable
+                    if ((gameState.phase === 'SCORE' || gameState.phase === 'JUDGING') && sub.votes && sub.votes.length > 0) {
+                        const starDelays = getStarDelays();
+                        const starRow = document.createElement('div');
+                        starRow.className = 'star-container';
+                        sub.votes.forEach((vId, vIdx) => {
+                            const s = document.createElement('span');
+                            const isSelf = (vId === sub.playerId);
+                            let starClass = 'star-gold';
+
+                            if (isSelf) {
+                                starClass = 'star-grey';
+                                const voter = players.find(p => p.id === vId);
+                                if (voter && (voter.selfVoteCount || 0) >= 3) {
+                                    starClass = 'star-black';
+                                }
+                            }
+
+                            s.className = `star-icon ${starClass}`;
+                            s.innerHTML = '★';
+
+                            // Use calculated global delay
+                            const dVal = starDelays ? starDelays.get(`${idx}-${vIdx}`) : undefined;
+                            const delay = (dVal !== undefined) ? dVal : (vIdx * 0.2);
+                            s.style.animationDelay = delay + 's';
+
+                            starRow.appendChild(s);
+                        });
+                        group.appendChild(starRow);
+                    }
+
                     pcArea.appendChild(group);
                 });
             }
+        }
+        function updateTimerUI(seconds) {
+            const el = document.getElementById('game-timer');
+            if (seconds === -1 || seconds === undefined) el.innerText = "";
+            else el.innerText = "⏱️ " + seconds + "s";
+
+            if (seconds <= 10) el.style.color = 'red';
+            else el.style.color = '#e11d48';
         }
     </script>
 </body>
