@@ -495,6 +495,71 @@
                     style="font-size:1.2rem; color:black;">40s</span></p>
         </div>
         <p id="wait-msg">Esperando al anfitrión...</p>
+
+        <!-- Help Button -->
+        <button onclick="document.getElementById('help-modal').classList.remove('hidden')"
+            style="position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: #2c3e50; color: white; font-size: 1.5rem; font-weight: bold; border: none; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); z-index: 50; display: flex; align-items: center; justify-content: center;">
+            ?
+        </button>
+
+        <!-- Help Modal -->
+        <div id="help-modal" class="hidden"
+            style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+            <div
+                style="background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                <button onclick="document.getElementById('help-modal').classList.add('hidden')"
+                    style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;">&times;</button>
+
+                <h2 style="margin-top: 0; color: #2c3e50; text-align: center;">Cómo Jugar</h2>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #2563eb; margin-bottom: 5px;">🧑‍⚖️ Modo Juez</h3>
+                    <p style="font-size: 0.9rem; color: #4b5563; margin: 0;">En este modo, un solo jugador actúa como
+                        <strong>juez</strong>.
+                    </p>
+                    <ul style="font-size: 0.9rem; color: #4b5563; padding-left: 20px; margin-top: 5px;">
+                        <li>El juez elige la carta ganadora de la ronda.</li>
+                        <li>Durante su turno, el juez no juega cartas.</li>
+                    </ul>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #e11d48; margin-bottom: 5px;">🗳️ Modo Democracia</h3>
+                    <p style="font-size: 0.9rem; color: #4b5563; margin: 0;">Todos los jugadores juegan una carta.</p>
+                    <ul style="font-size: 0.9rem; color: #4b5563; padding-left: 20px; margin-top: 5px;">
+                        <li>Luego, todos votan por la carta que les parezca más graciosa.</li>
+                        <li>La carta con más votos gana la ronda.</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 style="color: #d97706; margin-bottom: 5px;">⭐ Sistema de estrellas</h3>
+                    <ul style="list-style: none; padding: 0; font-size: 0.9rem; color: #4b5563;">
+                        <li style="margin-bottom: 8px; display: flex; align-items: center;">
+                            <span class="star-icon star-gold" style="transform: scale(1); margin-right: 8px;">★</span>
+                            <span>Estrella amarilla: voto normal.</span>
+                        </li>
+                        <li style="margin-bottom: 8px; display: flex; align-items: center;">
+                            <span class="star-icon star-grey" style="transform: scale(1); margin-right: 8px;">★</span>
+                            <span>Estrella gris: Alguien se auto-voto (dueño) y el voto no cuenta para la votación
+                                final.</span>
+                        </li>
+                        <li style="margin-bottom: 8px; display: flex; align-items: start;">
+                            <span class="star-icon star-black"
+                                style="transform: scale(1); margin-right: 8px; margin-top: 2px;">★</span>
+                            <span>
+                                <strong>Estrella negra (Penalización):</strong><br>
+                                Si votas por ti mismo más de 2 veces, pierdes 1 punto y el voto no cuenta para la
+                                votación final.
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+
+                <button onclick="document.getElementById('help-modal').classList.add('hidden')" class="btn"
+                    style="width: 100%; margin: 20px 0 0 0; padding: 10px;">Entendido</button>
+            </div>
+        </div>
     </div> <!-- Close Screen Lobby -->
 
     <!-- SCREEN 3: GAME -->
