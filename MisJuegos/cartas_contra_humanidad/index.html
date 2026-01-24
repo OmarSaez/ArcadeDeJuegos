@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cartas Contra la Humanidad</title>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+
+        :root {
+            --bg-color: #f5f5f5;
+            --text-color: #1a1a1a;
+            --card-white: #ffffff;
+            --card-black: #1a1a1a;
+            --accent: #2c3e50;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            font-family: 'Inter', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- SCREEN MANAGEMENT --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-color);
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-weight: 900;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-align: center;
+            letter-spacing: -2px;
+        }
+
+        /* --- UI ELEMENTS --- */
+        .btn {
+            background: var(--card-black);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 250px;
+            margin: 10px;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            background: #000;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn.secondary {
+            background: white;
+            color: black;
+            border: 2px solid black;
+        }
+
+        input {
+            padding: 15px;
+            font-size: 1.1rem;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            width: 250px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        /* --- CARDS --- */
+        .card {
+            width: 180px;
+            height: 250px;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            font-weight: 700;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            position: relative;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, z-index 0.2s;
+            cursor: pointer;
+            margin: 5px;
+            flex-shrink: 0;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            hyphens: auto;
+            /* Prevent shrinking in hand */
+        }
+
+        .card.black {
+            background: var(--card-black);
+            color: white;
+        }
+
+        .card.white {
+            background: var(--card-white);
+            color: black;
+            border: 1px solid #e5e5e5;
+        }
+
+        .card.white:hover {
+            transform: translateY(-20px) rotate(2deg);
+            z-index: 100;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .card.selected {
+            border: 4px solid #3b82f6;
+            transform: translateY(-30px);
+        }
+
+        .card-logo {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            font-size: 0.7rem;
+            font-weight: 900;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-logo::before {
+            content: '▫';
+            /* Placeholder icon */
+            font-size: 1.2rem;
+        }
+
+        .card.black .card-logo::before {
+            content: '◼';
+        }
+
+        /* --- GAME LAYOUT --- */
+        #game-layout {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            background: #d1d5db;
+        }
+
+        #table-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        #black-card-spot {
+            margin-bottom: 20px;
+        }
+
+        #played-cards-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            min-height: 260px;
+            /* Space for cards */
+        }
+
+        #hand-area {
+            height: 300px;
+            background: #f3f4f6;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            overflow-x: auto;
+            border-top: 1px solid #e5e5e5;
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- INFO BAR --- */
+        #info-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: var(--shadow);
+            z-index: 50;
+        }
+
+        #czar-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: var(--shadow);
+        }
+
+        /* --- LOBBY LIST --- */
+        #lobby-list {
+            list-style: none;
+            padding: 0;
+            width: 300px;
+            margin-bottom: 20px;
+        }
+
+        #lobby-list li {
+            background: white;
+            padding: 10px 15px;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes deal {
+            from {
+                opacity: 0;
+                transform: translateY(100px) scale(0.5);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .deal-anim {
+            animation: deal 0.4s ease-out forwards;
+        }
+
+        @keyframes shuffleDeal {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) translateX(-50%) rotate(-15deg) scale(0.5);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) translateX(0) rotate(0) scale(1);
+            }
+        }
+
+        .status-msg {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        /* --- MOBILE --- */
+        @media (max-width: 600px) {
+            .card {
+                width: 140px;
+                height: 200px;
+                font-size: 0.8rem;
+            }
+
+            #hand-area {
+                height: 240px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            #ingame-player-list {
+                top: auto;
+                bottom: 270px;
+                /* Above hand area */
+                right: 10px;
+                font-size: 0.75rem;
+                text-align: right;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SCREEN 1: MENU -->
+    <div id="screen-menu" class="screen">
+        <h1>CARTAS CONTRA LA<br>HUMANIDAD</h1>
+        <input type="text" id="nickname" placeholder="Tu Apodo (Ej: El Bromas)" maxlength="12">
+        <button class="btn" onclick="createRoom()">Crear Partida</button>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="room-code-input" placeholder="CÓDIGO" style="width:120px; margin-bottom:10px;">
+            <button class="btn secondary" style="width:120px;" onclick="joinRoom()">Unirse</button>
+        </div>
+        <button class="btn secondary" onclick="window.location.href='../../index.html'"
+            style="margin-top:20px; background:transparent; color:#666; width:auto; font-size:0.9rem;">Volver al
+            Arcade</button>
+    </div>
+
+    <!-- SCREEN 2: LOBBY -->
+    <div id="screen-lobby" class="screen hidden">
+        <h2>SALA: <span id="lobby-code"
+                style="font-family:monospace; background:#e5e5e5; padding:2px 8px; border-radius:4px;">CODE</span></h2>
+        <ul id="lobby-list"></ul>
+        <div id="host-controls" class="hidden">
+            <div
+                style="background: white; padding: 10px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <label style="color:#666; font-size:0.9rem; font-weight:bold;">PUNTOS PARA GANAR</label>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 5px;">
+                    <button class="btn secondary" style="width: 40px; height: 40px; padding:0; font-size:1.2rem;"
+                        onclick="changePoints(-1)">-</button>
+                    <span id="points-display-host"
+                        style="font-size: 1.5rem; font-weight: bold; min-width: 30px;">3</span>
+                    <button class="btn secondary" style="width: 40px; height: 40px; padding:0; font-size:1.2rem;"
+                        onclick="changePoints(1)">+</button>
+                </div>
+            </div>
+
+            <p style="color:#666; font-size:0.9rem;">Se recomiendan 3+ jugadores</p>
+            <button class="btn" onclick="startGame()">Comenzar Juego</button>
+        </div>
+        <div id="client-settings-view" class="hidden" style="margin-bottom: 20px;">
+            <p style="color:#666; font-weight:bold;">Puntos para ganar: <span id="points-display-client"
+                    style="font-size:1.2rem; color:black;">3</span></p>
+        </div>
+        <p id="wait-msg">Esperando al anfitrión...</p>
+    </div>
+
+    <!-- SCREEN 3: GAME -->
+    <div id="screen-game" class="screen hidden" style="background: #e5e5e5;">
+        <div id="info-bar">Puntos: <span id="my-score">0</span></div>
+        <div id="czar-indicator">CZAR: <span id="czar-name">...</span></div>
+        <div id="ingame-player-list"
+            style="position: absolute; top: 70px; right: 20px; text-align: right; pointer-events: none;"></div>
+
+        <div id="game-layout">
+            <div id="table-area">
+                <div id="status-display" class="status-msg">Esperando...</div>
+
+                <!-- Black Card -->
+                <div id="black-card-spot"></div>
+
+                <!-- Played Cards (Face down initially, then revealed) -->
+                <div id="played-cards-area"></div>
+
+                <button id="btn-confirm-selection" class="btn hidden"
+                    style="margin-top:20px; width:auto; background:#2563eb;">CONFIRMAR SELECCIÓN</button>
+
+                <button id="btn-swap-mode" class="btn secondary" onclick="toggleSwapMode()"
+                    style="margin-top:10px; width:auto; font-size: 0.9rem; padding: 10px 20px;">Cambiar 2
+                    Cartas</button>
+            </div>
+
+            <div id="hand-area">
+                <!-- My White Cards -->
+            </div>
+        </div>
+    </div>
+
+    <script src="cards.js"></script>
+    <script>
+        /* --- GAME DATA --- */
+        let whiteCards = [];
+        let blackCards = [];
+
+        function loadCards() {
+            try {
+                if (typeof CAH_WHITE !== 'undefined' && typeof CAH_BLACK !== 'undefined') {
+                    whiteCards = [...CAH_WHITE];
+                    blackCards = [...CAH_BLACK];
+                    console.log(`Cargadas ${whiteCards.length} blancas y ${blackCards.length} negras.`);
+                } else {
+                    throw new Error("Variables CAH_WHITE/CAH_BLACK no definidas");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error cargando cartas: Verifique cards.js");
+            }
+        }
+        loadCards();
+
+        /* --- STATE --- */
+        let peer, myId, myName;
+        let myHand = []; // Local source of truth for UI
+        let isHost = false;
+        let hostConn = null;
+        let connections = {};
+        let players = []; // {id, name, score, hand: []}
+        let pointsToWin = 3;
+
+        let gameState = {
+            phase: 'LOBBY', // LOBBY, SELECTION, JUDGING, SCORE
+            czarIndex: 0,
+            blackCard: null,
+            submissions: [], // {playerId, cards: []}
+            round: 0
+        };
+
+        /* --- NETWORK (Standard Arcade P2P) --- */
+        let pendingJoinCode = null;
+
+        function initPeer(customId = null) {
+            // 1. Create Peer
+            if (customId) {
+                peer = new Peer(customId);
+            } else {
+                peer = new Peer(); // Auto ID for client
+            }
+
+            // 2. Event Listeners
+            peer.on('open', (id) => {
+                console.log('My Peer ID:', id);
+                myId = id;
+
+                // HOST LOGIC
+                if (isHost) {
+                    // Update my own ID in player list
+                    if (players.length > 0) {
+                        players[0].id = id;
+                        updateLobbyUI();
+                    }
+                }
+                // CLIENT LOGIC
+                else {
+                    if (pendingJoinCode) {
+                        connectToHost(pendingJoinCode);
+                    }
+                }
+            });
+
+            peer.on('connection', (conn) => {
+                // Incoming connection (Host logic mostly)
+                handleConnection(conn);
+            });
+
+            peer.on('error', (err) => {
+                console.error("P2P Error:", err);
+                if (err.type === 'peer-unavailable') {
+                    alert("No se encontró la sala. Verifica el código.");
+                    showScreen('screen-menu');
+                } else if (err.type === 'unavailable-id') {
+                    alert("El código de sala ya está en uso. Intenta otro.");
+                    showScreen('screen-menu');
+                } else {
+                    console.log("Error no critico:", err);
+                }
+            });
+        }
+
+        function handleConnection(conn) {
+            // Check if already connected
+            if (connections[conn.peer]) return;
+
+            // Handle Open
+            conn.on('open', () => {
+                console.log("Conexión establecida con:", conn.peer);
+                connections[conn.peer] = conn;
+
+                if (isHost) {
+                    // Host sends state to new player
+                    conn.send({ type: 'UPDATE_LOBBY', players: players });
+                } else {
+                    // Client sends Hello
+                    hostConn = conn; // Store ref
+                    conn.send({ type: 'HELLO', name: myName });
+                    onJoinSuccess(pendingJoinCode);
+                }
+            });
+
+            // Handle Data
+            conn.on('data', (data) => {
+                handleData(data, conn.peer);
+            });
+
+            // Handle Close
+            conn.on('close', () => {
+                console.log("Conexión cerrada:", conn.peer);
+                delete connections[conn.peer];
+                if (isHost) {
+                    players = players.filter(p => p.id !== conn.peer);
+                    broadcast({ type: 'UPDATE_LOBBY', players: players });
+                } else {
+                    alert("Desconectado del Anfitrión");
+                    location.reload();
+                }
+            });
+
+            conn.on('error', err => console.error("Conn Error:", err));
+        }
+
+        /* --- HOST LOGIC --- */
+        function createRoom() {
+            myName = document.getElementById('nickname').value || "Host";
+            const code = Math.random().toString(36).substr(2, 4).toUpperCase();
+            isHost = true;
+            players = [{ id: "HOST", name: myName, score: 0, hand: [] }]; // Temp ID
+
+            showScreen('screen-lobby');
+            document.getElementById('host-controls').classList.remove('hidden');
+
+            // Set display code immediately
+            document.getElementById('lobby-code').innerText = code;
+
+            initPeer("cah_" + code);
+        }
+
+        /* --- CLIENT LOGIC --- */
+        function joinRoom() {
+            myName = document.getElementById('nickname').value || "Guest";
+            const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+            if (!code) return alert("Ingresa código");
+
+            isHost = false;
+            pendingJoinCode = code; // Store for when open fires
+            initPeer(); // No ID = Client
+        }
+
+        function connectToHost(code) {
+            console.log("Conectando a:", "cah_" + code);
+            const conn = peer.connect("cah_" + code);
+            // We must setup connection handlers on the OUTGOING connection object too
+            handleConnection(conn);
+        }
+
+        /* --- GAME LOGIC --- */
+        function startGame() {
+            if (players.length < 2) return alert("Se necesitan al menos 2 jugadores (ideal 3+)");
+
+            console.log("Starting game. Players:", JSON.stringify(players));
+
+            // Reset Game State
+            gameState.round = 0;
+            gameState.submissions = [];
+
+            // Shuffle Decks
+            whiteCards.sort(() => Math.random() - 0.5);
+            blackCards.sort(() => Math.random() - 0.5);
+
+            // Deal initial hands (7 cards)
+            players.forEach(p => {
+                p.hand = whiteCards.splice(0, 10);
+                if (p.id !== myId) {
+                    const conn = connections[p.id];
+                    if (conn && conn.open) conn.send({ type: 'UPDATE_HAND', hand: p.hand });
+                } else {
+                    myHand = p.hand; // Sync local variable for Host
+                    updateHandUI(p.hand); // Host hand
+                }
+            });
+
+            startRound();
+        }
+
+        function startRound() {
+            console.log("startRound executing. Players:", players.length, "Round:", gameState.round);
+
+            if (players.length === 0) {
+                console.error("Critical: No players in startRound!");
+                return;
+            }
+
+            gameState.phase = 'SELECTION';
+            gameState.submissions = [];
+
+            // Refill decks if empty (simple reload)
+            if (blackCards.length === 0) blackCards = [...CAH_BLACK].sort(() => Math.random() - 0.5);
+
+            // Next Black Card
+            gameState.blackCard = blackCards.pop();
+
+            // Next Czar
+            if (gameState.round === 0) {
+                // First round: Random Czar
+                gameState.czarIndex = 0;
+            } else {
+                // Ensure current index is valid before rotating (in case players left)
+                if (gameState.czarIndex >= players.length) gameState.czarIndex = -1;
+
+                // Rotate
+                gameState.czarIndex = gameState.round % players.length;
+            }
+
+            // Safety Check
+            if (!players[gameState.czarIndex]) {
+                console.error(`Critical: Czar Index ${gameState.czarIndex} invalid. Players:`, players);
+                gameState.czarIndex = 0;
+            }
+
+            // Final check to prevent crash
+            if (!players[gameState.czarIndex]) {
+                alert("Error crítico: No hay jugadores válidos para ser Czar.");
+                return;
+            }
+
+            gameState.czarId = players[gameState.czarIndex].id;
+
+            const isFirstRound = (gameState.round === 0);
+
+            // Reset Swap State
+            players.forEach(p => p.hasSwapped = false);
+            hasSwappedThisRound = false;
+            resetSwapUI(true);
+
+            const stateSnapshot = {
+                phase: gameState.phase,
+                blackCard: gameState.blackCard,
+                czarId: gameState.czarId,
+                round: gameState.round,
+                submissions: [], // Empty for clients initially
+                players: players.map(p => ({ id: p.id, name: p.name, score: p.score, hasSwapped: false }))
+            };
+
+            broadcast({ type: 'SITUATION_UPDATE', state: stateSnapshot });
+
+            if (isFirstRound) {
+                console.log("First round detected, broadcasting GAME_START");
+                broadcast({ type: 'GAME_START', state: stateSnapshot });
+            }
+
+            // We must update the local round variable if it was overwritten by handleData/stateSnapshot
+            gameState.round = (gameState.round || 0) + 1;
+        }
+
+
+
+        function changePoints(delta) {
+            if (!isHost) return;
+            let newP = pointsToWin + delta;
+            if (newP < 2) newP = 2;
+            if (newP > 15) newP = 15;
+
+            if (pointsToWin !== newP) {
+                pointsToWin = newP;
+                updateLobbySettingsUI();
+                broadcast({ type: 'UPDATE_SETTINGS', pointsToWin: pointsToWin });
+            }
+        }
+
+        function updateLobbySettingsUI() {
+            document.getElementById('points-display-host').innerText = pointsToWin;
+            document.getElementById('points-display-client').innerText = pointsToWin;
+        }
+
+        /* --- SWAP CARDS LOGIC --- */
+        let isSwapping = false;
+        let hasSwappedThisRound = false;
+
+        function toggleSwapMode() {
+            if (gameState.phase !== 'SELECTION') return alert("Solo puedes cambiar cartas en tu turno.");
+            if (gameState.czarId === myId) return alert("El Czar no puede cambiar cartas.");
+            if (hasSwappedThisRound) return alert("Ya cambiaste cartas en esta ronda.");
+
+            isSwapping = !isSwapping;
+            selectedCards = [];
+            updateHandUIHelper();
+
+            const btn = document.getElementById('btn-swap-mode');
+            if (isSwapping) {
+                btn.style.background = '#e11d48'; // Red warning color
+                btn.innerText = "CANCELAR CAMBIO";
+                document.getElementById('status-display').innerText = "Selecciona 2 cartas para descartar...";
+            } else {
+                btn.style.background = 'white';
+                btn.innerText = "Cambiar 2 Cartas";
+                const status = document.getElementById('status-display');
+                if (status) status.innerText = "Elige tus cartas más graciosas.";
+            }
+
+            // Hide confirm button
+            document.getElementById('btn-confirm-selection').classList.add('hidden');
+        }
+
+        function handleSwapRequest(cardTexts) {
+            if (isHost) {
+                processSwap(myId, cardTexts);
+            } else {
+                hostConn.send({ type: 'REQUEST_SWAP', cards: cardTexts });
+            }
+        }
+
+        function processSwap(playerId, cardTexts) {
+            const p = players.find(x => x.id === playerId);
+            if (!p) return;
+            if (p.hasSwapped) return;
+
+            // Validate count
+            if (cardTexts.length !== 2) {
+                console.error("SWAP ERROR: Incorrect count", cardTexts.length);
+                return;
+            }
+
+            console.log("SWAP: Hand BEFORE:", JSON.stringify(p.hand));
+            console.log("SWAP: Targets:", JSON.stringify(cardTexts));
+
+            // Remove cards
+            cardTexts.forEach(text => {
+                const idx = p.hand.indexOf(text);
+                console.log(`SWAP: Looking for '${text}', found at ${idx}`);
+                if (idx !== -1) p.hand.splice(idx, 1);
+            });
+
+            console.log("SWAP: Hand AFTER REMOVAL:", JSON.stringify(p.hand));
+
+            // Add new ones
+            while (p.hand.length < 10 && whiteCards.length > 0) {
+                const newCard = whiteCards.pop();
+                p.hand.push(newCard);
+                console.log("SWAP: Drew new card:", newCard);
+            }
+
+            p.hasSwapped = true;
+
+            // Sync
+            if (p.id !== myId) {
+                const conn = connections[p.id];
+                if (conn && conn.open) {
+                    conn.send({ type: 'UPDATE_HAND', hand: p.hand });
+                    conn.send({ type: 'SWAP_SUCCESS' });
+                }
+            } else {
+                updateHandUI(p.hand);
+                hasSwappedThisRound = true;
+                resetSwapUI(false);
+            }
+
+            // Broadcast player state update to everyone so they see who swapped
+            const safePlayers = players.map(pl => ({
+                id: pl.id,
+                name: pl.name,
+                score: pl.score,
+                hasSwapped: pl.hasSwapped
+            }));
+            broadcast({ type: 'PLAYER_UPDATE', players: safePlayers });
+        }
+
+        // Helper to reset UI after swap or new round
+        function resetSwapUI(newRound = false) {
+            isSwapping = false;
+            selectedCards = [];
+
+            const btn = document.getElementById('btn-swap-mode');
+            if (!btn) return;
+
+            if (newRound) {
+                btn.classList.remove('hidden');
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+                btn.innerText = "Cambiar 2 Cartas";
+                btn.style.background = 'white';
+                hasSwappedThisRound = false;
+            } else {
+                // Used
+                btn.style.opacity = '0.5';
+                btn.style.pointerEvents = 'none';
+                btn.innerText = "Cambio Usado";
+                btn.style.background = '#666';
+            }
+
+            // Also hide the confirmation button if it's visible
+            const confirmBtn = document.getElementById('btn-confirm-selection');
+            if (confirmBtn) confirmBtn.classList.add('hidden');
+        }
+
+        // Wrapper for UI update
+        function updateHandUIHelper() {
+            if (isHost) {
+                const me = players.find(p => p.id === myId);
+                if (me) updateHandUI(me.hand);
+            } else {
+                updateHandUI(myHand);
+            }
+        }
+
+        function handleSubmission(playerId, cardIndices) {
+            // Find player
+            const p = players.find(x => x.id === playerId);
+            if (!p) return;
+
+            const selectedCards = [];
+
+            // cardIndices should be the card TEXT sent back
+            cardIndices.forEach(cardText => {
+                const idx = p.hand.indexOf(cardText);
+                if (idx !== -1) {
+                    selectedCards.push(p.hand[idx]);
+                    p.hand.splice(idx, 1);
+                }
+            });
+
+            // Replenish hand
+            while (p.hand.length < 10 && whiteCards.length > 0) {
+                p.hand.push(whiteCards.pop());
+            }
+
+            // Sync Hand to player
+            if (p.id !== myId) {
+                const conn = connections[p.id];
+                if (conn && conn.open) conn.send({ type: 'UPDATE_HAND', hand: p.hand });
+            } else {
+                updateHandUI(p.hand);
+            }
+
+            gameState.submissions.push({ playerId, cards: selectedCards, playerName: p.name });
+
+            // Update UI to show "Player X submitted" (masked)
+            const submissionCount = gameState.submissions.length;
+            const expected = players.length - 1; // Czar doesn't play
+
+            // Broadcast progress - MASKED to clients only
+            const safeSubs = gameState.submissions.map(s => ({ playerId: s.playerId, status: 'HIDDEN' }));
+
+            // IMPORTANT: Exclude local update (host) to prevent overwriting the 'Truth' with masked data
+            broadcast({
+                type: 'SITUATION_UPDATE',
+                state: {
+                    ...gameState,
+                    submissions: safeSubs // Masked
+                }
+            }, true);
+
+            // Manually update Host UI
+            updateTableUI();
+
+            if (submissionCount >= expected) {
+                // All in! Switch to Judging
+                startJudging();
+            }
+        }
+
+        function startJudging() {
+            gameState.phase = 'JUDGING';
+            // Shuffle submissions
+            gameState.submissions.sort(() => Math.random() - 0.5);
+
+            // Broadcast fully revealed submissions
+            broadcast({
+                type: 'SITUATION_UPDATE',
+                state: gameState // Now mapped correctly reveal
+            });
+        }
+
+        function hostSelectWinner(submissionIndex) {
+            const winnerSub = gameState.submissions[submissionIndex];
+            const p = players.find(x => x.id === winnerSub.playerId);
+            if (p) p.score++;
+
+            gameState.phase = 'SCORE';
+            // Broadcast Winner
+            broadcast({
+                type: 'SITUATION_UPDATE',
+                state: {
+                    ...gameState,
+                    winnerName: p.name,
+                    winningCards: winnerSub.cards,
+                    winningSubmissionIndex: submissionIndex
+                }
+            });
+
+            // Check for Game Winner
+            if (p.score >= pointsToWin) {
+                // Game Over
+                setTimeout(() => {
+                    alert(`¡JUEGO TERMINADO! ${p.name} ha ganado la partida con ${p.score} puntos.`);
+                    location.reload(); // Simple reset for now
+                }, 1000);
+            } else {
+                // Wait then next round
+                setTimeout(() => {
+                    startRound();
+                }, 5000);
+            }
+        }
+
+        function onJoinSuccess(code) {
+            showScreen('screen-lobby');
+            document.getElementById('lobby-code').innerText = code;
+            document.getElementById('host-controls').classList.add('hidden');
+            document.getElementById('client-settings-view').classList.remove('hidden');
+        }
+
+        function broadcast(msg, excludeLocal = false) {
+            console.log("Broadcasting:", msg.type, "ExcludeLocal:", excludeLocal);
+            Object.values(connections).forEach(c => {
+                if (c && c.open) c.send(msg);
+            });
+
+            if (!excludeLocal) {
+                try {
+                    handleData(msg, 'HOST'); // Handle locally
+                } catch (e) {
+                    console.error("Local handleData failed:", e);
+                }
+            }
+        }
+
+        function handleData(data, senderId) {
+            console.log("handleData received:", data.type, "from", senderId);
+            try {
+                switch (data.type) {
+                    case 'HELLO':
+                        if (isHost) {
+                            // Check if exists
+                            const existing = players.find(p => p.id === senderId);
+                            if (!existing) {
+                                players.push({ id: senderId, name: data.name, score: 0, hand: [] });
+                                updateLobbyUI();
+                                broadcast({ type: 'UPDATE_LOBBY', players: players });
+
+                                // Sync settings to the new player personally
+                                const conn = connections[senderId];
+                                if (conn && conn.open) {
+                                    conn.send({ type: 'UPDATE_SETTINGS', pointsToWin: pointsToWin });
+                                }
+                            }
+                        }
+                        break;
+                    case 'UPDATE_LOBBY':
+                        players = data.players;
+                        updateLobbyUI();
+                        break;
+                    case 'UPDATE_SETTINGS':
+                        pointsToWin = data.pointsToWin;
+                        updateLobbySettingsUI();
+                        break;
+                    case 'GAME_START':
+                        console.log("Processing GAME_START...");
+                        gameState = data.state;
+                        startGameUI();
+                        break;
+                    case 'UPDATE_HAND':
+                        myHand = data.hand;
+                        updateHandUI(myHand);
+                        break;
+                    case 'SITUATION_UPDATE':
+                        console.log("Processing SITUATION_UPDATE...");
+                        gameState = data.state;
+                        updateTableUI();
+                        break;
+                    case 'PLAYER_UPDATE':
+                        if (gameState) gameState.players = data.players;
+                        updateTableUI();
+                        break;
+                    case 'SUBMIT_CARDS': // Host receives
+                        if (isHost) handleSubmission(senderId, data.cards);
+                        break;
+                    case 'SELECT_WINNER': // Host receives from Czar
+                        if (isHost && gameState.phase === 'JUDGING' && senderId === gameState.czarId) {
+                            hostSelectWinner(data.submissionIndex);
+                        }
+                        break;
+                    case 'REQUEST_SWAP':
+                        if (isHost) processSwap(senderId, data.cards);
+                        break;
+                    case 'SWAP_SUCCESS':
+                        // Reset my UI
+                        hasSwappedThisRound = true;
+                        resetSwapUI(false);
+                        break;
+                }
+            } catch (e) {
+                console.error("Error inside handleData switch:", e);
+            }
+        }
+
+        /* --- UI HELPERS --- */
+        function showScreen(id) {
+            console.log("Switching to screen:", id);
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            const screen = document.getElementById(id);
+            if (screen) screen.classList.remove('hidden');
+            else console.error("Screen not found:", id);
+        }
+
+        function updateLobbyUI() {
+            const list = document.getElementById('lobby-list');
+            list.innerHTML = players.map(p => `<li>${p.name} <span>${p.score} pts</span></li>`).join('');
+        }
+
+        function startGameUI() {
+            console.log("startGameUI called");
+            showScreen('screen-game');
+            updateTableUI();
+        }
+
+        function updateHandUI(hand) {
+            const area = document.getElementById('hand-area');
+            area.innerHTML = '';
+            hand.forEach((text, i) => {
+                const c = createCard('white', text);
+                c.onclick = () => toggleSelectCard(c, text);
+                area.appendChild(c);
+            });
+        }
+
+        let selectedCards = []; // Local selection
+        function toggleSelectCard(cardElem, text) {
+            // Special mode: SWAPPING
+            if (isSwapping) {
+                if (cardElem.classList.contains('selected')) {
+                    cardElem.classList.remove('selected');
+                    selectedCards = selectedCards.filter(t => t !== text);
+                } else {
+                    if (selectedCards.length < 2) {
+                        cardElem.classList.add('selected');
+                        selectedCards.push(text);
+                    } else {
+                        alert("Solo puedes cambiar 2 cartas.");
+                    }
+                }
+
+                // Show confirm swap button
+                const btn = document.getElementById('btn-confirm-selection');
+                if (selectedCards.length === 2) {
+                    btn.innerText = "CONFIRMAR CAMBIO";
+                    btn.classList.remove('hidden');
+                    btn.style.background = '#e11d48';
+                    btn.onclick = () => {
+                        if (confirm("¿Cambiar estas 2 cartas? perderás tu turno de cambio esta ronda.")) {
+                            handleSwapRequest(selectedCards);
+                        }
+                    };
+                } else {
+                    btn.classList.add('hidden');
+                }
+                return;
+            }
+
+            // Normal Play Mode
+            if (gameState.phase !== 'SELECTION') return;
+            if (gameState.czarId === myId) return alert("Eres el Czar, no juegas cartas, solo juzgas.");
+
+            const required = gameState.blackCard.blanks || 1;
+
+            if (cardElem.classList.contains('selected')) {
+                cardElem.classList.remove('selected');
+                selectedCards = selectedCards.filter(t => t !== text);
+            } else {
+                if (selectedCards.length < required) {
+                    cardElem.classList.add('selected');
+                    selectedCards.push(text);
+                } else {
+                    // Replace first? or strict limit?
+                    // Let's strict limit, user must deselect
+                    alert(`Solo elige ${required} carta(s).`);
+                }
+            }
+
+            // Show confirm button if full
+            const btn = document.getElementById('btn-confirm-selection');
+            if (selectedCards.length === required) {
+                btn.innerText = "CONFIRMAR SELECCIÓN";
+                btn.style.background = '#2563eb';
+                btn.classList.remove('hidden');
+                btn.onclick = () => submitSelection();
+            } else {
+                btn.classList.add('hidden');
+            }
+        }
+
+        function submitSelection() {
+            if (isHost) handleSubmission(myId, selectedCards); // Host local play
+            else hostConn.send({ type: 'SUBMIT_CARDS', cards: selectedCards });
+
+            // Clear local selection UI
+            selectedCards = [];
+            document.getElementById('btn-confirm-selection').classList.add('hidden');
+
+            // Only hide hand for clients who are waiting for network response
+            // Host has already updated their hand via handleSubmission synchronously
+            if (!isHost) {
+                document.getElementById('hand-area').innerHTML = '<h3 style="margin:auto; color:#666;">Cartas Enviadas. Esperando...</h3>';
+            }
+        }
+
+        function createCard(type, text) {
+            const div = document.createElement('div');
+            div.className = `card ${type} deal-anim`;
+            // CAH JSON sometimes has HTML? usually plain text.
+            div.innerHTML = text.replace(/_+/g, '_______') + '<div class="card-logo">Cartas Contra la Humanidad</div>';
+            return div;
+        }
+
+        function updateTableUI() {
+            // Update Player List
+            const listContainer = document.getElementById('ingame-player-list');
+            if (listContainer && gameState.players) {
+                listContainer.innerHTML = gameState.players.map(p => {
+                    const isCzar = (p.id === gameState.czarId);
+                    const swapped = p.hasSwapped ? '<span style="color:#e11d48; margin-left:5px;">(Cambió)</span>' : '';
+
+                    // Check if they submitted
+                    const hasSubmitted = gameState.submissions && gameState.submissions.some(s => s.playerId === p.id);
+                    const ready = (hasSubmitted && !isCzar) ? '<span style="color:#10b981; margin-left:5px;">(Listo)</span>' : '';
+
+                    const isMe = (p.id === myId) ? ' (Tú)' : '';
+                    return `<div style="margin-bottom:5px; background: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 15px; font-size: 0.85rem; display:inline-block;">
+                        ${isCzar ? '👑 ' : ''}<strong>${p.name}</strong>${isMe}: ${p.score} pts ${swapped} ${ready}
+                    </div><br>`;
+                }).join('');
+            }
+            // Update Czar Info
+            const czarPlayer = gameState.players.find(p => p.id === gameState.czarId);
+            document.getElementById('czar-name').innerText = czarPlayer ? czarPlayer.name : "???";
+
+            // Update My Score
+            const me = gameState.players.find(p => p.id === myId);
+            if (me) document.getElementById('my-score').innerText = me.score;
+
+            // Status Msg
+            const status = document.getElementById('status-display');
+            if (gameState.phase === 'SELECTION') {
+                status.innerText = (gameState.czarId === myId) ? "Eres el CZAR. Espera a que los plebeyos elijan." : "Elige tus cartas más graciosas.";
+            } else if (gameState.phase === 'JUDGING') {
+                status.innerText = (gameState.czarId === myId) ? "¡JUZGA! Elige la ganadora." : "El Czar está juzgando...";
+            } else if (gameState.phase === 'SCORE') {
+                status.innerText = `¡${gameState.winnerName} gana la ronda!`;
+            }
+
+            // Black Card
+            const bcSpot = document.getElementById('black-card-spot');
+            bcSpot.innerHTML = '';
+            if (gameState.blackCard) bcSpot.appendChild(createCard('black', gameState.blackCard.text));
+
+            // Played Cards
+            const pcArea = document.getElementById('played-cards-area');
+            pcArea.innerHTML = '';
+
+            if (gameState.phase === 'SELECTION') {
+                // Show face down cards for each submission
+                gameState.submissions.forEach(sub => {
+                    // Create dummy back cards
+                    const group = document.createElement('div');
+                    group.style.display = 'flex';
+                    group.style.gap = '5px';
+                    // We don't know how many cards if masked? Well, blackCard.blanks
+                    const count = gameState.blackCard.blanks || 1;
+                    for (let i = 0; i < count; i++) {
+                        const c = createCard('white', 'Cartas Contra la Humanidad');
+                        c.style.background = '#1a1a1a'; // Dark back
+                        c.style.color = 'white';
+                        c.innerHTML = '<div style="font-size:2rem; margin:auto;">?</div>';
+                        group.appendChild(c);
+                    }
+                    pcArea.appendChild(group);
+                });
+            } else if (gameState.phase === 'JUDGING' || gameState.phase === 'SCORE') {
+                // Show real cards
+                gameState.submissions.forEach((sub, idx) => {
+                    const group = document.createElement('div');
+                    group.style.display = 'flex';
+                    group.style.gap = '5px';
+
+                    // Add shuffle animation if entering Judging
+                    if (gameState.phase === 'JUDGING') {
+                        group.style.animation = 'shuffleDeal 0.6s ease-out backwards';
+                        group.style.animationDelay = (idx * 0.15) + 's';
+                    }
+
+                    // If SCORING, highlight winner
+                    if (gameState.phase === 'SCORE' && idx === gameState.winningSubmissionIndex) {
+                        group.style.border = '2px solid gold';
+                        group.style.borderRadius = '10px';
+                        group.style.padding = '5px';
+                        group.style.background = 'rgba(255, 215, 0, 0.2)';
+                    }
+
+                    sub.cards.forEach(text => {
+                        const c = createCard('white', text);
+                        // If I am Czar and Judging, allow click
+                        if (gameState.phase === 'JUDGING' && myId === gameState.czarId) {
+                            c.style.cursor = 'pointer';
+                            // Add hover effect
+                            c.onmouseenter = () => c.style.transform = 'scale(1.05)';
+                            c.onmouseleave = () => c.style.transform = 'scale(1)';
+
+                            c.onclick = () => {
+                                if (confirm("¿Elegir esta como ganadora?")) {
+                                    if (isHost) {
+                                        hostSelectWinner(idx);
+                                    } else {
+                                        hostConn.send({ type: 'SELECT_WINNER', submissionIndex: idx });
+                                    }
+                                }
+                            };
+                        }
+                        group.appendChild(c);
+                    });
+                    pcArea.appendChild(group);
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
