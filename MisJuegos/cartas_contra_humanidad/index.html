@@ -1007,12 +1007,23 @@
         function refillWhiteDeck() {
             let potentialCards = [...CAH_WHITE];
 
-            // Add custom cards
+            // Add custom cards (Host)
             const boostFactor = 3;
             if (myCreatedCards.white.length > 0) {
                 for (let i = 0; i < boostFactor; i++) {
                     potentialCards.push(...myCreatedCards.white.map(c => c.text));
                 }
+            }
+
+            // Add custom cards (Clients)
+            if (isHost) {
+                Object.values(serverPlayerCards).forEach(playerCards => {
+                    if (playerCards.white && playerCards.white.length > 0) {
+                        for (let i = 0; i < boostFactor; i++) {
+                            potentialCards.push(...playerCards.white.map(c => c.text));
+                        }
+                    }
+                });
             }
 
             // Identify cards currently in play to avoid duplicates
@@ -1055,6 +1066,17 @@
                     blackCards.push(...myCreatedCards.black);
                 }
             }
+
+            // Add custom cards (Clients)
+            if (isHost) {
+                Object.values(serverPlayerCards).forEach(playerCards => {
+                    if (playerCards.black && playerCards.black.length > 0) {
+                        for (let i = 0; i < boostFactor; i++) {
+                            blackCards.push(...playerCards.black);
+                        }
+                    }
+                });
+            }
             blackCards.sort(() => Math.random() - 0.5);
             console.log("Black Deck Refilled. Size:", blackCards.length);
         }
@@ -1071,6 +1093,9 @@
 
         // --- Custom Cards Data ---
         let myCreatedCards = { white: [], black: [] };
+        // HOST ONLY: Store all created cards from everyone, organized by Player ID
+        // Structure: { "PLAYER_ID": { white: [], black: [] }, ... }
+        let serverPlayerCards = {};
 
         let deleteMode = { white: false, black: false };
         let editingIndex = { white: -1, black: -1 };
@@ -1263,6 +1288,16 @@
                 myCreatedCards[type].push(cardObj);
             }
 
+            // Centralized Sync: Send to Host
+            if (!isHost && hostConn && hostConn.open) {
+                hostConn.send({
+                    type: 'SAVE_CARD_TO_HOST',
+                    cardType: type,
+                    cardData: cardObj
+                });
+            }
+            // If Host, we already saved to myCreatedCards above. No need to duplicate to serverPlayerCards.
+
             editor.innerText = '';
             editor.focus();
             renderCreatedList(type);
@@ -1349,13 +1384,47 @@
 
         // --- IMPORT / EXPORT LOGIC ---
         function showExportOptions(type) {
-            if (myCreatedCards[type].length === 0) return alert("No tienes cartas para exportar.");
+            // New Centralized Export Logic
+            if (isHost && globalCreatedCards[type].length === 0 && myCreatedCards[type].length === 0) {
+                return alert("No hay cartas para exportar.");
+            }
+            if (!isHost && myCreatedCards[type].length === 0) {
+                // Even if local is empty, might want to export global? 
+                // But typically user exports what they see. 
+                // Let's ask if they want to export ALL from the room.
+            }
 
-            const choice = prompt(`¿Qué deseas exportar?\n1. Mis Cartas Locales\n2. Todas las cartas creadas (Permitido)`, "1");
+            const choice = prompt(`¿Qué deseas exportar?\n1. Mis Cartas Locales (Solo las que creaste aquí)\n2. TODAS las cartas de la sala (De todos los jugadores)`, "2");
+
             if (choice === "1") {
-                exportCardsJSON(type, myCreatedCards[type], "mis_cartas");
+                exportCardsJSON(type, myCreatedCards[type], "mis_cartas_locales");
             } else if (choice === "2") {
-                exportCardsJSON(type, myCreatedCards[type], "todas_cartas");
+                if (isHost) {
+                    // Host export ALL
+                    const exportSet = [];
+
+                    // 1. Host's Cards
+                    myCreatedCards[type].forEach(c => exportSet.push({ ...c, creator: 'Host' }));
+
+                    // 2. Clients' Cards
+                    Object.keys(serverPlayerCards).forEach(pId => {
+                        const pCards = serverPlayerCards[pId][type];
+                        if (pCards) {
+                            const pName = (players.find(p => p.id === pId) || { name: pId }).name;
+                            pCards.forEach(c => exportSet.push({ ...c, creator: pName }));
+                        }
+                    });
+
+                    exportCardsJSON(type, exportSet, "todas_cartas_sala");
+                } else {
+                    // Ask Host
+                    if (hostConn && hostConn.open) {
+                        hostConn.send({ type: 'REQUEST_EXPORT', cardType: type });
+                        alert("Solicitud enviada al Anfitrión. La descarga comenzará pronto...");
+                    } else {
+                        alert("No estás conectado al Anfitrión.");
+                    }
+                }
             }
         }
 
@@ -1415,8 +1484,21 @@
                     if (Array.isArray(data.cards)) {
                         let added = 0;
                         data.cards.forEach(c => {
+                            // Assign ID if missing
+                            if (!c.id) c.id = Date.now() + Math.random();
+
+                            // Add Local
                             myCreatedCards[type].push(c);
                             added++;
+
+                            // SYNC TO HOST (if I am client)
+                            if (!isHost && hostConn && hostConn.open) {
+                                hostConn.send({
+                                    type: 'SAVE_CARD_TO_HOST',
+                                    cardType: type,
+                                    cardData: c
+                                });
+                            }
                         });
                         alert(`✅ Importadas ${added} cartas ${type === 'black' ? 'negras' : 'blancas'}.`);
                         renderCreatedList(type);
@@ -1849,10 +1931,15 @@
             console.log("SWAP: Hand BEFORE:", JSON.stringify(p.hand));
             console.log("SWAP: Targets:", JSON.stringify(cardTexts));
 
+            // Ensure hand is array
+            if (!p.hand || !Array.isArray(p.hand)) p.hand = [];
+
             // Remove cards
-            cardTexts.forEach(text => {
-                const idx = p.hand.indexOf(text);
-                console.log(`SWAP: Looking for '${text}', found at ${idx}`);
+            cardTexts.forEach(submitText => {
+                const cleanSubmit = submitText.trim();
+                const idx = p.hand.findIndex(hCard => hCard.trim() === cleanSubmit);
+
+                console.log(`SWAP: Looking for '${cleanSubmit}', found at ${idx}`);
                 if (idx !== -1) p.hand.splice(idx, 1);
             });
 
@@ -1937,12 +2024,22 @@
 
             const selectedCards = [];
 
+            if (!p.hand || !Array.isArray(p.hand)) p.hand = [];
+
             // cardIndices should be the card TEXT sent back
-            cardIndices.forEach(cardText => {
-                const idx = p.hand.indexOf(cardText);
+            cardIndices.forEach(submitText => {
+                // Robust lookup: Normalize strings
+                const cleanSubmit = submitText.trim();
+                const idx = p.hand.findIndex(hCard => hCard.trim() === cleanSubmit);
+
                 if (idx !== -1) {
                     selectedCards.push(p.hand[idx]);
                     p.hand.splice(idx, 1);
+                } else {
+                    console.error(`CRITICAL: Host logic mismatch. Player ${p.name} tried to play '${submitText}' but hand has:`, JSON.stringify(p.hand));
+                    // Check for partial matches or encoding issues
+                    // For now, we skip invalid cards to maintain integrity, 
+                    // trusting that the improved matching handles whitespace issues.
                 }
             });
 
@@ -2334,10 +2431,13 @@
                         if (data.timeLeft !== undefined) updateTimerUI(data.timeLeft);
                         break;
                     case 'PLAYER_UPDATE':
-                        // Sync both global players list and gameState players
-                        players = data.players;
-                        if (gameState) gameState.players = data.players;
-                        updateTableUI();
+                        // HOST PROTECTION: Host is the source of truth. 
+                        // Never overwrite master list with networked (potentially sanitized) copies.
+                        if (!isHost) {
+                            players = data.players;
+                            if (gameState) gameState.players = data.players;
+                            updateTableUI();
+                        }
                         break;
                     case 'GAME_OVER':
                         // Client receives end game
@@ -2364,6 +2464,77 @@
                         break;
                     case 'TIME_TICK':
                         updateTimerUI(data.timeLeft);
+                        break;
+                    case 'SAVE_CARD_TO_HOST':
+                        if (isHost) {
+                            const cType = data.cardType;
+                            const cData = data.cardData; // { text:..., id:... }
+
+                            // Initialize storage for this player if needed
+                            if (!serverPlayerCards[senderId]) {
+                                serverPlayerCards[senderId] = { white: [], black: [] };
+                            }
+
+                            // Save
+                            serverPlayerCards[senderId][cType].push(cData);
+                            console.log(`Host saved ${cType} card from ${senderId} into isolated storage.`);
+
+                            // Visual Feedback (optional, maybe a small dot on "Menu" or nothing)
+                            // User wanted distinct separation, so we do NOT add to myCreatedCards.
+                        }
+                        break;
+                    case 'REQUEST_EXPORT':
+                        if (isHost) {
+                            const reqType = data.cardType;
+                            console.log(`Export requested for ${reqType} by ${senderId}`);
+
+                            // Aggregate ALL
+                            const exportSource = [];
+
+                            // 1. Host's
+                            myCreatedCards[reqType].forEach(c => exportSource.push(c));
+
+                            // 2. Clients'
+                            Object.values(serverPlayerCards).forEach(pc => {
+                                if (pc[reqType]) {
+                                    pc[reqType].forEach(c => exportSource.push(c));
+                                }
+                            });
+
+                            // Send back
+                            const cleaned = exportSource.map(c => {
+                                if (reqType === 'black') {
+                                    return { text: c.text, blanks: (c.blanks || 1) };
+                                } else {
+                                    return { text: c.text };
+                                }
+                            });
+
+                            const exportPayload = {
+                                type: (reqType === 'black' ? 'N' : 'B'),
+                                cards: cleaned
+                            };
+
+                            const conn = connections[senderId];
+                            if (conn && conn.open) {
+                                conn.send({ type: 'EXPORT_DATA', payload: exportPayload, finalType: reqType });
+                            }
+                        }
+                        break;
+                    case 'EXPORT_DATA':
+                        // Trigger Download
+                        const pData = data.payload;
+                        const jsonStr = JSON.stringify(pData, null, 2);
+                        const blob = new Blob([jsonStr], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `SALA_EXPORT_${data.finalType}_${Date.now()}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
                         break;
                 }
             } catch (e) {
@@ -2406,6 +2577,9 @@
         function toggleSelectCard(cardElem, text) {
             // Special mode: SWAPPING
             if (isSwapping) {
+                // UI Block check: If waiting for server?
+                // Visual feedback only. 
+
                 if (cardElem.classList.contains('selected')) {
                     cardElem.classList.remove('selected');
                     selectedCards = selectedCards.filter(t => t !== text);
