@@ -2127,17 +2127,21 @@
             if (p) p.score++;
 
             gameState.phase = 'SCORE';
-            // Broadcast Winner
+
+            // Sync GameState players to ensure consistency
+            gameState.players = players;
+
+            // Broadcast Updates
+            broadcast({ type: 'PLAYER_UPDATE', players: players }); // Explicitly sync scores
             broadcast({
                 type: 'SITUATION_UPDATE',
                 state: {
                     ...gameState,
-                    winnerName: p.name,
+                    winnerName: p ? p.name : 'Desconocido', // Safely access name
                     winningCards: winnerSub.cards,
                     winningSubmissionIndex: submissionIndex
                 }
             });
-
             checkGameEnd(p);
         }
 
@@ -2226,6 +2230,9 @@
                     gameState.winnerName = "¡EMPATE! Nadie gana puntos";
                     // No points added
                     gameState.phase = 'SCORE';
+
+                    gameState.players = players; // SYNC
+
                     broadcast({ type: 'PLAYER_UPDATE', players: players });
                     broadcast({ type: 'SITUATION_UPDATE', state: gameState });
 
@@ -2241,6 +2248,9 @@
                     if (wPlayer) wPlayer.score++; // Point awarded to single winner
 
                     gameState.phase = 'SCORE';
+
+                    gameState.players = players; // SYNC
+
                     broadcast({ type: 'PLAYER_UPDATE', players: players });
                     broadcast({ type: 'SITUATION_UPDATE', state: gameState });
 
@@ -2269,8 +2279,8 @@
                 setTimeout(() => {
                     const durationMs = Date.now() - gameStartTime;
                     showGameOverScreen(p, durationMs);
-                    // Broadcast to clients
-                    broadcast({ type: 'GAME_OVER', winner: p, duration: durationMs });
+                    // Broadcast to clients WITH final players list
+                    broadcast({ type: 'GAME_OVER', winner: p, duration: durationMs, players: players });
                 }, 1000);
             } else {
                 // Wait then next round
@@ -2441,6 +2451,10 @@
                         break;
                     case 'GAME_OVER':
                         // Client receives end game
+                        // Ensure we have final stats
+                        if (data.players) {
+                            players = data.players;
+                        }
                         showGameOverScreen(data.winner, data.duration);
                         break;
                     case 'SUBMIT_CARDS': // Host receives
