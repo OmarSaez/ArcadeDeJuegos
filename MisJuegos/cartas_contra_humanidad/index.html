@@ -998,9 +998,42 @@
             gameMode: 'JUDGE',
             czarIndex: 0,
             blackCard: null,
-            submissions: [], // {playerId, cards: [], votes: []}
-            round: 0
+            round: 0,
+            submissions: [],
+            players: []
         };
+
+        /* --- DECK MANAGEMENT HELPERS --- */
+        function refillWhiteDeck() {
+            whiteCards = [...CAH_WHITE];
+            const boostFactor = 3;
+            if (myCreatedCards.white.length > 0) {
+                for (let i = 0; i < boostFactor; i++) {
+                    whiteCards.push(...myCreatedCards.white.map(c => c.text));
+                }
+            }
+            whiteCards.sort(() => Math.random() - 0.5);
+            console.log("White Deck Refilled. Size:", whiteCards.length);
+        }
+
+        function refilBlackDeck() {
+            blackCards = [...CAH_BLACK];
+            const boostFactor = 3;
+            if (myCreatedCards.black.length > 0) {
+                for (let i = 0; i < boostFactor; i++) {
+                    blackCards.push(...myCreatedCards.black);
+                }
+            }
+            blackCards.sort(() => Math.random() - 0.5);
+            console.log("Black Deck Refilled. Size:", blackCards.length);
+        }
+
+        function drawWhiteCards(count) {
+            if (whiteCards.length < count) {
+                refillWhiteDeck();
+            }
+            return whiteCards.splice(0, count);
+        }
 
         /* --- NETWORK (Standard Arcade P2P) --- */
         let pendingJoinCode = null;
@@ -1505,13 +1538,13 @@
             gameState.round = 0;
             gameState.submissions = [];
 
-            // Shuffle Decks
-            whiteCards.sort(() => Math.random() - 0.5);
-            blackCards.sort(() => Math.random() - 0.5);
+            // Initial Refill
+            refillWhiteDeck();
+            refilBlackDeck();
 
             // Deal initial hands (7 cards)
             players.forEach(p => {
-                p.hand = whiteCards.splice(0, 10);
+                p.hand = drawWhiteCards(10);
                 if (p.id !== myId) {
                     const conn = connections[p.id];
                     if (conn && conn.open) conn.send({ type: 'UPDATE_HAND', hand: p.hand });
@@ -1535,8 +1568,8 @@
             gameState.phase = 'SELECTION';
             gameState.submissions = [];
 
-            // Refill decks if empty (simple reload)
-            if (blackCards.length === 0) blackCards = [...CAH_BLACK].sort(() => Math.random() - 0.5);
+            // Refill decks if empty (simple reload for black)
+            if (blackCards.length === 0) refilBlackDeck();
 
             // Next Black Card
             gameState.blackCard = blackCards.pop();
@@ -1795,10 +1828,12 @@
             console.log("SWAP: Hand AFTER REMOVAL:", JSON.stringify(p.hand));
 
             // Add new ones
-            while (p.hand.length < 10 && whiteCards.length > 0) {
-                const newCard = whiteCards.pop();
-                p.hand.push(newCard);
-                console.log("SWAP: Drew new card:", newCard);
+            // Add new ones
+            const cardsNeeded = 10 - p.hand.length;
+            if (cardsNeeded > 0) {
+                const newCards = drawWhiteCards(cardsNeeded);
+                p.hand.push(...newCards);
+                console.log("SWAP: Drew new cards:", newCards);
             }
 
             p.hasSwapped = true;
@@ -1880,10 +1915,14 @@
                 }
             });
 
-            // Replenish hand
-            while (p.hand.length < 10 && whiteCards.length > 0) {
-                p.hand.push(whiteCards.pop());
+            // Refill Hand to 10
+            const cardsToDraw = 10 - p.hand.length;
+            if (cardsToDraw > 0) {
+                const drawn = drawWhiteCards(cardsToDraw);
+                p.hand.push(...drawn);
             }
+
+
 
             // Sync Hand to player
             if (p.id !== myId) {
@@ -2085,13 +2124,14 @@
             }
         }
 
+        let gameStartTime = 0;
+
         function checkGameEnd(p) {
             // Check for Game Winner
             if (p.score >= pointsToWin) {
                 // Game Over
                 setTimeout(() => {
-                    alert(`¡JUEGO TERMINADO! ${p.name} ha ganado la partida con ${p.score} puntos.`);
-                    location.reload(); // Simple reset for now
+                    showGameOverScreen(p);
                 }, 1000);
             } else {
                 // Wait then next round
@@ -2099,6 +2139,22 @@
                     startRound();
                 }, 5000);
             }
+        }
+
+        function showGameOverScreen(winner) {
+            // Calculate Stats
+            const durationMs = Date.now() - gameStartTime;
+            const minutes = Math.floor(durationMs / 60000);
+            const seconds = Math.floor((durationMs % 60000) / 1000);
+
+            document.getElementById('go-winner-name').innerText = winner.name + " GANÓ";
+            document.getElementById('go-stats').innerHTML = `
+                <p>Puntuación Final: ${winner.score}</p>
+                <p>Duración: ${minutes}m ${seconds}s</p>
+                <p>Rondas Jugadas: ${gameState.round}</p>
+            `;
+
+            showScreen('screen-game-over');
         }
 
         function onJoinSuccess(code) {
@@ -2240,6 +2296,7 @@
 
         function startGameUI() {
             console.log("startGameUI called");
+            gameStartTime = Date.now(); // Track start time
             showScreen('screen-game');
             updateTableUI();
         }
@@ -2652,6 +2709,34 @@
             else el.style.color = '#e11d48';
         }
     </script>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="screen-game-over" class="screen hidden"
+        style="background: linear-gradient(135deg, #111, #222); color:white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+
+        <h1
+            style="font-size: 3rem; margin-bottom: 10px; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);">
+            🏆 ¡VICTORIA! 🏆
+        </h1>
+
+        <h2 id="go-winner-name" style="font-size: 2.5rem; margin: 20px 0; font-weight: 900;">NOMBRE GANÓ</h2>
+
+        <div id="go-stats"
+            style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin-bottom: 30px; min-width: 300px;">
+            <!-- Stats inserted by JS -->
+        </div>
+
+        <div style="display:flex; gap:20px; flex-direction: column;">
+            <button onclick="location.reload()" class="btn"
+                style="background: #2563eb; width: 250px; font-size: 1.1rem; padding: 15px;">
+                🔄 Volver al Lobby
+            </button>
+            <button onclick="window.location.href='https://omarsaez.github.io/ArcadeDeJuegos/'" class="btn secondary"
+                style="width: 250px; font-size: 1.1rem; padding: 15px; border: 2px solid #666;">
+                🕹️ Volver al Arcade
+            </button>
+        </div>
+    </div>
 </body>
 
 </html>
