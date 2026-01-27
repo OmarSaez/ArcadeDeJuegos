@@ -47,6 +47,8 @@
                     <option value="none">Calvo</option>
                     <option value="short">Corto</option>
                     <option value="long">Largo</option>
+                    <option value="punk">Punk</option>
+                    <option value="afro">Afro</option>
                 </select>
             </div>
             <div class="input-group">
@@ -79,6 +81,8 @@
             <div class="stat-box hp">HP: <span id="ui-hp">100</span>%</div>
             <div class="stat-box ammo">MUNICIÓN: <span id="ui-ammo">0</span></div>
             <button class="btn-small danger" onclick="skipPrep()">SALTAR PREPARACIÓN ⏩</button>
+            <div id="room-code-display" class="stat-box" style="background:#5c6bc0; font-weight:bold; display:none;">
+            </div>
         </div>
 
         <!-- NOTIFICACIONES -->
@@ -131,6 +135,8 @@
         <div id="pause-menu" class="hidden">
             <h2>PAUSA</h2>
             <button class="btn-main" onclick="saveToFile()">💾 EXPORTAR PARTIDA (GUARDAR)</button>
+            <div id="pause-code-display" style="margin: 15px 0; font-size: 1.2rem; color: #bde0fe; font-weight: bold;">
+            </div>
             <button class="btn-sec" onclick="togglePause()">VOLVER</button>
         </div>
     </div>

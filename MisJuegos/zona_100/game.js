@@ -11,6 +11,13 @@ const TILE_SIZE = 50;
 const WORLD_W = 100;
 const WORLD_H = 100;
 
+// Game Cycles
+let gameRound = 1;
+let isDay = true; // Odd rounds are Day, Even are Night
+let cycleTimer = 30; // Prep time start (30s)
+let isPrepPhase = true;
+let roundDuration = 120; // 2 minutes active round
+
 // Entidades Globales
 let bullets = [];
 let zombies = [];
@@ -75,16 +82,18 @@ let player = {
     // Inicializar con Pistola y Municion
     inventory: [
         { id: 'weapon_pistol', count: 1 },
-        { id: 'ammo_pistol', count: 250 },
-        null,
-        null,
+        { id: 'ammo_pistol', count: 100 },
+        { id: 'ammo_pistol', count: 100 },
+        { id: 'ammo_pistol', count: 50 },
         null
     ],
     backpack: new Array(25).fill(null),
-    stats: { hp: 100, money: 0 },
+    stats: { hp: 100, money: 100, skillPoints: 0 },
+    selectedSlot: 0,
     selectedSlot: 0,
     lastShot: 0,
-    pickupRadius: 60
+    pickupRadius: 60,
+    isDead: false
 };
 
 /* --- 1. PERSONALIZACIÓN / PREVIEW (Igual) --- */
@@ -102,12 +111,20 @@ function updatePreview() {
     player.visual.hairStyle = hairStyle;
     player.visual.hairColor = hairColor;
     player.visual.nick = document.getElementById('p-nick').value;
+    // Add HP to visual for rendering convenience (though logic uses stats)
+    player.visual.hp = player.stats.hp;
+    player._lastUpdateSent = 0;
 
-    pCtx.fillStyle = '#8d6e63';
+    // Draw Preview
+    pCtx.clearRect(0, 0, 100, 100);
+    pCtx.fillStyle = '#333'; // Background
     pCtx.fillRect(0, 0, 100, 100);
-    // Angle Math.PI/2 means facing "Down" (Front) after the adjustment
+
+    // Draw centered character in preview
     drawCharacter(pCtx, 50, 50, Math.PI / 2, player.visual, 20);
 }
+
+
 
 function drawCharacter(context, x, y, angle, visual, radius) {
     context.save();
@@ -129,13 +146,43 @@ function drawCharacter(context, x, y, angle, visual, radius) {
     context.fillStyle = visual.hairColor;
     if (visual.hairStyle === 'short') {
         context.beginPath();
-        context.arc(0, 0, radius * 0.85, Math.PI, Math.PI * 2);
+        // Top half only (Math.PI to 2*Math.PI)
+        context.arc(0, 0, radius * 0.9, Math.PI, Math.PI * 2);
         context.fill();
     } else if (visual.hairStyle === 'long') {
         context.beginPath();
-        context.arc(0, 0, radius * 0.9, Math.PI * 0.8, Math.PI * 2.2);
+        // Top half base
+        context.arc(0, 0, radius * 1.0, Math.PI, Math.PI * 2);
         context.fill();
-        context.fillRect(-radius * 0.8, -radius * 0.8, radius * 1.6, radius * 1.8);
+        // Long Sides (avoiding center face)
+        context.beginPath();
+        // Left Side
+        context.moveTo(-radius * 0.9, 0);
+        context.lineTo(-radius * 1.1, radius * 1.5);
+        context.lineTo(-radius * 0.5, radius * 1.5);
+        context.lineTo(-radius * 0.4, 0);
+        context.fill();
+        // Right Side
+        context.beginPath();
+        context.moveTo(radius * 0.9, 0);
+        context.lineTo(radius * 1.1, radius * 1.5);
+        context.lineTo(radius * 0.5, radius * 1.5);
+        context.lineTo(radius * 0.4, 0);
+        context.fill();
+    } else if (visual.hairStyle === 'punk') {
+        context.beginPath();
+        // Strip from Back (-R) to Forehead (0.3R)
+        const w = radius * 0.4;
+        const h = radius * 1.3;
+        const x = -w / 2;
+        const y = -radius;
+        context.roundRect ? context.roundRect(x, y, w, h, 5) : context.fillRect(x, y, w, h);
+        context.fill();
+    } else if (visual.hairStyle === 'afro') {
+        context.beginPath();
+        // Big circle shifted UP to expose face bottom
+        context.arc(0, -radius * 0.55, radius * 1.1, 0, Math.PI * 2);
+        context.fill();
     }
 
     // Manos y Arma
@@ -151,6 +198,35 @@ function drawCharacter(context, x, y, angle, visual, radius) {
     context.beginPath();
     context.arc(-radius * 0.4, radius * 0.8, radius * 0.25, 0, Math.PI * 2);
     context.fill();
+
+    // HP Bar (Above Head)
+    if (visual.hp !== undefined) {
+        const barW = 40;
+        const barH = 5;
+        const pct = Math.max(0, visual.hp / 100);
+
+        context.save();
+        context.translate(0, -radius - 15);
+        // Rotate back to be horizontal regardless of player rotation?
+        // Player is rotated by `angle` in context. We want bar to be relative to screen or player?
+        // If we want it "floating above head" aligned with player, keep it here.
+        // But `drawCharacter` has rotated context! So bar will rotate with player.
+        // Usually bars stay horizontal.
+        context.rotate(-(angle - Math.PI / 2)); // Counter-rotate to keep bar horizontal
+
+        context.fillStyle = 'red';
+        context.fillRect(-barW / 2, 0, barW, barH);
+        context.fillStyle = '#4caf50';
+        context.fillRect(-barW / 2, 0, barW * pct, barH);
+
+        // Nickname
+        context.fillStyle = 'white';
+        context.font = '10px Arial';
+        context.textAlign = 'center';
+        context.fillText(visual.nick, 0, -5);
+
+        context.restore();
+    }
 
     // Arma / Item en mano
     if (visual.activeItem) {
@@ -194,11 +270,401 @@ function initGame(mode) {
     resize();
     window.addEventListener('resize', resize);
 
-    if (isHost) setInterval(spawnZombie, 2000);
-    gameLoop();
-    renderInventoryUI();
-    renderShopUI();
-    updateAmmoUI();
+    if (isHost) {
+        myId = generateId(); // Helper or random string
+        setupHost();
+    } else {
+        setupClient();
+    }
+}
+
+function generateId() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No O/0 or I/1 to avoid confusion
+    let result = 'Z100-';
+    for (let i = 0; i < 4; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+// --- P2P NETWORK ---
+let peer;
+let connections = []; // Host: list of client conns
+let serverConn; // Client: conn to host
+let remotePlayers = {}; // Dictionary of other players
+let lastSlowUpdate = 0;
+
+
+
+function setupHost() {
+    const shortId = generateId(); // Z100-XXXX
+    peer = new Peer(shortId, { debug: 1 });
+    peer.on('open', (id) => {
+        myId = id;
+        console.log('Host ID:', id);
+        document.getElementById('ui-money').innerText = player.stats.money;
+        // Display in HUD
+        // HUD Code removed as requested
+        // const codeDisplay = document.getElementById('room-code-display');
+
+        // Add self to players list if managing server-side state logic
+
+        // Add self to players list if managing server-side state logic
+        remotePlayers[myId] = player;
+
+        // Start Broadcast Loop
+        setInterval(broadcastState, 50); // 20 updates/sec
+        // Start Game Loop logic
+        setInterval(gameCycleLoop, 1000);
+        gameLoop();
+    });
+
+    peer.on('connection', (conn) => {
+        connections.push(conn);
+        conn.on('data', (data) => {
+            handleClientData(conn.peer, data);
+        });
+        conn.on('close', () => {
+            console.log("Client disconnected", conn.peer);
+            delete remotePlayers[conn.peer];
+            connections = connections.filter(c => c !== conn);
+        });
+    });
+}
+
+function setupClient() {
+    const hostId = document.getElementById('join-code').value;
+    if (!hostId) { alert("Ingresa un código"); return; }
+
+    // Prefix lookup
+    const fullId = 'Z100-' + hostId.toUpperCase().replace('Z100-', '');
+
+    peer = new Peer(null, { debug: 1 });
+    peer.on('open', (id) => {
+        myId = id;
+        document.getElementById('ui-money').innerText = player.stats.money;
+        serverConn = peer.connect(fullId);
+
+        serverConn.on('open', () => {
+            console.log("Connected to Host");
+            // HUD Code removed as requested
+            gameLoop(); // Start Render Loop
+        });
+
+        serverConn.on('data', (data) => {
+            handleServerData(data);
+        });
+    });
+}
+
+function broadcastState() {
+    const now = Date.now();
+    // 1. FAST UPDATE (50ms, 20FPS) - Movement & Combat
+
+    // Prepare Players
+    const packedPlayers = {};
+    const allIds = Object.keys(remotePlayers);
+    allIds.push(myId); // inclusive self
+
+    allIds.forEach(pid => {
+        const p = (pid === myId) ? player : remotePlayers[pid];
+        if (!p) return;
+        packedPlayers[pid] = {
+            x: Math.round(p.x),
+            y: Math.round(p.y),
+            angle: parseFloat(p.angle.toFixed(2)),
+            visual: p.visual,
+            isDead: p.isDead
+        };
+    });
+
+    const fastState = {
+        type: 'FAST_UPDATE',
+        p: packedPlayers,
+        z: zombies.map(z => ({
+            x: Math.round(z.x),
+            y: Math.round(z.y),
+            hp: z.hp,
+            maxHp: 30, // assuming standard for bar
+            c: z.color || '#4caf50',
+            r: z.radius || 15
+        })),
+        b: bullets.map(b => ({ x: Math.round(b.x), y: Math.round(b.y) })),
+        t: now
+    };
+
+    connections.forEach(c => { if (c.open) c.send(fastState); });
+
+    // 2. SLOW UPDATE (1000ms, 1FPS) - World/Entitites/Sync
+    if (now - lastSlowUpdate > 1000) {
+        lastSlowUpdate = now;
+        const slowState = {
+            type: 'SLOW_UPDATE',
+            walls: walls,
+            drops: drops,
+            cycle: { round: gameRound, timer: cycleTimer, phase: isPrepPhase, isDay: isDay },
+            bonfireHp: bonfire.hp,
+            isPaused: (gameState === 'PAUSED')
+        };
+        connections.forEach(c => { if (c.open) c.send(slowState); });
+    }
+}
+
+function handleClientData(clientId, data) {
+    // Host receives Actions/Inputs from Client
+    if (data.type === 'ACTION_REVIVE') {
+        const targetId = data.targetId;
+        revivePlayer(targetId);
+    }
+
+    if (data.type === 'PLAYER_UPDATE') {
+        remotePlayers[clientId] = data.player; // Naive sync: Trust client position
+        // Ideally: Client sends inputs, Host simulates. 
+        // For simple Arcade: Trust client coords ok for now.
+    }
+    // Handle other events like 'SHOOT', 'BUILD' if logic needs to be central
+    if (data.type === 'ACTION_SHOOT') {
+        const b = data.bullet;
+        // Validate?
+        bullets.push(b);
+    }
+    if (data.type === 'ACTION_BUILD') {
+        const { item, x, y } = data;
+        // Check collisions on Host
+        const existing = walls.find(w => w.x === x && w.y === y);
+        if (!existing) {
+            let initHp = 200;
+            if (item === 'wall_wood') initHp = 400;
+            if (item === 'wall_door') initHp = 300;
+            walls.push({ x: x, y: y, type: item, hp: initHp, isOpen: false });
+        }
+    }
+    if (data.type === 'REQUEST_PAUSE_TOGGLE') {
+        togglePause(false);
+    }
+}
+
+function handleServerData(data) {
+    if (data.type === 'FAST_UPDATE') {
+        // Sync Players
+        Object.keys(data.p).forEach(pid => {
+            if (pid !== myId) {
+                // Interpolation could go here. For now direct assignment but smoothed?
+                // remotePlayers[pid] = data.p[pid];
+                // To support 'drawCharacter' we need full object.
+                // Maintain local object if exists to keep other props?
+                if (!remotePlayers[pid]) remotePlayers[pid] = {};
+                Object.assign(remotePlayers[pid], data.p[pid]);
+
+                // Check if I am dead according to server (optional, usually local authoritative for death)
+                // But enables spectator if server kills me
+            }
+        });
+
+        // Sync Entities (Direct overwrite for smooth visual if high FPS)
+        // Map minified keys back to verbose for render functions
+        zombies = data.z.map(z => ({
+            x: z.x, y: z.y, hp: z.hp, maxHp: z.maxHp || 30, color: z.c, radius: z.r
+        }));
+        bullets = data.b.map(b => ({ x: b.x, y: b.y }));
+
+        return;
+    }
+
+    if (data.type === 'EVENT_DAMAGE') {
+        const dmg = data.amount;
+        player.stats.hp = Math.max(0, player.stats.hp - dmg);
+        // Visual Update
+        document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+        if (player.stats.hp <= 0) {
+            // Game Over Logic (Local)
+            // Maybe alert and respawn?
+        }
+        return;
+    }
+
+    if (data.type === 'EVENT_MONEY') {
+        player.stats.money += data.amount;
+        document.getElementById('ui-money').innerText = player.stats.money;
+        return;
+    }
+
+    if (data.type === 'EVENT_RESPAWN') {
+        player.isDead = false;
+        player.stats.hp = 100;
+        document.getElementById('ui-hp').innerText = `HP: 100%`;
+        alert("¡HAS SIDO REVIVIDO!");
+        return;
+    }
+
+    if (data.type === 'EVENT_GAMEOVER') {
+        alert("GAME OVER - EL EQUIPO HA CAÍDO");
+        location.reload();
+        return;
+    }
+
+    if (data.type === 'EVENT_GAMEOVER') {
+        alert("GAME OVER - EL EQUIPO HA CAÍDO");
+        location.reload();
+        return;
+    }
+
+    if (data.type === 'SLOW_UPDATE') {
+        // Sync World
+        walls = data.walls || [];
+        drops = data.drops || [];
+        bonfire.hp = data.bonfireHp;
+
+        // Cycle
+        if (data.cycle) {
+            gameRound = data.cycle.round;
+            cycleTimer = data.cycle.timer;
+            isPrepPhase = data.cycle.phase;
+            isDay = data.cycle.isDay;
+            document.getElementById('ui-day').innerText = Math.ceil(gameRound / 2);
+            updateCycleUI();
+        }
+
+        // Pause Sync
+        if (data.isPaused !== undefined) {
+            const serverState = data.isPaused ? 'PAUSED' : 'PLAYING';
+            if (gameState !== serverState) {
+                gameState = serverState;
+                updatePauseUI();
+            }
+        }
+        return;
+    }
+
+
+
+}
+
+
+function gameCycleLoop() {
+    if (gameState !== 'PLAYING') return;
+
+    if (cycleTimer > 0) {
+        cycleTimer--;
+    } else {
+        // Timer ended
+        if (isPrepPhase) {
+            // End Prep -> Start Round
+            isPrepPhase = false;
+            cycleTimer = roundDuration;
+            showTitle(`HORDA ${gameRound} SE ACERCA`, '#ff5252'); // Red
+            spawnZombie(); // First spawn
+        } else {
+            // End Round -> Start Prep for Next Round
+            isPrepPhase = true;
+            cycleTimer = 30;
+            showTitle(`RONDA ${gameRound} COMPLETADA`, '#4caf50'); // Green
+            gameRound++;
+            isDay = (gameRound % 2 !== 0);
+
+            // Adjust Day Number (Every 2 rounds = 1 full day)
+            // Round 1 (Day), Round 2 (Night) -> Day 1
+            // Round 3 (Day) -> Day 2
+
+            const dayNum = Math.ceil(gameRound / 2);
+            document.getElementById('ui-day').innerText = dayNum;
+
+            // Grant Skill Point if a full day completed (after even rounds)
+            // If we just became Round 3 (Odd), we finished R1 & R2.
+            if (gameRound % 2 !== 0) {
+                player.stats.skillPoints++;
+                showTitle(`¡DÍA COMPLETADO!\n+1 PUNTO DE HABILIDAD`, '#ffd700'); // Gold
+                // Removed alert to avoid pausing game flow
+            }
+        }
+    }
+
+    // Auto Spawn during active round
+    if (!isPrepPhase) {
+        if (cycleTimer % 2 === 0) spawnZombie(); // Spawn every 2s
+    }
+
+    updateCycleUI();
+    updateZombieCounter();
+}
+
+function updateZombieCounter() {
+    let el = document.getElementById('zombie-counter');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'zombie-counter';
+        el.style.position = 'fixed';
+        el.style.bottom = '20px';
+        el.style.right = '20px';
+        el.style.color = '#2e7d32'; // Dark Green
+        el.style.fontSize = '20px';
+        el.style.fontWeight = 'bold';
+        el.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        el.style.padding = '10px';
+        el.style.borderRadius = '5px';
+        document.body.appendChild(el);
+    }
+    el.innerText = `ZOMBIES VIVOS: ${zombies.length}`;
+}
+
+function showTitle(text, color = 'white') {
+    const el = document.createElement('div');
+    el.innerText = text;
+    el.style.position = 'fixed';
+    el.style.top = '20%';
+    el.style.left = '50%';
+    el.style.transform = 'translate(-50%, -50%)';
+    el.style.fontSize = '40px';
+    el.style.color = color;
+    el.style.fontWeight = 'bold';
+    el.style.textShadow = '2px 2px 4px black';
+    el.style.zIndex = '2000';
+    el.style.pointerEvents = 'none';
+    el.style.animation = 'fadeOut 3s forwards';
+    document.body.appendChild(el);
+    setTimeout(() => document.body.removeChild(el), 3000);
+}
+
+// CSS Animation for fadeOut
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes fadeOut {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+}`;
+document.head.appendChild(style);
+
+function updateCycleUI() {
+    const timeDisplay = document.getElementById('ui-time');
+    const overlay = document.getElementById('darkness-overlay');
+
+    // Cycle Text
+    let phaseText = "";
+    if (isPrepPhase) {
+        phaseText = `PREPARACIÓN: ${cycleTimer}s`;
+        overlay.style.opacity = isDay ? 0 : 0.5; // Keep night/day bg during prep? 
+        // Logic: Prep allows visibility. Let's make prep always bright or keep previous?
+        // User wants: Prep -> Round.
+        // Let's Keep Day/Night visual consistent with the upcoming round or current?
+        // "30 segundos por cada ronda para poder preparar las cosas"
+        overlay.style.opacity = isDay ? 0 : 0.3; // Lighter night during prep
+    } else {
+        // Active Round
+        phaseText = isDay ? `DÍA (R${gameRound}): ${cycleTimer}s` : `NOCHE (R${gameRound}): ${cycleTimer}s`;
+        overlay.style.opacity = isDay ? 0 : 0.7; // Darker night
+    }
+    timeDisplay.innerText = phaseText;
+}
+
+function skipPrep() {
+    if (isPrepPhase) {
+        cycleTimer = 0;
+        updateCycleUI();
+        // gameCycleLoop will handle transition on next tick or force it?
+        // Let's force it to feel instant
+        gameCycleLoop(); // Trigger transition immediately
+    }
 }
 
 function resize() {
@@ -214,7 +680,7 @@ window.addEventListener('keydown', e => {
     keys[e.key.toLowerCase()] = true;
     if (e.code === 'Tab') { e.preventDefault(); toggleBackpack(); }
     if (e.key === 't' || e.key === 'T') toggleShop();
-    if (e.key === 'Escape') togglePause();
+    if (e.key === 'Escape') togglePause(false);
     if (['1', '2', '3', '4', '5'].includes(e.key)) selectHotbar(parseInt(e.key) - 1);
 });
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
@@ -280,6 +746,9 @@ function updateAmmoUI() {
 }
 
 function useItem() {
+    // Priority: Interaction (Doors)
+    if (interactWorld()) return;
+
     const heldItem = player.inventory[player.selectedSlot];
     if (!heldItem) return;
 
@@ -314,10 +783,29 @@ function interactWorld() {
             w.type === 'wall_door';
     });
 
+
+
     if (target) {
-        target.isOpen = !target.isOpen;
+        if (isHost) {
+            target.isOpen = !target.isOpen;
+        } else if (serverConn && serverConn.open) {
+            // Client Request
+            serverConn.send({
+                type: 'ACTION_INTERACT',
+                x: target.x,
+                y: target.y
+            });
+            // Predict? Maybe wait for server to prevent "ghost open"
+            // target.isOpen = !target.isOpen; 
+        } else {
+            // Offline
+            target.isOpen = !target.isOpen;
+        }
+        return true; // Interaction successful
     }
+    return false; // No interaction
 }
+
 
 function placeStructure(item) {
     // Calculate Grid Position
@@ -325,6 +813,30 @@ function placeStructure(item) {
     const my = mouse.y + camera.y;
     const gx = Math.floor(mx / TILE_SIZE) * TILE_SIZE;
     const gy = Math.floor(my / TILE_SIZE) * TILE_SIZE;
+
+    // Send Build Request if Client
+    if (!isHost && serverConn && serverConn.open) {
+        // Optimistic: Deduct item locally? Yes, for responsive UI.
+        // But actual wall creation happens on Host.
+
+        serverConn.send({
+            type: 'ACTION_BUILD',
+            item: item.id,
+            x: gx,
+            y: gy
+        });
+
+        // Consume locally too
+        item.count--;
+        if (item.count <= 0) player.inventory[player.selectedSlot] = null;
+        renderInventoryUI();
+        return;
+    }
+
+
+    // Host Logic checks
+
+
 
     // Check Range (e.g., 200px)
     const dist = Math.hypot(gx + TILE_SIZE / 2 - player.x, gy + TILE_SIZE / 2 - player.y);
@@ -347,7 +859,12 @@ function placeStructure(item) {
     }
 
     // Place
-    walls.push({ x: gx, y: gy, type: item.id, hp: 200, isOpen: false });
+    // Base HP 200 -> Double to 400 for walls
+    let initHp = 200;
+    if (item.id === 'wall_wood') initHp = 400;
+    if (item.id === 'wall_door') initHp = 300;
+
+    walls.push({ x: gx, y: gy, type: item.id, hp: initHp, isOpen: false });
 
     // Consume Item
     item.count--;
@@ -372,16 +889,33 @@ function shoot() {
     player.lastShot = Date.now();
 
     // Spawn Bullet
-    bullets.push({
+    const bullet = {
         x: player.x,
         y: player.y,
         angle: player.angle,
         speed: 15,
-        life: 100
-    });
+        life: 100,
+        owner: myId
+    };
+
+    if (isHost) {
+        bullets.push(bullet);
+    } else if (serverConn && serverConn.open) {
+        // Client: Send Shoot Action
+        serverConn.send({
+            type: 'ACTION_SHOOT',
+            bullet: bullet
+        });
+        // Optional: Local visual prediction (ghost bullet)? 
+        // For accurate sync, better to wait for server update or add "local only" bullet that disappears?
+        // Let's rely on Fast Update (50ms is quick enough to see bullet spawn)
+    }
 }
 
 function spawnZombie() {
+    if (gameState !== 'PLAYING') return;
+    if (isPrepPhase) return; // Strict check
+
     let zx, zy;
     if (Math.random() < 0.5) {
         zx = Math.random() < 0.5 ? 0 : WORLD_W * TILE_SIZE;
@@ -396,7 +930,9 @@ function spawnZombie() {
 function update() {
     if (gameState !== 'PLAYING') return;
 
-    // Player Move
+    // Movement Logic (Everyone runs this for themselves)
+    if (player.isDead) return;
+
     const speed = 4;
     let dx = 0; let dy = 0;
     if (keys['w']) dy = -speed;
@@ -404,61 +940,147 @@ function update() {
     if (keys['a']) dx = -speed;
     if (keys['d']) dx = speed;
 
-    // X Axis
-    if (!checkWallCollision(player.x + dx, player.y)) {
-        player.x += dx;
-    }
-    // Y Axis
-    if (!checkWallCollision(player.x, player.y + dy)) {
-        player.y += dy;
-    }
+    if (!checkWallCollision(player.x + dx, player.y)) player.x += dx;
+    if (!checkWallCollision(player.x, player.y + dy)) player.y += dy;
 
-    // Angle
     const screenPlayerX = player.x - camera.x;
     const screenPlayerY = player.y - camera.y;
     player.angle = Math.atan2(mouse.y - screenPlayerY, mouse.x - screenPlayerX);
 
-    // Camera
+    // Send Update to Server if Client
+    if (!isHost && serverConn && serverConn.open) {
+        // Throttle to ~35 FPS (approx 28ms)
+        const now = Date.now();
+        if (now - (player._lastUpdateSent || 0) > 28) {
+            player._lastUpdateSent = now;
+
+            // Update local visual HP for sending
+            player.visual.hp = player.stats.hp;
+            const held = player.inventory[player.selectedSlot];
+            player.visual.activeItem = held ? { id: held.id } : null;
+
+            serverConn.send({
+                type: 'PLAYER_UPDATE',
+                player: {
+                    x: Math.round(player.x), // Send rounded to save bytes
+                    y: Math.round(player.y),
+                    angle: parseFloat(player.angle.toFixed(2)),
+                    visual: player.visual,
+                    isDead: player.isDead
+                }
+            });
+        }
+    }
+
+    // Host Only Logic: Zombies, Bullets, Collisions
+    if (isHost) {
+        player.visual.hp = player.stats.hp; // Ensure host visual has HP too
+        const held = player.inventory[player.selectedSlot];
+        player.visual.activeItem = held ? { id: held.id } : null;
+
+        // ... (Existing update logic for zombies, bullets, etc)
+        updateGameWorld();
+    }
+
+    // Camera always follows self
     const targetCamX = player.x - canvas.width / 2;
     const targetCamY = player.y - canvas.height / 2;
     camera.x += (targetCamX - camera.x) * 0.1;
     camera.y += (targetCamY - camera.y) * 0.1;
+}
 
-    // Zombies
+function updateGameWorld() {
     // Zombies
     zombies.forEach((z, i) => {
-        const distToPlayer = Math.hypot(player.x - z.x, player.y - z.y);
-        const distToBonfire = Math.hypot(bonfire.x - z.x, bonfire.y - z.y);
-        let target = (distToPlayer < distToBonfire) ? player : bonfire;
+        // Aggro Logic: Find closest player (or bonfire)
+        let closestTarget = bonfire;
+        let minD = Math.hypot(bonfire.x - z.x, bonfire.y - z.y);
 
-        // Collision logic
+        // Check Host
+        const distToHost = Math.hypot(player.x - z.x, player.y - z.y);
+        if (distToHost < minD) {
+            minD = distToHost;
+            closestTarget = player;
+        }
+
+        // Check Remote Players
+        // Using `remotePlayers` dict from Host
+        Object.keys(remotePlayers).forEach(pid => {
+            const rp = remotePlayers[pid];
+            if (rp) {
+                const d = Math.hypot(rp.x - z.x, rp.y - z.y);
+                if (d < minD) {
+                    minD = d;
+                    closestTarget = rp;
+                    // We need to know WHO this is to damage them
+                    closestTarget._id = pid;
+                }
+            }
+        });
+
+        let target = closestTarget;
+
+
+        // Collision logic with other zombies
         let pushX = 0;
         let pushY = 0;
 
-        // 1. Zombie - Zombie Collision
         zombies.forEach((other, j) => {
             if (i === j) return;
             const dz = Math.hypot(z.x - other.x, z.y - other.y);
-            const minDist = z.radius + other.radius; // Minimal overlap allowed
+            const minDist = z.radius + other.radius;
             if (dz < minDist && dz > 0) {
                 const pushAngle = Math.atan2(z.y - other.y, z.x - other.x);
-                const force = (minDist - dz) / 2; // Separate half each
+                const force = (minDist - dz) / 2;
                 pushX += Math.cos(pushAngle) * force * 0.1;
                 pushY += Math.sin(pushAngle) * force * 0.1;
             }
         });
 
-        // 2. Zombie - Player Collision & Damage
+        // Zombie - Player Collision & Damage
+        // Check collision with ALL targets (Host + Clients)
+        // We already determined `target` above, but let's check basic collision circle
+
+        // 1. Check Host Collision
         const dp = Math.hypot(z.x - player.x, z.y - player.y);
-        if (dp < z.radius + 20) { // 20 is player radius
-            // Damage Player
+        if (dp < z.radius + 20) {
             if (!z.lastAttack || Date.now() - z.lastAttack > 1000) {
                 player.stats.hp -= 10;
                 document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
                 z.lastAttack = Date.now();
-                if (player.stats.hp <= 0) alert("GAME OVER"); // Placeholder
+                // Game Over Check
+                if (player.stats.hp <= 0) {
+                    player.isDead = true;
+                    document.getElementById('ui-hp').innerText = "MUERTO - Espera rescate";
+                    checkGameOver();
+                }
             }
+        }
 
+        // 2. Check Remote Players Collision
+        Object.keys(remotePlayers).forEach(pid => {
+            const rp = remotePlayers[pid];
+            if (rp) {
+                const d = Math.hypot(z.x - rp.x, z.y - rp.y);
+                if (d < z.radius + 20) {
+                    // Hit Remote Player
+                    // Send Damage Event to that Client
+                    const conn = connections.find(c => c.peer === pid);
+                    if (conn && conn.open) {
+                        conn.send({ type: 'EVENT_DAMAGE', amount: 0.5 });
+                    }
+                }
+            }
+        });
+
+        // Original Host Collision check continues...
+        if (dp < z.radius + 20) {
+            if (!z.lastAttack || Date.now() - z.lastAttack > 1000) {
+                player.stats.hp -= 10;
+                document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+                z.lastAttack = Date.now();
+                if (player.stats.hp <= 0) alert("GAME OVER");
+            }
             const pushAngle = Math.atan2(z.y - player.y, z.x - player.x);
             pushX += Math.cos(pushAngle) * 2;
             pushY += Math.sin(pushAngle) * 2;
@@ -468,41 +1090,29 @@ function update() {
         let nextZX = z.x + Math.cos(angle) * z.speed + pushX;
         let nextZY = z.y + Math.sin(angle) * z.speed + pushY;
 
-        // Apply Wall Collision & Damage
-        // X Check
+        // Wall Collision
         let colX = getWallCollision(nextZX, z.y, z.radius);
         if (colX) {
-            if (colX.type === 'wall_door' && colX.isOpen) {
-                z.x = nextZX; // Pass through
-            } else {
-                damageWall(colX);
-            }
+            if (colX.type === 'wall_door' && colX.isOpen) z.x = nextZX;
+            else damageWall(colX);
         } else {
             z.x = nextZX;
         }
 
-        // Y Check
         let colY = getWallCollision(z.x, nextZY, z.radius);
         if (colY) {
-            if (colY.type === 'wall_door' && colY.isOpen) {
-                z.y = nextZY; // Pass through
-            } else {
-                damageWall(colY);
-            }
+            if (colY.type === 'wall_door' && colY.isOpen) z.y = nextZY;
+            else damageWall(colY);
         } else {
             z.y = nextZY;
         }
 
-        // Bonfire Interaction (2x2 area -> radius ~50-60 effective stop)
-        // Bonfire is at center, physically drawn radius 40.
-        // If we want them to stop at "2x2" perimeter (100px width), distance center-to-edge is 50.
-        // User wants "around this 2x2".
+        // Bonfire Attack
         const attackRange = 50 + z.radius + 5;
-
         if (target === bonfire) {
-            if (distToBonfire < attackRange) {
+            // Use minD (distance to target) if target is bonfire
+            if (minD < attackRange) {
                 bonfire.hp -= 0.1;
-                // Push back slightly to prevent overlapping bonfire visually
                 const pushOut = Math.atan2(z.y - bonfire.y, z.x - bonfire.x);
                 z.x += Math.cos(pushOut) * 0.5;
                 z.y += Math.sin(pushOut) * 0.5;
@@ -516,13 +1126,13 @@ function update() {
         b.y += Math.sin(b.angle) * b.speed;
         b.life--;
 
+        // Zombie Collision
         zombies.forEach((z, j) => {
             const dist = Math.hypot(b.x - z.x, b.y - z.y);
             if (dist < z.radius + 5) {
                 z.hp -= 10;
                 b.life = 0;
                 if (z.hp <= 0) {
-                    // Drop Money
                     drops.push({ x: z.x, y: z.y, value: 1, life: 600 });
                     zombies.splice(j, 1);
                 }
@@ -535,9 +1145,7 @@ function update() {
                 b.x > w.x && b.x < w.x + TILE_SIZE &&
                 b.y > w.y && b.y < w.y + TILE_SIZE
             ) {
-                // If open door, bullet passes? Maybe. Let's say yes.
                 if (w.type === 'wall_door' && w.isOpen) continue;
-
                 b.life = 0;
                 damageWall(w);
                 break;
@@ -546,24 +1154,19 @@ function update() {
     });
     bullets = bullets.filter(b => b.life > 0);
 
-    // Drops & Magnet
+    // Drops Magnet
     drops.forEach((d, i) => {
         const dist = Math.hypot(player.x - d.x, player.y - d.y);
-        // Magnet
         if (dist < player.pickupRadius) {
             d.x += (player.x - d.x) * 0.1;
             d.y += (player.y - d.y) * 0.1;
         }
-        // Collect
         if (dist < 20) {
             player.stats.money += d.value;
             document.getElementById('ui-money').innerText = player.stats.money;
             drops.splice(i, 1);
         }
     });
-
-    // Clean old drops (optional if we want them to despawn)
-    // currently life is not decremented, so they stay forever.
 }
 
 function checkWallCollision(x, y, radius = 20) {
@@ -622,7 +1225,7 @@ function draw() {
     // Floor
     for (let c = startCol; c <= endCol; c++) {
         for (let r = startRow; r <= endRow; r++) {
-            if ((c + r) % 2 === 0) ctx.fillStyle = '#8d6e63'; else ctx.fillStyle = '#795548';
+            if ((c + r) % 2 === 0) ctx.fillStyle = '#b8815d88'; else ctx.fillStyle = '#b8825d8e';
             ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         }
     }
@@ -630,7 +1233,12 @@ function draw() {
     // Walls
     walls.forEach(w => {
         // Color based on HP
-        const hpRatio = w.hp / 200;
+        // Calculate max HP based on type for ratio
+        let maxHp = 200;
+        if (w.type === 'wall_wood') maxHp = 400;
+        if (w.type === 'wall_door') maxHp = 300;
+
+        const hpRatio = w.hp / maxHp;
         ctx.fillStyle = `rgb(${80 * hpRatio}, ${60 * hpRatio}, ${50 * hpRatio})`;
         if (w.type === 'wall_door') ctx.fillStyle = '#795548'; // Door color
 
@@ -645,14 +1253,10 @@ function draw() {
                 ctx.arc(w.x + TILE_SIZE - 10, w.y + TILE_SIZE / 2, 3, 0, Math.PI * 2);
                 ctx.fill();
             } else {
-                // Open door visuals (flat against wall or transparent)
+                // Open door visuals (Just the frame)
                 ctx.strokeStyle = '#5d4037';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 4; // Thicker frame
                 ctx.strokeRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
-
-                // Door leaf open
-                ctx.fillStyle = 'rgba(121, 85, 72, 0.5)';
-                ctx.fillRect(w.x, w.y, 10, TILE_SIZE);
             }
         } else {
             // Normal Wall
@@ -748,6 +1352,20 @@ function draw() {
         ctx.beginPath();
         ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fill();
+    });
+
+    // Draw Remote Players
+    Object.keys(remotePlayers).forEach(pid => {
+        if (pid === myId) return; // Don't draw self from remote list (Host logic)
+        // For Client, myId is NOT in the remotePlayers list usually? 
+        // Host sends { ...remote, [hostId]: hostPlayer }.
+        // Client has myId = "UUID". Host is "Z100-XXX".
+        // Host has myId = "Z100-XXX".
+        // So yes, exclude self.
+
+        const p = remotePlayers[pid];
+        if (p) drawCharacter(ctx, p.x, p.y, p.angle, p.visual || {}, 20);
     });
 
     // Player
@@ -756,10 +1374,7 @@ function draw() {
     const visualWithItem = { ...player.visual, activeItem: activeItem };
 
     drawCharacter(ctx, player.x, player.y, player.angle, visualWithItem, 20);
-    ctx.fillStyle = 'white';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(player.visual.nick, player.x, player.y - 35);
+    // Name tag moved to drawCharacter
 
     ctx.restore();
 }
@@ -849,32 +1464,198 @@ function renderInventoryUI() {
     });
 }
 
-function renderShopUI() {
+
+function renderShopUI(tab = 'buy') {
     const grid = document.getElementById('shop-items');
     grid.innerHTML = '';
-    SHOP_ITEMS.forEach((item, i) => {
-        const meta = ITEMS[item.id];
-        const el = document.createElement('div');
-        el.className = 'shop-item';
-        el.innerHTML = `
-            <div style="font-size:2rem;">${meta.icon}</div>
-            <h4>${meta.name} x${item.amount}</h4>
-            <div class="price">$${item.price}</div>
-        `;
-        el.onclick = () => buyItem(i);
-        grid.appendChild(el);
+
+    // Tabs container
+    const tabsContainer = document.querySelector('.shop-tabs');
+    // Force reset tabs if they are not ours (e.g. from HTML template)
+    if (!tabsContainer.querySelector('[data-type="custom-tab"]')) {
+        tabsContainer.innerHTML = '';
+
+        const btnBuy = document.createElement('button');
+        btnBuy.innerText = '🛒 COMPRAR';
+        btnBuy.setAttribute('data-type', 'custom-tab');
+        btnBuy.onclick = () => renderShopUI('buy');
+
+        const btnSkill = document.createElement('button');
+        btnSkill.innerText = '⭐ HABILIDADES';
+        btnSkill.setAttribute('data-type', 'custom-tab');
+        btnSkill.onclick = () => renderShopUI('skills');
+
+        const btnRevive = document.createElement('button');
+        btnRevive.innerText = '🚑 RESCATE';
+        btnRevive.setAttribute('data-type', 'custom-tab');
+        btnRevive.onclick = () => renderShopUI('revive');
+
+        tabsContainer.appendChild(btnBuy);
+        tabsContainer.appendChild(btnSkill);
+        tabsContainer.appendChild(btnRevive);
+    }
+
+    // Highlight active tab
+    tabsContainer.querySelectorAll('button').forEach(b => {
+        b.classList.remove('active');
+        if ((tab === 'buy' && b.innerText.includes('COMPRAR')) ||
+            (tab === 'skills' && b.innerText.includes('HABILIDADES'))) {
+            b.classList.add('active');
+        }
     });
+
+
+
+    if (tab === 'buy') {
+        SHOP_ITEMS.forEach((item, i) => {
+            const meta = ITEMS[item.id];
+            const el = document.createElement('div');
+            el.className = 'shop-item';
+            el.innerHTML = `
+                <div style="font-size:2rem;">${meta.icon}</div>
+                <h4>${meta.name} x${item.amount}</h4>
+                <div class="price">$${item.price}</div>
+            `;
+            el.onclick = () => buyItem(i);
+            grid.appendChild(el);
+        });
+    } else if (tab === 'revive') {
+        const deadPlayers = [];
+        // Detect Dead Players (Host and Clients)
+        // If I am Host, check remotePlayers + my dead state? 
+        // No, shop is for buying OTHERS. Can't buy self.
+
+        // Add Host if I am client and Host is dead
+        // (Host info is in remotePlayers[hostId]?)
+        // Wait, remotePlayers only contains peers.
+        // If I am Client, does remotePlayers contain Host?
+        // handleServerData syncs ALL players including [myId] (which is Host's ID from Host perspective)
+        // Host sends: players: { ...remote, [hostId]: hostPlayer }
+        // Client receives: data.p.
+        // Client updates remotePlayers with ALL others.
+        // So yes, remotePlayers includes everyone else.
+
+        Object.keys(remotePlayers).forEach(pid => {
+            const p = remotePlayers[pid];
+            if (p && p.isDead) {
+                deadPlayers.push({ id: pid, name: p.visual.nick, shirt: p.visual.shirt });
+            }
+        });
+
+        if (deadPlayers.length === 0) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #aaa;">No hay nadie muerto... por ahora.</div>`;
+        } else {
+            deadPlayers.forEach(p => {
+                const el = document.createElement('div');
+                el.className = 'shop-item';
+                el.style.borderColor = 'red';
+                el.innerHTML = `
+                    <div style="font-size:2rem; background:${p.shirt}; border-radius:50%; width:50px; height:50px; line-height:50px; margin:auto;">💀</div>
+                    <h4>REVIVIR: ${p.name}</h4>
+                    <div class="price">$25</div>
+                `;
+                el.onclick = () => buyRevive(p.id);
+                grid.appendChild(el);
+            });
+        }
+
+    } else if (tab === 'skills') {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #aaa;">Puntos de Habilidad: ${player.stats.skillPoints}<br>(Próximamente: Mejoras de Velocidad, Daño, etc.)</div>`;
+    }
 }
 
 /* --- UI HELPERS --- */
 function toggleBackpack() { document.getElementById('backpack-panel').classList.toggle('hidden'); }
-function togglePause() {
-    gameState = (gameState === 'PLAYING') ? 'PAUSED' : 'PLAYING';
-    document.getElementById('pause-menu').classList.toggle('hidden');
+
+function togglePause(isRemote = false) {
+    if (gameState === 'MENU') return;
+
+    // Local Toggle Request
+    if (!isRemote) {
+        if (isHost) {
+            // Host toggles logic directly
+            gameState = (gameState === 'PLAYING') ? 'PAUSED' : 'PLAYING';
+            // Broadcast will happen in next tick
+        } else if (serverConn && serverConn.open) {
+            // Client requests toggle
+            serverConn.send({ type: 'REQUEST_PAUSE_TOGGLE' });
+            return; // Wait for server to confirm via Update
+        }
+    }
+
+    // If triggered by Remote Packet (Host telling Client, or Logic above)
+    // Update UI
+    updatePauseUI();
+}
+
+function updatePauseUI() {
+    const menu = document.getElementById('pause-menu');
+    if (gameState === 'PAUSED') {
+        menu.classList.remove('hidden');
+        // Show Code
+        let codeToShow = "";
+        if (isHost && myId) codeToShow = myId.replace('Z100-', '');
+        else if (!isHost && serverConn && serverConn.peer) codeToShow = serverConn.peer.replace('Z100-', '');
+
+        if (codeToShow) document.getElementById('pause-code-display').innerText = `CÓDIGO DE SALA: ${codeToShow}`;
+    } else {
+        menu.classList.add('hidden');
+        gameLoop();
+    }
 }
 function toggleShop() {
     isShopOpen = !isShopOpen;
     document.getElementById('shop-panel').classList.toggle('hidden');
+}
+
+function buyRevive(pid) {
+    if (player.stats.money >= 25) {
+        player.stats.money -= 25;
+        document.getElementById('ui-money').innerText = player.stats.money;
+
+        if (isHost) {
+            revivePlayer(pid);
+        } else {
+            if (serverConn && serverConn.open) {
+                serverConn.send({ type: 'ACTION_REVIVE', targetId: pid });
+            }
+        }
+        alert("¡Has revivido al jugador!");
+        renderShopUI('revive');
+    } else {
+        alert("Necesitas $25 para revivir.");
+    }
+}
+
+function revivePlayer(pid) {
+    // Only Host calls this
+    const rp = remotePlayers[pid];
+    if (rp) {
+        rp.isDead = false;
+        const conn = connections.find(c => c.peer === pid);
+        if (conn && conn.open) {
+            conn.send({ type: 'EVENT_RESPAWN' });
+        }
+    }
+}
+
+function checkGameOver() {
+    if (!isHost) return;
+    if (!player.isDead) return; // Host is alive
+
+    // Check Clients
+    const allClientsDead = Object.values(remotePlayers).every(p => p.isDead);
+
+    if (allClientsDead) {
+        // Broadcast
+        connections.forEach(c => { if (c.open) c.send({ type: 'EVENT_GAMEOVER' }); });
+        setTimeout(() => {
+            if (player.isDead) { // Double check
+                alert("GAME OVER - TODOS HAN MUERTO");
+                location.reload();
+            }
+        }, 500);
+    }
 }
 
 /* --- MULTIPLAYER DATA --- */
