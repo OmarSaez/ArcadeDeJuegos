@@ -34,34 +34,123 @@ let bonfire = {
 // Item Database
 const ITEMS = {
     // Weapons
-    'weapon_pistol': { name: 'Pistola', type: 'weapon', icon: '🔫', ammoType: 'ammo_pistol' },
+    'weapon_pistol': { name: 'Pistola', type: 'weapon', icon: '🔫', ammoType: 'ammo_pistol', dmg: 10, rate: 400 },
+    'weapon_smg': { name: 'Subfusil', type: 'weapon', icon: '🖊️', ammoType: 'ammo_smg', dmg: 6, rate: 100 },
+    'weapon_ar': { name: 'Metralleta', type: 'weapon', icon: '︻', ammoType: 'ammo_rifle', dmg: 15, rate: 150 },
+    'weapon_shotgun': { name: 'Escopeta', type: 'weapon', icon: '💥', ammoType: 'ammo_shotgun', dmg: 10, rate: 800 }, // Needs logic for spread
+    'weapon_sniper': { name: 'Francotirador', type: 'weapon', icon: '🔭', ammoType: 'ammo_rifle', dmg: 50, rate: 1500 },
+    'weapon_grenade': { name: 'Granada', type: 'weapon', icon: '💣', ammoType: null }, // Needs throw logic
+    'tool_hammer': { name: 'Martillo', type: 'tool', icon: '🔨' },
 
     // Ammo
     'ammo_pistol': { name: 'Balas Pequeñas', type: 'ammo', icon: '🔸' },
+    'ammo_smg': { name: 'Balas Medianas', type: 'ammo', icon: '🔹' },
     'ammo_shotgun': { name: 'Cartuchos', type: 'ammo', icon: '🛑' },
     'ammo_rifle': { name: 'Balas Largas', type: 'ammo', icon: '🦴' },
     'ammo_fuel': { name: 'Combustible', type: 'ammo', icon: '🔥' },
 
     // Buildings
-    'wall_wood': { name: 'Muro Madera', type: 'build', icon: '🪵' },
+    'wall_wood': { name: 'Pared Madera', type: 'build', icon: '🪵' },
     'wall_door': { name: 'Puerta', type: 'build', icon: '🚪' },
-    'chest_basic': { name: 'Cofre Pequeño', type: 'build', icon: '📦' },
+    'chest_basic': { name: 'Cofre', type: 'build', icon: '📦' },
+    'barrel_explosive': { name: 'Barril Expl.', type: 'build', icon: '🛢️' },
+    'bed': { name: 'Cama', type: 'build', icon: '�️' },
 
     // Meds
-    'medkit_small': { name: 'Venda', type: 'med', icon: '🩹', heal: 15 },
-    'medkit_large': { name: 'Botiquín', type: 'med', icon: '🧰', heal: 40 }
+    'medkit_small': { name: 'Venda (Botiquín Pequeño)', type: 'med', icon: '🩹', heal: 15 },
+    'medkit_large': { name: 'Botiquín Grande', type: 'med', icon: '🧰', heal: 40 }
 };
 
 const SHOP_ITEMS = [
     { id: 'ammo_pistol', price: 10, amount: 40 },
+    { id: 'ammo_smg', price: 15, amount: 40 },
     { id: 'ammo_shotgun', price: 20, amount: 10 },
     { id: 'ammo_rifle', price: 50, amount: 30 },
+    { id: 'weapon_pistol', price: 100, amount: 1 },
+    { id: 'weapon_smg', price: 300, amount: 1 },
+    { id: 'weapon_shotgun', price: 250, amount: 1 },
+    { id: 'weapon_ar', price: 500, amount: 1 },
     { id: 'wall_wood', price: 10, amount: 1 },
     { id: 'wall_door', price: 20, amount: 1 },
     { id: 'chest_basic', price: 100, amount: 1 },
     { id: 'medkit_small', price: 10, amount: 1 },
     { id: 'medkit_large', price: 20, amount: 1 }
 ];
+
+// ASSETS CONFIGURATION
+// Add your 200x200 png files to the 'assets' folder with these names:
+const ASSETS_MAP = {
+    // Entities
+    'zombie_normal': 'assets/zombie_normal.png',
+    'zombie_fast': 'assets/zombie_fast.png',
+    'zombie_strong': 'assets/zombie_strong.png',
+    'zombie_tank': 'assets/zombie_tank.png',
+    'zombie_spitter': 'assets/zombie_spitter.png',
+    'zombie_explosive': 'assets/zombie_explosive.png',
+    'zombie_fire': 'assets/zombie_fire.png',
+
+    // Generic fallback
+    'zombie': 'assets/zombie_normal.png',
+
+    'money': 'assets/coin.png',
+    'money_stack': 'assets/coin_stack.png',
+
+    // Weapons
+    'weapon_pistol': 'assets/weapon_pistol.png',
+    'weapon_smg': 'assets/weapon_smg.png',
+    'weapon_ar': 'assets/weapon_ar.png',
+    'weapon_shotgun': 'assets/weapon_shotgun.png',
+    'weapon_sniper': 'assets/weapon_sniper.png',
+    'weapon_grenade': 'assets/grenade.png',
+    'tool_hammer': 'assets/hammer.png',
+
+    // Ammo
+    'ammo_pistol': 'assets/ammo_pistol.png',
+    'ammo_smg': 'assets/ammo_medium.png',
+    'ammo_shotgun': 'assets/ammo_shotgun.png',
+    'ammo_rifle': 'assets/ammo_rifle.png',
+    'ammo_fuel': 'assets/fuel_can.png',
+
+    // Buildings
+    'wall_wood': 'assets/wall_wood.png',
+    'wall_door_closed': 'assets/door_closed.png',
+    'wall_door_open': 'assets/door_open.png',
+    'chest_basic': 'assets/chest.png',
+    'barrel_explosive': 'assets/barrel_explosive.png',
+    'bed': 'assets/bed.png', // Respawn point?
+
+    // Meds
+    'medkit_small': 'assets/medkit_small.png',
+    'medkit_large': 'assets/medkit_large.png'
+};
+
+const loadedAssets = {}; // Stores Image objects
+
+function loadAssets() {
+    console.log("Loading assets...");
+    const promises = Object.keys(ASSETS_MAP).map(key => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = ASSETS_MAP[key];
+            img.onload = () => {
+                loadedAssets[key] = img;
+                console.log(`Loaded: ${key}`);
+                resolve();
+            };
+            img.onerror = () => {
+                // Not fatal, just won't have image
+                console.log(`Missing asset: ${key} (Using default)`);
+                resolve();
+            };
+        });
+    });
+    // We don't strictly wait for all to start game, assets pop in when loaded.
+    // But for "polish", we could wait. For now, non-blocking is better for dev.
+    Promise.all(promises).then(() => console.log("All assets processed."));
+}
+
+// Call immediately or in init
+loadAssets();
 
 // Vista (Cámara)
 let camera = { x: 0, y: 0 };
@@ -446,83 +535,39 @@ function handleClientData(clientId, data) {
 
 function handleServerData(data) {
     if (data.type === 'FAST_UPDATE') {
-        // Sync Players
-        Object.keys(data.p).forEach(pid => {
-            if (pid !== myId) {
-                // Interpolation could go here. For now direct assignment but smoothed?
-                // remotePlayers[pid] = data.p[pid];
-                // To support 'drawCharacter' we need full object.
-                // Maintain local object if exists to keep other props?
-                if (!remotePlayers[pid]) remotePlayers[pid] = {};
-                Object.assign(remotePlayers[pid], data.p[pid]);
-
-                // Check if I am dead according to server (optional, usually local authoritative for death)
-                // But enables spectator if server kills me
-            }
-        });
-
-        // Sync Entities (Direct overwrite for smooth visual if high FPS)
-        // Map minified keys back to verbose for render functions
-        zombies = data.z.map(z => ({
-            x: z.x, y: z.y, hp: z.hp, maxHp: z.maxHp || 30, color: z.c, radius: z.r
-        }));
-        bullets = data.b.map(b => ({ x: b.x, y: b.y }));
-
-        return;
-    }
-
-    if (data.type === 'EVENT_DAMAGE') {
-        const dmg = data.amount;
-        player.stats.hp = Math.max(0, player.stats.hp - dmg);
-        // Visual Update
-        document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
-        if (player.stats.hp <= 0) {
-            // Game Over Logic (Local)
-            // Maybe alert and respawn?
-        }
-        return;
-    }
-
-    if (data.type === 'EVENT_MONEY') {
-        player.stats.money += data.amount;
-        document.getElementById('ui-money').innerText = player.stats.money;
-        return;
-    }
-
-    if (data.type === 'EVENT_RESPAWN') {
-        player.isDead = false;
-        player.stats.hp = 100;
-        document.getElementById('ui-hp').innerText = `HP: 100%`;
-        alert("¡HAS SIDO REVIVIDO!");
-        return;
-    }
-
-    if (data.type === 'EVENT_GAMEOVER') {
-        alert("GAME OVER - EL EQUIPO HA CAÍDO");
-        location.reload();
-        return;
-    }
-
-    if (data.type === 'EVENT_GAMEOVER') {
-        alert("GAME OVER - EL EQUIPO HA CAÍDO");
-        location.reload();
+        if (data.zombies) zombies = data.zombies;
+        if (data.bullets) bullets = data.bullets;
+        if (data.drops) drops = data.drops;
         return;
     }
 
     if (data.type === 'SLOW_UPDATE') {
+        // Sync Players
+        if (data.p) {
+            Object.keys(data.p).forEach(pid => {
+                if (pid !== myId) {
+                    if (!remotePlayers[pid]) remotePlayers[pid] = {};
+                    Object.assign(remotePlayers[pid], data.p[pid]);
+                }
+            });
+        }
         // Sync World
-        walls = data.walls || [];
-        drops = data.drops || [];
-        bonfire.hp = data.bonfireHp;
+        if (data.walls) walls = data.walls;
+        if (data.drops) drops = data.drops; // Sync drops too
+        if (data.bonfireHp !== undefined) bonfire.hp = data.bonfireHp; // Sync bonfireHP
 
-        // Cycle
+        // Sync Cycle
         if (data.cycle) {
             gameRound = data.cycle.round;
             cycleTimer = data.cycle.timer;
             isPrepPhase = data.cycle.phase;
             isDay = data.cycle.isDay;
-            document.getElementById('ui-day').innerText = Math.ceil(gameRound / 2);
-            updateCycleUI();
+
+            const uiDay = document.getElementById('ui-day');
+            if (uiDay) uiDay.innerText = Math.ceil(gameRound / 2);
+            if (window.updateCycleUI) window.updateCycleUI();
+        } else if (data.day !== undefined) {
+            gameRound = data.day;
         }
 
         // Pause Sync
@@ -536,9 +581,34 @@ function handleServerData(data) {
         return;
     }
 
+    if (data.type === 'EVENT_DAMAGE') {
+        const dmg = data.amount;
+        player.stats.hp = Math.max(0, player.stats.hp - dmg);
+        // Visual Update
+        document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+        if (player.stats.hp <= 0) {
+            player.isDead = true;
+            document.getElementById('ui-hp').innerText = "MUERTO - Espera rescate";
+        }
+        return;
+    }
 
+    if (data.type === 'EVENT_GAMEOVER') {
+        alert("GAME OVER - EL EQUIPO HA CAÍDO");
+        location.reload();
+        return;
+    }
 
+    if (data.type === 'EVENT_RESPAWN') {
+        player.isDead = false;
+        player.stats.hp = 100;
+        document.getElementById('ui-hp').innerText = `HP: 100%`;
+        alert("¡HAS SIDO REVIVIDO!");
+        return;
+    }
 }
+
+
 
 
 function gameCycleLoop() {
@@ -924,7 +994,30 @@ function spawnZombie() {
         zx = Math.random() * (WORLD_W * TILE_SIZE);
         zy = Math.random() < 0.5 ? 0 : WORLD_H * TILE_SIZE;
     }
-    zombies.push({ x: zx, y: zy, hp: 30, speed: 1 + Math.random(), radius: 15, color: '#4caf50' });
+    const types = [
+        { id: 'normal', hp: 30, speed: 1 + Math.random(), color: '#4caf50', radius: 15 },
+        { id: 'fast', hp: 15, speed: 2.5 + Math.random(), color: '#ff9800', radius: 12 },
+        { id: 'strong', hp: 60, speed: 0.8, color: '#795548', radius: 18 },
+        { id: 'tank', hp: 150, speed: 0.5, color: '#3e2723', radius: 25 },
+        // Visual variants for now
+        { id: 'spitter', hp: 40, speed: 1.2, color: '#cddc39', radius: 16 },
+        { id: 'explosive', hp: 20, speed: 1.5, color: '#f44336', radius: 16 },
+        { id: 'fire', hp: 40, speed: 1.2, color: '#ff5722', radius: 16 }
+    ];
+
+    // Weighted random? For now simple random
+    const typeMixin = types[Math.floor(Math.random() * types.length)];
+
+    zombies.push({
+        x: zx,
+        y: zy,
+        hp: typeMixin.hp,
+        speed: typeMixin.speed,
+        radius: typeMixin.radius,
+        color: typeMixin.color,
+        type: typeMixin.id, // Store type
+        lastAttack: 0
+    });
 }
 
 function update() {
@@ -1233,42 +1326,58 @@ function draw() {
     // Walls
     walls.forEach(w => {
         // Color based on HP
-        // Calculate max HP based on type for ratio
         let maxHp = 200;
         if (w.type === 'wall_wood') maxHp = 400;
         if (w.type === 'wall_door') maxHp = 300;
+        if (w.type === 'chest_basic') maxHp = 150;
+        if (w.type === 'barrel_explosive') maxHp = 50;
 
         const hpRatio = w.hp / maxHp;
-        ctx.fillStyle = `rgb(${80 * hpRatio}, ${60 * hpRatio}, ${50 * hpRatio})`;
-        if (w.type === 'wall_door') ctx.fillStyle = '#795548'; // Door color
 
+        // Image Drawing
+        let wallImg = null;
         if (w.type === 'wall_door') {
-            if (!w.isOpen) {
-                ctx.fillRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#4e342e';
-                ctx.fillRect(w.x + 5, w.y + 5, TILE_SIZE - 10, TILE_SIZE - 10);
-                // Knob
-                ctx.fillStyle = 'gold';
-                ctx.beginPath();
-                ctx.arc(w.x + TILE_SIZE - 10, w.y + TILE_SIZE / 2, 3, 0, Math.PI * 2);
-                ctx.fill();
-            } else {
-                // Open door visuals (Just the frame)
-                ctx.strokeStyle = '#5d4037';
-                ctx.lineWidth = 4; // Thicker frame
-                ctx.strokeRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
-            }
+            wallImg = w.isOpen ? loadedAssets['wall_door_open'] : loadedAssets['wall_door_closed'];
+        } else if (loadedAssets[w.type]) {
+            wallImg = loadedAssets[w.type];
+        }
+
+        if (wallImg) {
+            ctx.drawImage(wallImg, w.x, w.y, TILE_SIZE, TILE_SIZE);
+            // Optional: visual damage overlay?
         } else {
-            // Normal Wall
-            ctx.fillRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
-            ctx.strokeStyle = '#3e2723';
-            ctx.strokeRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
-            ctx.beginPath();
-            ctx.moveTo(w.x, w.y);
-            ctx.lineTo(w.x + TILE_SIZE, w.y + TILE_SIZE);
-            ctx.moveTo(w.x + TILE_SIZE, w.y);
-            ctx.lineTo(w.x + TILE_SIZE, w.y + TILE_SIZE); // Fix visual
-            ctx.stroke();
+            // Fallback Drawing
+            ctx.fillStyle = `rgb(${80 * hpRatio}, ${60 * hpRatio}, ${50 * hpRatio})`;
+            if (w.type === 'wall_door') ctx.fillStyle = '#795548';
+
+            if (w.type === 'wall_door') {
+                if (!w.isOpen) {
+                    ctx.fillRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
+                    ctx.fillStyle = '#4e342e';
+                    ctx.fillRect(w.x + 5, w.y + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                    // Knob
+                    ctx.fillStyle = 'gold';
+                    ctx.beginPath();
+                    ctx.arc(w.x + TILE_SIZE - 10, w.y + TILE_SIZE / 2, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Open door visuals (Just the frame)
+                    ctx.strokeStyle = '#5d4037';
+                    ctx.lineWidth = 4; // Thicker frame
+                    ctx.strokeRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
+                }
+            } else {
+                // Normal Wall
+                ctx.fillRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#3e2723';
+                ctx.strokeRect(w.x, w.y, TILE_SIZE, TILE_SIZE);
+                ctx.beginPath();
+                ctx.moveTo(w.x, w.y);
+                ctx.lineTo(w.x + TILE_SIZE, w.y + TILE_SIZE);
+                ctx.moveTo(w.x + TILE_SIZE, w.y);
+                ctx.lineTo(w.x + TILE_SIZE, w.y + TILE_SIZE);
+                ctx.stroke();
+            }
         }
     });
 
@@ -1293,16 +1402,20 @@ function draw() {
 
     // Drops
     drops.forEach(d => {
-        ctx.fillStyle = 'gold';
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#daa520';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.fillStyle = 'black';
-        ctx.font = '10px Arial';
-        ctx.fillText('$', d.x - 3, d.y + 4);
+        if (loadedAssets['money']) {
+            ctx.drawImage(loadedAssets['money'], d.x - 12, d.y - 12, 24, 24);
+        } else {
+            ctx.fillStyle = 'gold';
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#daa520';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = 'black';
+            ctx.font = '10px Arial';
+            ctx.fillText('$', d.x - 3, d.y + 4);
+        }
     });
 
     // Bonfire
@@ -1336,14 +1449,31 @@ function draw() {
     ctx.fillRect(bonfire.x - 40, bonfire.y - 60, 80 * (bonfire.hp / bonfire.maxHp), 10);
 
     // Zombies
+    // Zombies
     zombies.forEach(z => {
-        ctx.fillStyle = z.color;
-        ctx.beginPath();
-        ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        // Determine asset based on type
+        const zKey = 'zombie_' + (z.type || 'normal');
+        const zImg = loadedAssets[zKey] || loadedAssets['zombie'];
+
+        if (zImg) {
+            ctx.save();
+            ctx.translate(z.x, z.y);
+            // Face local player
+            const angle = Math.atan2(player.y - z.y, player.x - z.x);
+            ctx.rotate(angle - Math.PI / 2);
+            // Draw Double Size (Visual only)
+            const visualScale = 2.0;
+            ctx.drawImage(zImg, -z.radius * visualScale, -z.radius * visualScale, z.radius * 2 * visualScale, z.radius * 2 * visualScale);
+            ctx.restore();
+        } else {
+            ctx.fillStyle = z.color;
+            ctx.beginPath();
+            ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
     });
 
     // Bullets
@@ -1442,9 +1572,16 @@ function renderInventoryUI() {
         else slot.className = 'hotbar-slot';
 
         const iconDiv = slot.querySelector('.icon');
-        iconDiv.innerText = item ? ITEMS[item.id].icon : '';
+        iconDiv.innerHTML = ''; // Clear previous
+
         if (item) {
-            iconDiv.innerHTML += `<div style="position:absolute; bottom:2px; right:2px; font-size:10px; color:white;">${item.count}</div>`;
+            if (loadedAssets[item.id]) {
+                iconDiv.innerHTML = `<img src="${ASSETS_MAP[item.id]}" style="width:100%; height:100%; object-fit:contain;">`;
+            } else {
+                iconDiv.innerText = ITEMS[item.id].icon;
+            }
+            // Quantity overlay
+            iconDiv.innerHTML += `<div style="position:absolute; bottom:-5px; right:0px; font-size:12px; color:white; font-weight:bold; text-shadow:1px 1px 0 #000;">${item.count}</div>`;
         }
     });
 
@@ -1455,8 +1592,13 @@ function renderInventoryUI() {
         const slot = document.createElement('div');
         slot.className = 'slot';
         if (item) {
-            slot.innerText = ITEMS[item.id].icon;
-            slot.innerHTML += `<div style="position:absolute; bottom:2px; right:2px; font-size:10px; color:white;">${item.count}</div>`;
+            // Check for image asset
+            if (loadedAssets[item.id]) {
+                slot.innerHTML = `<img src="${ASSETS_MAP[item.id]}" style="width:100%; height:100%; object-fit:contain;">`;
+            } else {
+                slot.innerText = ITEMS[item.id].icon;
+            }
+            slot.innerHTML += `<div style="position:absolute; bottom:2px; right:2px; font-size:10px; color:white; text-shadow:1px 1px 0 #000;">${item.count}</div>`;
             slot.title = ITEMS[item.id].name;
             slot.style.position = 'relative';
         }
@@ -1511,8 +1653,14 @@ function renderShopUI(tab = 'buy') {
             const meta = ITEMS[item.id];
             const el = document.createElement('div');
             el.className = 'shop-item';
+
+            let iconHtml = `<div style="font-size:2rem;">${meta.icon}</div>`;
+            if (loadedAssets[item.id]) {
+                iconHtml = `<img src="${ASSETS_MAP[item.id]}" style="width:50px; height:50px; object-fit:contain; margin:auto;">`;
+            }
+
             el.innerHTML = `
-                <div style="font-size:2rem;">${meta.icon}</div>
+                ${iconHtml}
                 <h4>${meta.name} x${item.amount}</h4>
                 <div class="price">$${item.price}</div>
             `;
@@ -1605,7 +1753,12 @@ function updatePauseUI() {
 }
 function toggleShop() {
     isShopOpen = !isShopOpen;
-    document.getElementById('shop-panel').classList.toggle('hidden');
+    const panel = document.getElementById('shop-panel');
+    panel.classList.toggle('hidden');
+    if (isShopOpen) {
+        renderShopUI();
+        document.getElementById('ui-money').innerText = player.stats.money;
+    }
 }
 
 function buyRevive(pid) {
