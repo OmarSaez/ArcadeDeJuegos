@@ -20,6 +20,8 @@ let roundDuration = 120; // 2 minutes active round
 
 // Entidades Globales
 let bullets = [];
+let acidProjectiles = []; // {x, y, vx, vy, life}
+let firePatches = []; // {x, y, radius, life}
 let zombies = [];
 let drops = []; // {x, y, value, life}
 let walls = []; // {x, y, type, hp}
@@ -81,16 +83,17 @@ const SHOP_ITEMS = [
 // Add your 200x200 png files to the 'assets' folder with these names:
 const ASSETS_MAP = {
     // Entities
-    'zombie_normal': 'assets/zombie_normal.png',
-    'zombie_fast': 'assets/zombie_fast.png',
-    'zombie_strong': 'assets/zombie_strong.png',
-    'zombie_tank': 'assets/zombie_tank.png',
-    'zombie_spitter': 'assets/zombie_spitter.png',
-    'zombie_explosive': 'assets/zombie_explosive.png',
-    'zombie_fire': 'assets/zombie_fire.png',
+    'zombie_normal': 'assets/zombies/zombie_normal.png',
+    'zombie_fast': 'assets/zombies/zombie_fast.png',
+    'zombie_strong': 'assets/zombies/zombie_strong.png',
+    'zombie_tank': 'assets/zombies/zombie_tank.png',
+    'zombie_spitter': 'assets/zombies/zombie_spitter.png',
+    'zombie_explosive': 'assets/zombies/zombie_explosive.png',
+    'zombie_fire': 'assets/zombies/zombie_fire.png',
+    'zombie_giant': 'assets/zombies/zombie_gigant.png',
 
     // Generic fallback
-    'zombie': 'assets/zombie_normal.png',
+    'zombie': 'assets/zombies/zombie_normal.png',
 
     'money': 'assets/coin.png',
     'money_stack': 'assets/coin_stack.png',
@@ -124,6 +127,22 @@ const ASSETS_MAP = {
     'medkit_large': 'assets/medkit_large.png'
 };
 
+// ZOMBIE CONFIGURATION (STATS)
+// Adjust these values to balance the game!
+// radius: Collision size (hitbox).
+// visualScale: How big the image looks (multiplier of radius).
+const ZOMBIE_STATS = {
+    'normal': { hp: 30, speed: 1.2, radius: 15, damage: 10, value: 1, visualScale: 3.5, color: '#4caf50' },
+    'fast': { hp: 15, speed: 3.0, radius: 12, damage: 5, value: 2, visualScale: 3.5, color: '#ff9800' },
+    'strong': { hp: 60, speed: 0.9, radius: 20, damage: 20, value: 3, visualScale: 3.5, color: '#795548' },
+    'tank': { hp: 200, speed: 0.6, radius: 35, damage: 30, value: 10, visualScale: 4.0, color: '#3e2723' },
+    'spitter': { hp: 40, speed: 1.2, radius: 16, damage: 15, value: 3, visualScale: 3.5, color: '#cddc39' },
+    'explosive': { hp: 20, speed: 1.5, radius: 16, damage: 50, value: 2, visualScale: 3.5, color: '#f44336' },
+    'fire': { hp: 50, speed: 1.2, radius: 18, damage: 10, value: 3, visualScale: 3.5, color: '#ff5722' },
+    'giant': { hp: 800, speed: 0.4, radius: 50, damage: 45, value: 50, visualScale: 6.0, color: '#212121' }
+};
+
+// Global State
 const loadedAssets = {}; // Stores Image objects
 
 function loadAssets() {
@@ -994,28 +1013,19 @@ function spawnZombie() {
         zx = Math.random() * (WORLD_W * TILE_SIZE);
         zy = Math.random() < 0.5 ? 0 : WORLD_H * TILE_SIZE;
     }
-    const types = [
-        { id: 'normal', hp: 30, speed: 1 + Math.random(), color: '#4caf50', radius: 15 },
-        { id: 'fast', hp: 15, speed: 2.5 + Math.random(), color: '#ff9800', radius: 12 },
-        { id: 'strong', hp: 60, speed: 0.8, color: '#795548', radius: 18 },
-        { id: 'tank', hp: 150, speed: 0.5, color: '#3e2723', radius: 25 },
-        // Visual variants for now
-        { id: 'spitter', hp: 40, speed: 1.2, color: '#cddc39', radius: 16 },
-        { id: 'explosive', hp: 20, speed: 1.5, color: '#f44336', radius: 16 },
-        { id: 'fire', hp: 40, speed: 1.2, color: '#ff5722', radius: 16 }
-    ];
-
-    // Weighted random? For now simple random
-    const typeMixin = types[Math.floor(Math.random() * types.length)];
+    // Use configuration
+    const keys = Object.keys(ZOMBIE_STATS);
+    const typeId = keys[Math.floor(Math.random() * keys.length)];
+    const stats = ZOMBIE_STATS[typeId];
 
     zombies.push({
         x: zx,
         y: zy,
-        hp: typeMixin.hp,
-        speed: typeMixin.speed,
-        radius: typeMixin.radius,
-        color: typeMixin.color,
-        type: typeMixin.id, // Store type
+        hp: stats.hp,
+        speed: stats.speed * (0.8 + Math.random() * 0.4), // Slight speed var
+        radius: stats.radius,
+        color: stats.color,
+        type: typeId,
         lastAttack: 0
     });
 }
@@ -1083,6 +1093,62 @@ function update() {
 }
 
 function updateGameWorld() {
+    // Spitter Logic
+    zombies.forEach((z, i) => {
+        if (z.isDead) { // Remove dead marked
+            zombies.splice(i, 1);
+            return;
+        }
+
+        if (z.type === 'spitter') {
+            // Find target
+            // Reuse closestTarget logic or just use global target ref if calculated
+            // We'll recalculate closest simple distance
+            let target = player; // Default
+            // Check remotes... (Simplified for now, aims at Host or closest found in loop)
+
+            const dist = Math.hypot(target.x - z.x, target.y - z.y);
+            if (dist < 400 && (!z.lastAttack || Date.now() - z.lastAttack > 3000)) {
+                // Spit!
+                const angle = Math.atan2(target.y - z.y, target.x - z.x);
+                acidProjectiles.push({
+                    x: z.x, y: z.y,
+                    vx: Math.cos(angle) * 6,
+                    vy: Math.sin(angle) * 6,
+                    life: 100 // frames
+                });
+                z.lastAttack = Date.now();
+            }
+        }
+    });
+
+    // Update Projectiles
+    acidProjectiles.forEach((a, i) => {
+        a.x += a.vx;
+        a.y += a.vy;
+        a.life--;
+        // Hit Player?
+        if (Math.hypot(a.x - player.x, a.y - player.y) < 20) {
+            player.stats.hp -= 15;
+            document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+            a.life = 0;
+            // Visual Splat code?
+        }
+        // Hit Walls?
+        if (checkWallCollision(a.x, a.y, 5)) a.life = 0;
+    });
+    acidProjectiles = acidProjectiles.filter(a => a.life > 0);
+
+    firePatches.forEach((f, i) => {
+        f.life--;
+        // Damage player standing in it
+        if (Math.hypot(f.x - player.x, f.y - player.y) < f.radius) {
+            player.stats.hp -= 0.1; // Fast tick damage
+            document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+        }
+    });
+    firePatches = firePatches.filter(f => f.life > 0);
+
     // Zombies
     zombies.forEach((z, i) => {
         // Aggro Logic: Find closest player (or bonfire)
@@ -1134,20 +1200,34 @@ function updateGameWorld() {
         // Check collision with ALL targets (Host + Clients)
         // We already determined `target` above, but let's check basic collision circle
 
-        // 1. Check Host Collision
+        // 1. Check Host Collision (Local Player)
         const dp = Math.hypot(z.x - player.x, z.y - player.y);
-        if (dp < z.radius + 20) {
+
+        // EXPLOSIVE ZOMBIE CHECK
+        if (z.type === 'explosive' && dp < z.radius + 40) {
+            triggerExplosion(z.x, z.y);
+            z.hp = 0;
+            z.isDead = true;
+        }
+
+        // Normal Attack Logic
+        if (!z.isDead && dp < z.radius + 20) {
             if (!z.lastAttack || Date.now() - z.lastAttack > 1000) {
-                player.stats.hp -= 10;
+                const zStat = ZOMBIE_STATS[z.type || 'normal'];
+                const dmg = zStat ? zStat.damage : 10;
+                player.stats.hp -= dmg;
                 document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
                 z.lastAttack = Date.now();
-                // Game Over Check
                 if (player.stats.hp <= 0) {
                     player.isDead = true;
                     document.getElementById('ui-hp').innerText = "MUERTO - Espera rescate";
                     checkGameOver();
                 }
             }
+            // Pushback
+            const pushAngle = Math.atan2(z.y - player.y, z.x - player.x);
+            pushX += Math.cos(pushAngle) * 2;
+            pushY += Math.sin(pushAngle) * 2;
         }
 
         // 2. Check Remote Players Collision
@@ -1156,8 +1236,6 @@ function updateGameWorld() {
             if (rp) {
                 const d = Math.hypot(z.x - rp.x, z.y - rp.y);
                 if (d < z.radius + 20) {
-                    // Hit Remote Player
-                    // Send Damage Event to that Client
                     const conn = connections.find(c => c.peer === pid);
                     if (conn && conn.open) {
                         conn.send({ type: 'EVENT_DAMAGE', amount: 0.5 });
@@ -1165,19 +1243,6 @@ function updateGameWorld() {
                 }
             }
         });
-
-        // Original Host Collision check continues...
-        if (dp < z.radius + 20) {
-            if (!z.lastAttack || Date.now() - z.lastAttack > 1000) {
-                player.stats.hp -= 10;
-                document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
-                z.lastAttack = Date.now();
-                if (player.stats.hp <= 0) alert("GAME OVER");
-            }
-            const pushAngle = Math.atan2(z.y - player.y, z.x - player.x);
-            pushX += Math.cos(pushAngle) * 2;
-            pushY += Math.sin(pushAngle) * 2;
-        }
 
         const angle = Math.atan2(target.y - z.y, target.x - z.x);
         let nextZX = z.x + Math.cos(angle) * z.speed + pushX;
@@ -1220,13 +1285,20 @@ function updateGameWorld() {
         b.life--;
 
         // Zombie Collision
+        // Zombie Collision collision logic...
+        // ... (Inside Bullet Loop)
         zombies.forEach((z, j) => {
             const dist = Math.hypot(b.x - z.x, b.y - z.y);
             if (dist < z.radius + 5) {
-                z.hp -= 10;
+                z.hp -= (b.dmg || 10);
                 b.life = 0;
                 if (z.hp <= 0) {
-                    drops.push({ x: z.x, y: z.y, value: 1, life: 600 });
+                    // Death Logic
+                    if (z.type === 'explosive') triggerExplosion(z.x, z.y);
+                    if (z.type === 'fire' || z.type === 'zombie_fire') spawnFirePatch(z.x, z.y);
+
+                    const dropVal = ZOMBIE_STATS[z.type] ? ZOMBIE_STATS[z.type].value : 1;
+                    drops.push({ x: z.x, y: z.y, value: dropVal, life: 600 });
                     zombies.splice(j, 1);
                 }
             }
@@ -1418,6 +1490,33 @@ function draw() {
         }
     });
 
+    // Acid Projectiles
+    ctx.fillStyle = '#76ff03';
+    acidProjectiles.forEach(a => {
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = '#76ff03';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+
+    // Fire Patches
+    firePatches.forEach(f => {
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = '#ff5722';
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+        // Particle effect (simple)
+        if (Math.random() < 0.2) {
+            ctx.fillStyle = 'yellow';
+            ctx.fillRect(f.x - 10 + Math.random() * 20, f.y - 10 + Math.random() * 20, 4, 4);
+        }
+    });
+
     // Bonfire
     // Bonfire Visuals (Emojis)
     ctx.save();
@@ -1461,8 +1560,16 @@ function draw() {
             // Face local player
             const angle = Math.atan2(player.y - z.y, player.x - z.x);
             ctx.rotate(angle - Math.PI / 2);
-            // Draw Double Size (Visual only)
-            const visualScale = 2.0;
+
+            // Draw Scaled Visual
+            const stats = ZOMBIE_STATS[z.type || 'normal'];
+            const visualScale = stats ? stats.visualScale : 2.5;
+
+            // Walking Animation (Flip X every 1 second)
+            if (Math.floor(Date.now() / 500) % 2 === 0) {
+                ctx.scale(-1, 1);
+            }
+
             ctx.drawImage(zImg, -z.radius * visualScale, -z.radius * visualScale, z.radius * 2 * visualScale, z.radius * 2 * visualScale);
             ctx.restore();
         } else {
@@ -1911,4 +2018,46 @@ function loadFromFile(inputResult) {
         }
     };
     reader.readAsText(file);
+}
+
+function triggerExplosion(x, y) {
+    // Explosion Visuals
+    firePatches.push({ x: x, y: y, radius: 40, life: 100 }); // Short lived intense fire
+
+    // Damage P2P (Host)
+    // Damage Local Player
+    const d = Math.hypot(x - player.x, y - player.y);
+    if (d < 150) {
+        player.stats.hp -= 40 * (1 - d / 150);
+        document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+    }
+
+    // Damage Remote Players
+    Object.keys(remotePlayers).forEach(pid => {
+        const rp = remotePlayers[pid];
+        if (rp) {
+            const dr = Math.hypot(x - rp.x, y - rp.y);
+            if (dr < 150) {
+                const conn = connections.find(c => c.peer === pid);
+                if (conn) conn.send({ type: 'EVENT_DAMAGE', amount: 40 * (1 - dr / 150) });
+            }
+        }
+    });
+
+    // Damage Zombies
+    zombies.forEach(z => {
+        if (z.isDead) return;
+        const dz = Math.hypot(x - z.x, y - z.y);
+        if (dz < 150) {
+            z.hp -= 100 * (1 - dz / 150);
+        }
+    });
+}
+
+function spawnFirePatch(x, y) {
+    firePatches.push({
+        x: x, y: y,
+        radius: 30,
+        life: 500 // ~8 seconds
+    });
 }
