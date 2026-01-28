@@ -36,11 +36,26 @@ let bonfire = {
 // Item Database
 const ITEMS = {
     // Weapons
-    'weapon_pistol': { name: 'Pistola', type: 'weapon', icon: '🔫', ammoType: 'ammo_pistol', dmg: 10, rate: 400 },
-    'weapon_smg': { name: 'Subfusil', type: 'weapon', icon: '🖊️', ammoType: 'ammo_smg', dmg: 6, rate: 100 },
-    'weapon_ar': { name: 'Metralleta', type: 'weapon', icon: '︻', ammoType: 'ammo_rifle', dmg: 15, rate: 150 },
-    'weapon_shotgun': { name: 'Escopeta', type: 'weapon', icon: '💥', ammoType: 'ammo_shotgun', dmg: 10, rate: 800 }, // Needs logic for spread
-    'weapon_sniper': { name: 'Francotirador', type: 'weapon', icon: '🔭', ammoType: 'ammo_rifle', dmg: 50, rate: 1500 },
+    'weapon_pistol': {
+        name: 'Pistola', type: 'weapon', icon: '🔫', ammoType: 'ammo_pistol',
+        dmg: 12, rate: 400, bulletSpeed: 15, bulletLife: 60
+    },
+    'weapon_smg': {
+        name: 'Subfusil', type: 'weapon', icon: '🖊️', ammoType: 'ammo_smg',
+        dmg: 7, rate: 100, bulletSpeed: 18, bulletLife: 50, spread: 0.08
+    },
+    'weapon_ar': {
+        name: 'Metralleta', type: 'weapon', icon: '︻', ammoType: 'ammo_rifle',
+        dmg: 18, rate: 150, bulletSpeed: 20, bulletLife: 70, spread: 0.03
+    },
+    'weapon_shotgun': {
+        name: 'Escopeta', type: 'weapon', icon: '💥', ammoType: 'ammo_shotgun',
+        dmg: 8, rate: 900, bulletSpeed: 14, bulletLife: 25, count: 5, spread: 0.3
+    },
+    'weapon_sniper': {
+        name: 'Francotirador', type: 'weapon', icon: '🔭', ammoType: 'ammo_rifle',
+        dmg: 80, rate: 1500, bulletSpeed: 35, bulletLife: 120
+    },
     'weapon_grenade': { name: 'Granada', type: 'weapon', icon: '💣', ammoType: null }, // Needs throw logic
     'tool_hammer': { name: 'Martillo', type: 'tool', icon: '🔨' },
 
@@ -1015,42 +1030,69 @@ function placeStructure(item) {
 }
 
 function shoot() {
-    if (Date.now() - player.lastShot < 200) return;
-
     const heldItem = player.inventory[player.selectedSlot];
-    if (!heldItem || ITEMS[heldItem.id].type !== 'weapon') return;
+    if (!heldItem) return;
+
+    const itemData = ITEMS[heldItem.id];
+    if (itemData.type !== 'weapon') return;
+
+    // Fire Rate Check
+    const now = Date.now();
+    if (now - player.lastShot < itemData.rate) return;
 
     // Check Ammo
-    const ammoType = ITEMS[heldItem.id].ammoType;
-    if (getAmmoCount(ammoType) <= 0) {
+    const ammoType = itemData.ammoType;
+    if (ammoType && getAmmoCount(ammoType) <= 0) {
         // Click sound or something?
         return;
     }
 
-    consumeAmmo(ammoType);
-    player.lastShot = Date.now();
+    if (ammoType) consumeAmmo(ammoType);
+    player.lastShot = now;
 
-    // Spawn Bullet
-    const bullet = {
-        x: player.x,
-        y: player.y,
-        angle: player.angle,
-        speed: 15,
-        life: 100,
-        owner: myId
-    };
+    // Spawn Bullet(s)
+    const count = itemData.count || 1;
+    const spread = itemData.spread || 0;
 
-    if (isHost) {
-        bullets.push(bullet);
-    } else if (serverConn && serverConn.open) {
-        // Client: Send Shoot Action
-        serverConn.send({
-            type: 'ACTION_SHOOT',
-            bullet: bullet
-        });
-        // Optional: Local visual prediction (ghost bullet)? 
-        // For accurate sync, better to wait for server update or add "local only" bullet that disappears?
-        // Let's rely on Fast Update (50ms is quick enough to see bullet spawn)
+    for (let i = 0; i < count; i++) {
+        // Calculate spread angle
+        // If count > 1, spread evenly? Or random? 
+        // Shotgun usually fixed pattern or random cone. Let's do random cone for simplicity mostly.
+        // Or if count > 1, distribute around center.
+
+        let angleOffset = 0;
+        if (count > 1) {
+            // Fan: -spread/2 to +spread/2
+            const step = spread / (count - 1);
+            angleOffset = -spread / 2 + (i * step);
+            // Add slight randomness 
+            angleOffset += (Math.random() - 0.5) * 0.05;
+        } else if (spread > 0) {
+            angleOffset = (Math.random() - 0.5) * spread;
+        }
+
+        const bullet = {
+            x: player.x,
+            y: player.y,
+            angle: player.angle + angleOffset,
+            speed: itemData.bulletSpeed || 15,
+            life: itemData.bulletLife || 100,
+            dmg: itemData.dmg || 10,
+            owner: myId
+        };
+
+        if (isHost) {
+            bullets.push(bullet);
+        } else if (serverConn && serverConn.open) {
+            // Client: Send Shoot Action
+            // We send INDIVIDUAL bullets or handle logic on server?
+            // "ACTION_SHOOT" took "bullet".
+            // If we send 5 packets for shotgun, might be spammy but simplest.
+            serverConn.send({
+                type: 'ACTION_SHOOT',
+                bullet: bullet
+            });
+        }
     }
 }
 
@@ -1811,7 +1853,7 @@ function initCheatMenu() {
         const row = document.createElement('div');
         row.className = 'cheat-row';
         row.innerHTML = `
-    < span > ${s.name}</span >
+            <span>${s.name}</span>
         <div>
             <button class="cheat-btn" onclick="cheatSkill('${s.id}', -1)">-</button>
             <span id="cheat-lvl-${s.id}">0</span>
@@ -1835,7 +1877,7 @@ function toggleCheatMenu() {
 function updateCheatUI() {
     SKILL_DEFS.forEach(s => {
         const val = player.skills[s.id] || 0;
-        document.getElementById(`cheat - lvl - ${s.id} `).innerText = val;
+        document.getElementById(`cheat-lvl-${s.id}`).innerText = val;
     });
     document.getElementById('cheat-money-val').value = player.stats.money;
     document.getElementById('cheat-hp-val').value = Math.floor((player.stats.hp / player.stats.maxHp) * 100);
