@@ -1,0 +1,214 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #1e1e2e;
+    font-family: 'Outfit', sans-serif;
+    color: white;
+    touch-action: none;
+    /* Prevenir scroll en móviles */
+    user-select: none;
+}
+
+#game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    cursor: none; pointer-events: none;
+    /* Ocultar cursor en juego */
+}
+
+#game-ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+    /* Dejar pasar clicks al canvas si no hay pantallas */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.screen {
+    pointer-events: auto;
+    /* Reactivar clicks en pantallas */
+    background: rgba(30, 30, 46, 0.95);
+    padding: 2rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-width: 500px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+h1 {
+    font-family: 'Press Start 2P', cursive;
+    color: #4ade80;
+    margin: 0;
+    line-height: 1.5;
+    font-size: 1.8rem;
+    text-shadow: 0 0 10px #4ade80;
+}
+
+p {
+    color: #a6accd;
+}
+
+input[type="text"] {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 12px;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+input[type="text"]:focus {
+    border-color: #4ade80;
+    outline: none;
+}
+
+button {
+    background: #4ade80;
+    color: #1e1e2e;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1.1rem;
+    border-radius: 50px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.2s;
+    width: 100%;
+    font-family: 'Outfit', sans-serif;
+    text-transform: uppercase;
+}
+
+button:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+.btn-sec {
+    display: block;
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #ccc;
+    text-decoration: none;
+    padding: 10px;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    text-align: center;
+}
+
+.btn-sec:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.join-row {
+    display: flex;
+    gap: 10px;
+}
+
+/* LOBBY */
+#lobby-players-list {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 10px;
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.player-item {
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+}
+
+.team-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.badge-a {
+    background: #ff4757;
+    color: white;
+}
+
+.badge-b {
+    background: #3742fa;
+    color: white;
+}
+
+.btn-team.team-a {
+    background: #ff4757;
+    color: white;
+    margin-bottom: 5px;
+}
+
+.btn-team.team-b {
+    background: #3742fa;
+    color: white;
+}
+
+/* HUD */
+#screen-game {
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#hud-score {
+    font-family: 'Press Start 2P';
+    font-size: 3rem;
+    text-align: center;
+    text-shadow: 2px 2px 0 #000;
+}
+
+.score-a {
+    color: #ff4757;
+}
+
+.score-b {
+    color: #3742fa;
+}
+
+#btn-menu-back {
+    pointer-events: auto;
+    width: auto;
+    align-self: flex-end;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 0.8rem;
+    padding: 5px 15px;
+}

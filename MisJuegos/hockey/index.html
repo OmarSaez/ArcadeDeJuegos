@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hockey de Aire</title>
+    <!-- Fuente Arcade -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;800&display=swap"
+        rel="stylesheet">
+    <!-- PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="game-ui">
+        <!-- PANTALLA TÍTULO -->
+        <div id="screen-title" class="screen">
+            <h1>HOCKEY DE AIRE</h1>
+            <p>Multijugador Caótico</p>
+            <input type="text" id="input-nick" placeholder="Tu Nickname" maxlength="10">
+            <div class="menu-buttons">
+                <button onclick="screenCreate()">CREAR PARTIDA</button>
+                <div class="join-row">
+                    <input type="text" id="input-code" placeholder="CÓDIGO" maxlength="4"
+                        style="text-transform:uppercase; width: 100px;">
+                    <button onclick="screenJoin()">UNIRSE</button>
+                </div>
+                <a href="../../index.html" class="btn-sec">VOLVER AL ARCADE</a>
+            </div>
+        </div>
+
+        <!-- LOBBY (Sala de espera) -->
+        <div id="screen-lobby" class="screen hidden">
+            <h2 id="lobby-room-code">SALA: ----</h2>
+            <div id="lobby-players-list">
+                <!-- Lista de jugadores se renderiza aquí -->
+                <!-- Ejemplo: Juan (Equipo A) [Color] -->
+            </div>
+
+            <div class="lobby-controls">
+                <div class="team-selector">
+                    <h3>Elige Equipo</h3>
+                    <button onclick="setTeam('A')" class="btn-team team-a">EQUIPO A (Izquierda)</button>
+                    <button onclick="setTeam('B')" class="btn-team team-b">EQUIPO B (Derecha)</button>
+                </div>
+                <div class="color-selector">
+                    <h3>Color de Ficha</h3>
+                    <input type="color" id="input-color" value="#ff0000" onchange="setColor(this.value)">
+                </div>
+            </div>
+
+            <!-- Configuración Host -->
+            <div id="lobby-config" class="hidden">
+                <h3>Configuración de Partida</h3>
+                <div class="config-row">
+                    <label>Puntos para ganar ronda:</label>
+                    <input type="number" id="input-max-score" value="5" min="1" max="50" onchange="updateConfig()">
+                </div>
+                <div class="config-row">
+                    <label>Rondas para ganar partida (0 = 1 sola):</label>
+                    <input type="number" id="input-max-rounds" value="0" min="0" max="10" onchange="updateConfig()">
+                </div>
+            </div>
+            <div id="lobby-config-display" class="hidden">
+                <p id="config-text">Puntos: 5 | Rondas: Única</p>
+            </div>
+
+            <div id="lobby-ready-area">
+                <button id="btn-ready" onclick="toggleReady()" class="btn-ready">¡ESTOY LISTO!</button>
+            </div>
+
+            <button id="btn-start-game" onclick="startGameRequest()" class="hidden" disabled
+                style="opacity:0.5; cursor:not-allowed">ESPERANDO JUGADORES...</button>
+            <p id="msg-wait" class="hidden">Esperando al anfitrión...</p>
+        </div>
+
+        <!-- JUEGO (HUD Overlay) -->
+        <div id="screen-game" class="hidden">
+            <div id="hud-top">
+                <div id="hud-rounds" class="hidden">RONDAS: <span class="score-a">0</span> - <span
+                        class="score-b">0</span></div>
+                <div id="hud-score">
+                    <span class="score-a">0</span> - <span class="score-b">0</span>
+                </div>
+                <div id="hud-goal">meta: <span id="goal-val">5</span></div>
+            </div>
+            <div id="hud-timer">go!</div>
+            <button id="btn-menu-back" onclick="location.reload()">SALIR</button>
+        </div>
+    </div>
+
+    <!-- CANVAS JUEGO -->
+    <canvas id="game-canvas"></canvas>
+
+    <script src="game.js"></script>
+</body>
+
+</html>
