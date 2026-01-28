@@ -368,3 +368,150 @@ select {
     color: gold;
     font-weight: bold;
 }
+/* SKILLS MENU */
+#ui-skills {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 600px;
+    background: rgba(20, 20, 20, 0.95);
+    border: 2px solid #4caf50;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    z-index: 20;
+}
+
+#ui-skills h2 {
+    text-align: center;
+    color: #4caf50;
+    margin-bottom: 20px;
+}
+
+#skills-header {
+    text-align: center;
+    font-size: 1.2em;
+    margin-bottom: 20px;
+}
+
+#skills-points {
+    color: #ffeb3b; 
+    font-weight: bold;
+}
+
+#skills-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.skill-card {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.skill-info b {
+    color: #81c784;
+}
+
+.skill-info p {
+    font-size: 0.8em;
+    color: #ccc;
+    margin: 2px 0;
+}
+
+.skill-btn {
+    background: #388e3c;
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 5px;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+.skill-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
+}
+
+#btn-skills-toggle {
+    position: absolute;
+    top: 10px;
+    right: 250px;
+    background: #2e7d32;
+    color: white;
+    border: 1px solid #fff;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-weight: bold;
+    z-index: 10;
+}
+
+/* CHEAT MENU (Easter Egg) */
+#ui-cheats {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 500px;
+    background: rgba(50, 0, 0, 0.95);
+    border: 3px solid #ff5252;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+    flex-direction: column;
+    z-index: 100;
+    box-shadow: 0 0 20px red;
+}
+
+#ui-cheats h2 {
+    color: #ff5252;
+    text-align: center;
+    border-bottom: 1px solid #ff5252;
+    padding-bottom: 10px;
+}
+
+.cheat-group {
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 5px;
+}
+
+.cheat-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 5px 0;
+    align-items: center;
+}
+
+.cheat-btn {
+    background: #444;
+    color: white;
+    border: 1px solid #fff;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+.cheat-btn:hover { background: #666; }
+
+#cheat-skills-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}

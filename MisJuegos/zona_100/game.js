@@ -142,6 +142,19 @@ const ZOMBIE_STATS = {
     'giant': { hp: 800, speed: 0.4, radius: 50, damage: 45, value: 50, visualScale: 6.0, color: '#212121' }
 };
 
+const SKILL_DEFS = [
+    { id: 'vitality', name: 'Vitalidad', desc: '+10 Max HP', max: 10 },
+    { id: 'speed', name: 'Adrenalina', desc: '+3% Velocidad', max: 10 },
+    { id: 'strategy', name: 'Estratega', desc: '+5s Tiempo Prep', max: 10 },
+    { id: 'strength', name: 'Fuerza', desc: '+5% Daño', max: 10 },
+    { id: 'greed', name: 'Fortuna', desc: '+10% Monedas', max: 10 },
+    { id: 'barter', name: 'Negociante', desc: '-5% Precios Tienda', max: 10 },
+    { id: 'engineering', name: 'Ingeniería', desc: '+10% Vida Estructuras', max: 10 },
+    { id: 'regen', name: 'Recuperación', desc: '+0.5 HP/5s', max: 10 },
+    { id: 'magnet', name: 'Imán', desc: '+10% Rango Recolección', max: 10 },
+    { id: 'crit', name: 'Crítico', desc: '+3% Probabilidad Crítico', max: 10 }
+];
+
 // Global State
 const loadedAssets = {}; // Stores Image objects
 
@@ -196,8 +209,12 @@ let player = {
         null
     ],
     backpack: new Array(25).fill(null),
-    stats: { hp: 100, money: 100, skillPoints: 0 },
-    selectedSlot: 0,
+    stats: { hp: 100, money: 100, skillPoints: 0, maxHp: 100 },
+    skills: {
+        vitality: 0, speed: 0, strategy: 0, strength: 0,
+        greed: 0, barter: 0, engineering: 0, regen: 0,
+        magnet: 0, crit: 0
+    },
     selectedSlot: 0,
     lastShot: 0,
     pickupRadius: 60,
@@ -234,7 +251,7 @@ function updatePreview() {
 
 
 
-function drawCharacter(context, x, y, angle, visual, radius) {
+function drawCharacter(context, x, y, angle, visual, radius, activeItemId) {
     context.save();
     context.translate(x, y);
     context.rotate(angle - Math.PI / 2); // Correction: -90 degrees so 0 radians = Right
@@ -306,6 +323,19 @@ function drawCharacter(context, x, y, angle, visual, radius) {
     context.beginPath();
     context.arc(-radius * 0.4, radius * 0.8, radius * 0.25, 0, Math.PI * 2);
     context.fill();
+
+    // Held Item
+    if (activeItemId && loadedAssets[activeItemId]) {
+        context.save();
+        context.translate(0, radius * 1.0); // Held in front
+        // Adjust scale? Items are 50x50 tiles usually. Character radius 20 (Diam 40).
+        // Scale down item slightly to look held?
+        // Or keep 1:1? 50px is big for 40px char.
+        const itemImg = loadedAssets[activeItemId];
+        const scale = 0.6;
+        context.drawImage(itemImg, -25 * scale, -25 * scale, 50 * scale, 50 * scale);
+        context.restore();
+    }
 
     // HP Bar (Above Head)
     if (visual.hp !== undefined) {
@@ -501,6 +531,7 @@ function broadcastState() {
         t: now
     };
 
+    // Host sends to Clients
     connections.forEach(c => { if (c.open) c.send(fastState); });
 
     // 2. SLOW UPDATE (1000ms, 1FPS) - World/Entitites/Sync
@@ -544,6 +575,10 @@ function handleClientData(clientId, data) {
             let initHp = 200;
             if (item === 'wall_wood') initHp = 400;
             if (item === 'wall_door') initHp = 300;
+            // Skill: Engineering
+            if (player.skills.engineering > 0) {
+                initHp = initHp * (1 + player.skills.engineering * 0.1);
+            }
             walls.push({ x: x, y: y, type: item, hp: initHp, isOpen: false });
         }
     }
@@ -635,6 +670,13 @@ function gameCycleLoop() {
 
     if (cycleTimer > 0) {
         cycleTimer--;
+        // Skill: Regen (Every time timer ticks down, i.e., every second)
+        // Regen description says 0.5 HP / 5s.
+        // So every 5 seconds?
+        if (cycleTimer % 5 === 0 && player.skills.regen > 0) {
+            player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + (player.skills.regen * 0.5));
+            document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+        }
     } else {
         // Timer ended
         if (isPrepPhase) {
@@ -646,7 +688,9 @@ function gameCycleLoop() {
         } else {
             // End Round -> Start Prep for Next Round
             isPrepPhase = true;
-            cycleTimer = 30;
+            // End Round -> Start Prep for Next Round
+            isPrepPhase = true;
+            cycleTimer = 30 + ((player.skills.strategy || 0) * 5); // +5s per level
             showTitle(`RONDA ${gameRound} COMPLETADA`, '#4caf50'); // Green
             gameRound++;
             isDay = (gameRound % 2 !== 0);
@@ -1014,8 +1058,8 @@ function spawnZombie() {
         zy = Math.random() < 0.5 ? 0 : WORLD_H * TILE_SIZE;
     }
     // Use configuration
-    const keys = Object.keys(ZOMBIE_STATS);
-    const typeId = keys[Math.floor(Math.random() * keys.length)];
+    const zombieTypeKeys = Object.keys(ZOMBIE_STATS);
+    const typeId = zombieTypeKeys[Math.floor(Math.random() * zombieTypeKeys.length)];
     const stats = ZOMBIE_STATS[typeId];
 
     zombies.push({
@@ -1036,7 +1080,7 @@ function update() {
     // Movement Logic (Everyone runs this for themselves)
     if (player.isDead) return;
 
-    const speed = 4;
+    const speed = 4 * (1 + (player.skills.speed || 0) * 0.03);
     let dx = 0; let dy = 0;
     if (keys['w']) dy = -speed;
     if (keys['s']) dy = speed;
@@ -1290,14 +1334,25 @@ function updateGameWorld() {
         zombies.forEach((z, j) => {
             const dist = Math.hypot(b.x - z.x, b.y - z.y);
             if (dist < z.radius + 5) {
-                z.hp -= (b.dmg || 10);
+                // Skills: Strength + Crit
+                let dmg = (b.dmg || 10) * (1 + (player.skills.strength || 0) * 0.05);
+                if (Math.random() < (player.skills.crit || 0) * 0.03) {
+                    dmg *= 2; // Critical Hit
+                    // Optional: Visual indicator for crit?
+                }
+
+                z.hp -= dmg;
                 b.life = 0;
                 if (z.hp <= 0) {
                     // Death Logic
                     if (z.type === 'explosive') triggerExplosion(z.x, z.y);
                     if (z.type === 'fire' || z.type === 'zombie_fire') spawnFirePatch(z.x, z.y);
 
-                    const dropVal = ZOMBIE_STATS[z.type] ? ZOMBIE_STATS[z.type].value : 1;
+                    let dropVal = ZOMBIE_STATS[z.type] ? ZOMBIE_STATS[z.type].value : 1;
+                    // Skill: Greed
+                    if (player.skills.greed > 0) {
+                        dropVal = Math.ceil(dropVal * (1 + player.skills.greed * 0.1));
+                    }
                     drops.push({ x: z.x, y: z.y, value: dropVal, life: 600 });
                     zombies.splice(j, 1);
                 }
@@ -1321,8 +1376,9 @@ function updateGameWorld() {
 
     // Drops Magnet
     drops.forEach((d, i) => {
+        const pickupR = player.pickupRadius * (1 + (player.skills.magnet || 0) * 0.1);
         const dist = Math.hypot(player.x - d.x, player.y - d.y);
-        if (dist < player.pickupRadius) {
+        if (dist < pickupR) {
             d.x += (player.x - d.x) * 0.1;
             d.y += (player.y - d.y) * 0.1;
         }
@@ -1602,23 +1658,275 @@ function draw() {
         // So yes, exclude self.
 
         const p = remotePlayers[pid];
-        if (p) drawCharacter(ctx, p.x, p.y, p.angle, p.visual || {}, 20);
+        if (p) drawCharacter(ctx, p.x, p.y, p.angle, p.visual || {}, 20, p.activeItem);
     });
 
     // Player
-    // Pass active item for rendering
+    // Player Draw
     const activeItem = player.inventory[player.selectedSlot];
-    const visualWithItem = { ...player.visual, activeItem: activeItem };
+    const aid = activeItem ? activeItem.id : null;
+    let pAngle = player.angle; // Default
+    if (gameState === 'PLAYING') {
+        pAngle = Math.atan2(mouse.y + camera.y - player.y, mouse.x + camera.x - player.x);
+    }
 
-    drawCharacter(ctx, player.x, player.y, player.angle, visualWithItem, 20);
-    // Name tag moved to drawCharacter
+    drawCharacter(ctx, player.x, player.y, pAngle, player.visual, 20, aid);
+
+    // Render Inventory UI (Overlay)
+    // See renderInventoryUI function for HTML overlay logic
+
+    ctx.restore();
 
     ctx.restore();
 }
 
-function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+function gameLoop() {
+    update();
+    draw();
+
+    // Host Broadcast
+    if (isHost) {
+        broadcastState();
+    } else {
+        // CLIENT LOGIC: Send inputs to Host
+        if (serverConn && serverConn.open) {
+            const activeItem = player.inventory[player.selectedSlot];
+            serverConn.send({
+                type: 'PLAYER_UPDATE',
+                player: {
+                    x: Math.round(player.x),
+                    y: Math.round(player.y),
+                    angle: Math.atan2(mouse.y + camera.y - player.y, mouse.x + camera.x - player.x),
+                    activeItem: activeItem ? activeItem.id : null,
+                    visual: player.visual
+                }
+            });
+        }
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+/* --- SKILLS SYSTEM --- */
+
+function initSkillsMenu() {
+    const grid = document.getElementById('skills-grid');
+    grid.innerHTML = '';
+    SKILL_DEFS.forEach(skill => {
+        const div = document.createElement('div');
+        div.className = 'skill-card';
+        div.innerHTML = `
+            <div class="skill-info">
+                <b>${skill.name}</b> (Lvl <span id="lvl-${skill.id}">0</span>/${skill.max})
+                <p>${skill.desc}</p>
+            </div>
+            <button class="skill-btn" id="btn-skill-${skill.id}" onclick="upgradeSkill('${skill.id}')">+</button>
+        `;
+        grid.appendChild(div);
+    });
+}
+
+function updateSkillsUI() {
+    // Points = Current Round - Total Spent
+    let totalSpent = 0;
+    SKILL_DEFS.forEach(s => totalSpent += (player.skills[s.id] || 0));
+    const pointsAvailable = Math.max(0, gameRound - 1 - totalSpent);
+
+    document.getElementById('skills-points').innerText = pointsAvailable;
+
+    SKILL_DEFS.forEach(skill => {
+        const current = player.skills[skill.id] || 0;
+        document.getElementById(`lvl-${skill.id}`).innerText = current;
+        const btn = document.getElementById(`btn-skill-${skill.id}`);
+        if (current >= skill.max || pointsAvailable <= 0) {
+            btn.disabled = true;
+        } else {
+            btn.disabled = false;
+        }
+    });
+}
+
+function toggleSkillsMenu() {
+    const ui = document.getElementById('ui-skills');
+    if (ui.style.display === 'flex') {
+        ui.style.display = 'none';
+        gameState = 'PLAYING';
+    } else {
+        ui.style.display = 'flex';
+        // gameState = 'PAUSED'; // Optional? Or allow upgrading while playing? 
+        // User didn't specify pause. Let's keep it overlay.
+        updateSkillsUI();
+    }
+}
+
+function upgradeSkill(id) {
+    let totalSpent = 0;
+    SKILL_DEFS.forEach(s => totalSpent += (player.skills[s.id] || 0));
+    const pointsAvailable = Math.max(0, gameRound - 1 - totalSpent);
+
+    if (pointsAvailable > 0 && player.skills[id] < 10) {
+        player.skills[id]++;
+
+        // Immediate Effects
+        if (id === 'vitality') {
+            // +10 HP
+            player.stats.maxHp = 100 + (player.skills.vitality * 10);
+            player.stats.hp += 10; // Heal the added amount
+            document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+        }
+
+        updateSkillsUI();
+    }
+}
+
+// Hook KEYS
+// Hook KEYS
+let cheatTimer = null;
+let cheatString = "";
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'k' || e.key === 'K') toggleSkillsMenu();
+
+    // CHEAT DETECTION
+    if (e.key === 'Control') {
+        cheatString = "";
+        if (cheatTimer) clearTimeout(cheatTimer);
+        cheatTimer = setTimeout(() => {
+            cheatString = "";
+            cheatTimer = null;
+        }, 10000); // 10s window
+        return;
+    }
+
+    if (cheatTimer) {
+        if (e.key.length === 1) cheatString += e.key.toLowerCase();
+        if (cheatString.includes("cheats")) {
+            toggleCheatMenu();
+            cheatString = "";
+            clearTimeout(cheatTimer);
+            cheatTimer = null;
+        }
+    }
+});
+
+/* --- CHEATS SYSTEM --- */
+function initCheatMenu() {
+    const div = document.createElement('div');
+    div.id = 'ui-cheats';
+    div.innerHTML = `
+        <h2>CHEATS MENU (DEV)</h2>
+        
+        <div class="cheat-group">
+            <div class="cheat-row">
+                <label>Set HP %:</label>
+                <input type="number" id="cheat-hp-val" value="100" style="width:60px">
+                <button class="cheat-btn" onclick="cheatSetHp()">SET</button>
+            </div>
+            <div class="cheat-row">
+                <label>Set Money:</label>
+                <input type="number" id="cheat-money-val" value="1000" style="width:80px">
+                <button class="cheat-btn" onclick="cheatSetMoney()">SET</button>
+            </div>
+        </div>
+
+        <div class="cheat-group">
+            <h3>Skills Level</h3>
+            <div id="cheat-skills-list"></div>
+        </div>
+
+        <button class="btn-sec" style="margin-top:auto" onclick="toggleCheatMenu()">CLOSE</button>
+    `;
+    document.body.appendChild(div);
+
+    // Populate Skills
+    const list = div.querySelector('#cheat-skills-list');
+    SKILL_DEFS.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'cheat-row';
+        row.innerHTML = `
+            <span>${s.name}</span>
+            <div>
+                <button class="cheat-btn" onclick="cheatSkill('${s.id}', -1)">-</button>
+                <span id="cheat-lvl-${s.id}">0</span>
+                <button class="cheat-btn" onclick="cheatSkill('${s.id}', 1)">+</button>
+            </div>
+        `;
+        list.appendChild(row);
+    });
+}
+
+function toggleCheatMenu() {
+    const ui = document.getElementById('ui-cheats');
+    if (ui.style.display === 'flex') {
+        ui.style.display = 'none';
+    } else {
+        ui.style.display = 'flex';
+        updateCheatUI();
+    }
+}
+
+function updateCheatUI() {
+    SKILL_DEFS.forEach(s => {
+        const val = player.skills[s.id] || 0;
+        document.getElementById(`cheat-lvl-${s.id}`).innerText = val;
+    });
+    document.getElementById('cheat-money-val').value = player.stats.money;
+    document.getElementById('cheat-hp-val').value = Math.floor((player.stats.hp / player.stats.maxHp) * 100);
+}
+
+window.cheatSetHp = function () {
+    const val = parseInt(document.getElementById('cheat-hp-val').value);
+    if (!isNaN(val)) {
+        player.stats.hp = (val / 100) * player.stats.maxHp;
+        document.getElementById('ui-hp').innerText = `HP: ${Math.floor(player.stats.hp)}%`;
+    }
+};
+
+window.cheatSetMoney = function () {
+    const val = parseInt(document.getElementById('cheat-money-val').value);
+    if (!isNaN(val)) {
+        player.stats.money = val;
+        document.getElementById('ui-money').innerText = player.stats.money;
+    }
+};
+
+window.cheatSkill = function (id, change) {
+    const current = player.skills[id] || 0;
+    const next = Math.max(0, Math.min(10, current + change));
+    player.skills[id] = next;
+
+    // Process Immediate Effects (like Vitality)
+    if (id === 'vitality') {
+        player.stats.maxHp = 100 + (player.skills.vitality * 10);
+    }
+
+    updateCheatUI();
+    updateSkillsUI(); // Update normal menu too
+};
+
+// Init calls
+initShop();
+initSkillsMenu();
+initCheatMenu();
 
 /* --- INVENTORY & SHOP SYSTEM --- */
+
+function initShop() {
+    const grid = document.getElementById('shop-items');
+    if (!grid) return;
+    grid.innerHTML = '';
+    SHOP_ITEMS.forEach((item, idx) => {
+        const iInfo = ITEMS[item.id];
+        const div = document.createElement('div');
+        div.className = 'shop-item';
+        div.innerHTML = `
+            <div>${iInfo.icon} ${iInfo.name} x${item.amount}</div>
+            <div style="color:yellow">$${item.price}</div>
+            <button onclick="buyItem(${idx})">COMPRAR</button>
+        `;
+        grid.appendChild(div);
+    });
+}
 
 function addToInventory(itemId, amount) {
     const maxStack = 100;
@@ -1662,8 +1970,14 @@ function addToInventory(itemId, amount) {
 
 function buyItem(idx) {
     const item = SHOP_ITEMS[idx];
-    if (player.stats.money >= item.price) {
-        player.stats.money -= item.price;
+    let price = item.price;
+    // Skill: Barter
+    if (player.skills.barter > 0) {
+        price = Math.ceil(price * (1 - player.skills.barter * 0.05));
+    }
+
+    if (player.stats.money >= price) {
+        player.stats.money -= price;
         document.getElementById('ui-money').innerText = player.stats.money;
         addToInventory(item.id, item.amount);
     } else {
@@ -1671,12 +1985,61 @@ function buyItem(idx) {
     }
 }
 
+// Inventory Interaction State
+let invSelection = null;
+
+function handleInvSlotClick(type, index) {
+    if (!invSelection) {
+        // Select
+        invSelection = { type, index };
+    } else {
+        // Target clicked
+        const source = invSelection;
+        const target = { type, index };
+
+        // If same slot, deselect
+        if (source.type === target.type && source.index === target.index) {
+            invSelection = null;
+            renderInventoryUI();
+            return;
+        }
+
+        // Swap Logic
+        const sourceList = source.type === 'hotbar' ? player.inventory : player.backpack;
+        const targetList = target.type === 'hotbar' ? player.inventory : player.backpack;
+
+        const itemS = sourceList[source.index];
+        const itemT = targetList[target.index];
+
+        // Swap
+        sourceList[source.index] = itemT;
+        targetList[target.index] = itemS;
+
+        // Reset
+        invSelection = null;
+
+        // Update Active Item Visual immediately if Hotbar touched
+        if (source.type === 'hotbar' && source.index === player.selectedSlot) {
+            // Updated in next loop, or force update?
+        }
+    }
+    renderInventoryUI();
+}
+
 function renderInventoryUI() {
     // Render Hotbar
     document.querySelectorAll('.hotbar-slot').forEach((slot, i) => {
         const item = player.inventory[i];
-        if (i === player.selectedSlot) slot.className = 'hotbar-slot active';
-        else slot.className = 'hotbar-slot';
+
+        // Base classes
+        let classes = 'hotbar-slot';
+        if (i === player.selectedSlot) classes += ' active';
+        if (invSelection && invSelection.type === 'hotbar' && invSelection.index === i) classes += ' selected-slot';
+
+        slot.className = classes;
+
+        // Click Event (Swap Mode)
+        slot.onclick = () => handleInvSlotClick('hotbar', i);
 
         const iconDiv = slot.querySelector('.icon');
         iconDiv.innerHTML = ''; // Clear previous
@@ -1695,9 +2058,15 @@ function renderInventoryUI() {
     // Render Backpack
     const bpGrid = document.getElementById('backpack-grid');
     bpGrid.innerHTML = '';
-    player.backpack.forEach(item => {
+    player.backpack.forEach((item, i) => {
         const slot = document.createElement('div');
         slot.className = 'slot';
+        if (invSelection && invSelection.type === 'backpack' && invSelection.index === i) {
+            slot.classList.add('selected-slot');
+        }
+
+        slot.onclick = () => handleInvSlotClick('backpack', i);
+
         if (item) {
             // Check for image asset
             if (loadedAssets[item.id]) {
@@ -1712,6 +2081,16 @@ function renderInventoryUI() {
         bpGrid.appendChild(slot);
     });
 }
+
+// Inject CSS for selection
+const styleSel = document.createElement('style');
+styleSel.innerHTML = `
+.selected-slot { 
+    border: 2px solid #ffeb3b !important; 
+    box-shadow: 0 0 10px #ffeb3b;
+    transform: scale(1.05);
+}`;
+document.head.appendChild(styleSel);
 
 
 function renderShopUI(tab = 'buy') {
