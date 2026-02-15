@@ -63,6 +63,17 @@
                     <label>Rondas para ganar partida (0 = 1 sola):</label>
                     <input type="number" id="input-max-rounds" value="0" min="0" max="10" onchange="updateConfig()">
                 </div>
+                <!-- Colisiones Config -->
+                <div class="config-row"
+                    style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+                    <label>Física de Jugadores:</label>
+                    <div style="display:flex; justify-content:space-between; gap:10px;">
+                        <button id="btn-col-team" onclick="toggleConfig('team')"
+                            style="font-size:0.8rem; padding:8px; opacity:0.5; background:#555;">Compañeros: NO</button>
+                        <button id="btn-col-enemy" onclick="toggleConfig('enemy')"
+                            style="font-size:0.8rem; padding:8px; opacity:0.5; background:#555;">Rivales: NO</button>
+                    </div>
+                </div>
             </div>
             <div id="lobby-config-display" class="hidden">
                 <p id="config-text">Puntos: 5 | Rondas: Única</p>
