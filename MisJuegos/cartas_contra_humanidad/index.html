@@ -1034,19 +1034,66 @@
         /* --- GAME DATA --- */
         let whiteCards = [];
         let blackCards = [];
+        // Master copies of the full decks loaded from JSON
+        // Master copies of the full decks loaded from JSON (initialized globally by cards.js or below)
+        var MASTER_WHITE = window.MASTER_WHITE || [];
+        var MASTER_BLACK = window.MASTER_BLACK || [];
 
-        function loadCards() {
+        async function loadCards() {
             try {
-                if (typeof CAH_WHITE !== 'undefined' && typeof CAH_BLACK !== 'undefined') {
-                    whiteCards = [...CAH_WHITE];
-                    blackCards = [...CAH_BLACK];
-                    console.log(`Cargadas ${whiteCards.length} blancas y ${blackCards.length} negras.`);
+                // Check if MASTER variables are already populated (by modified cards.js)
+                if (typeof MASTER_WHITE !== 'undefined' && typeof MASTER_BLACK !== 'undefined' && MASTER_WHITE.length > 0) {
+                    // Since MASTER_WHITE/BLACK are global, we just sync our local references
+                    // In the previous step, I defined let MASTER_WHITE = [] in this scope which shadows window.MASTER_WHITE if not careful.
+                    // But actually, cards.js runs BEFORE this script block (if standard script src order).
+                    // However, line 1038 defines `let MASTER_WHITE = []`. This shadows the global ones from cards.js!
+                    // Wait, if cards.js does `window.MASTER_WHITE = ...`, and here I do `let MASTER_WHITE = []`, the `let` dominates this scope but starts empty.
+                    // I need to REMOVE the `let MASTER_WHITE` declarations here and rely on the globals, or copy from window.
+
+                    // Let's copy from window to be safe and clear.
+                    if (window.MASTER_WHITE && window.MASTER_BLACK) {
+                        MASTER_WHITE = window.MASTER_WHITE;
+                        MASTER_BLACK = window.MASTER_BLACK;
+                        whiteCards = [...MASTER_WHITE];
+                        blackCards = [...MASTER_BLACK];
+                        console.log(`Cargadas ${whiteCards.length} blancas y ${blackCards.length} negras (Global Variable).`);
+                        return;
+                    }
+                }
+
+                if (typeof fetchGameCards === 'function') {
+                    const data = await fetchGameCards();
+                    if (data && data.white && data.black) {
+                        MASTER_WHITE = data.white;
+                        MASTER_BLACK = data.black;
+                        whiteCards = [...MASTER_WHITE];
+                        blackCards = [...MASTER_BLACK];
+                        console.log(`Cargadas ${whiteCards.length} blancas y ${blackCards.length} negras (JSON).`);
+                    } else {
+                        throw new Error("Datos de cartas inválidos o vacíos.");
+                    }
+                } else if (typeof CAH_WHITE !== 'undefined' && typeof CAH_BLACK !== 'undefined') {
+                    // Fallback compatibility
+                    MASTER_WHITE = [...CAH_WHITE];
+                    MASTER_BLACK = [...CAH_BLACK];
+                    whiteCards = [...MASTER_WHITE];
+                    blackCards = [...MASTER_BLACK];
+                    console.log(`Cargadas ${whiteCards.length} blancas y ${blackCards.length} negras (Array).`);
                 } else {
-                    throw new Error("Variables CAH_WHITE/CAH_BLACK no definidas");
+                    // Last ditch: check if window.MASTER_WHITE exists but wasn't caught above due to scoping
+                    if (window.MASTER_WHITE && window.MASTER_BLACK) {
+                        MASTER_WHITE = window.MASTER_WHITE;
+                        MASTER_BLACK = window.MASTER_BLACK;
+                        whiteCards = [...MASTER_WHITE];
+                        blackCards = [...MASTER_BLACK];
+                        console.log(`Cargadas ${whiteCards.length} blancas y ${blackCards.length} negras (Window Global).`);
+                    } else {
+                        throw new Error("No se encontraron cartas (fetchGameCards ni CAH_WHITE/BLACK).");
+                    }
                 }
             } catch (e) {
                 console.error(e);
-                alert("Error cargando cartas: Verifique cards.js");
+                alert("Error cargando cartas: Verifique cards.js y la consola.");
             }
         }
         loadCards();
@@ -1076,7 +1123,7 @@
 
         /* --- DECK MANAGEMENT HELPERS --- */
         function refillWhiteDeck() {
-            let potentialCards = [...CAH_WHITE];
+            let potentialCards = [...MASTER_WHITE];
 
             // Add custom cards (Host)
             const boostFactor = 3;
@@ -1130,7 +1177,7 @@
         }
 
         function refilBlackDeck() {
-            blackCards = [...CAH_BLACK];
+            blackCards = [...MASTER_BLACK];
             const boostFactor = 3;
             if (myCreatedCards.black.length > 0) {
                 for (let i = 0; i < boostFactor; i++) {
@@ -1210,7 +1257,7 @@
 
             // Aggregate ALL known cards for this view
             const type = currentBanView;
-            const sourceArray = (type === 'black') ? CAH_BLACK : [...CAH_WHITE]; // Copy base
+            const sourceArray = (type === 'black') ? MASTER_BLACK : [...MASTER_WHITE]; // Copy base
             const allCards = [];
 
             // 1. Add Base Cards
