@@ -566,10 +566,10 @@ function updatePhysics() {
             if (v1n_final > 40) v1n_final = 40;
             if (v1n_final < -40) v1n_final = -40;
 
-            // Forzar rebote minimo si están muy pegados y v2n es bajo
-            if (Math.abs(v1n_final) < 2) {
-                v1n_final += 5; // Min push away
-            }
+            // Forzar rebote minimo REMOVED per user request
+            // if (Math.abs(v1n_final) < 2) {
+            //      v1n_final += 5; 
+            // }
 
             // Convertir escalar normal/tangente de vuelta a vectores x/y
             // La tangente se mantiene igual (sin fricción de superficie)
