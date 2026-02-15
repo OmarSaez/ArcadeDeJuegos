@@ -40,7 +40,7 @@ let clientConns = []; // Si soy host (lista de {conn, id, nick, team, color, x, 
 
 // OBJETOS JUEGO
 const puck = { x: CANVAS_W / 2, y: CANVAS_H / 2, vx: 0, vy: 0, color: 'white' };
-const players = {}; // Diccionario id -> { x, y, nick, team, color }
+const players = {}; // Diccionario id -> { x, y, nick, team, color, vx: 0, vy: 0 }
 
 // INPUT
 const mouse = { x: CANVAS_W / 2, y: CANVAS_H / 2 };
@@ -166,6 +166,7 @@ function setupHostConnection(conn) {
             // Registrar jugador oficialmente
             players[pId] = {
                 x: CANVAS_W / 2, y: CANVAS_H / 2,
+                vx: 0, vy: 0,
                 nick: data.nick,
                 team: data.team,
                 color: data.color,
@@ -193,6 +194,14 @@ function setupHostConnection(conn) {
 
         if (data.type === 'INPUT') {
             if (players[pId]) {
+                // Calculate velocity based on difference
+                const dx = data.x - players[pId].x;
+                const dy = data.y - players[pId].y;
+                // Limit velocity to prevent teleporting gltiches from confusing physics
+                // Assume 60fps, so speed is pixels per frame
+                players[pId].vx = dx;
+                players[pId].vy = dy;
+
                 players[pId].x = data.x;
                 players[pId].y = data.y;
             }
@@ -503,6 +512,7 @@ function updatePhysics() {
     }
 
     // Colisiones con Jugadores
+    // Colisiones con Jugadores (Fisica Elastic Choque)
     for (const pid in players) {
         const p = players[pid];
         const dx = puck.x - p.x;
@@ -511,39 +521,66 @@ function updatePhysics() {
         const minDist = PUCK_R + PADDLE_R;
 
         if (dist < minDist) {
-            // CHOQUE
-            // Vector normal
-            const nx = dx / dist;
-            const ny = dy / dist;
-
-            // Separación (Evitar solapamiento)
+            // 1. Position Correction (Evitar Sticking)
+            const angle = Math.atan2(dy, dx);
             const overlap = minDist - dist;
-            puck.x += nx * overlap;
-            puck.y += ny * overlap;
 
-            // Rebote físico simple
-            // Asumimos masa del player infinita (no se mueve por el puck)
-            // v' = v - 2(v·n)n
-            // Pero queremos agregarle "fuerza" del jugador si se mueve hacia el puck.
-            // Simplificación Arcade: Reflejar velocidad y añadir un "push" constante
-            const dot = puck.vx * nx + puck.vy * ny;
+            // Mover Puck fuera del jugador inmediatamente
+            puck.x += Math.cos(angle) * overlap;
+            puck.y += Math.sin(angle) * overlap;
 
-            puck.vx = puck.vx - 2 * dot * nx;
-            puck.vy = puck.vy - 2 * dot * ny;
+            // 2. Velocidad Relativa
+            // Vector Normal (n)
+            const nx = Math.cos(angle);
+            const ny = Math.sin(angle);
 
-            // Añadir extra boost para que sea divertido
-            puck.vx *= 1.1; // Acelera un poco en cada golpe
-            puck.vy *= 1.1;
+            // Vector Tangente (t)
+            const tx = -ny;
+            const ty = nx;
 
-            // Cap de velocidad
-            const speed = Math.hypot(puck.vx, puck.vy);
-            if (speed > 25) {
-                puck.vx *= 0.9;
-                puck.vy *= 0.9;
+            // Proyectar velocidades en Normal y Tangente
+            // Puck
+            const v1n = puck.vx * nx + puck.vy * ny;
+            const v1t = puck.vx * tx + puck.vy * ty;
+
+            // Player (Tiene masa infinita efectivamente, pero le transferimos su momento)
+            const v2n = p.vx * nx + p.vy * ny;
+            // Player tangent velocity doesn't matter for 1D collision along normal
+
+            // 3. Choque Elástico 1D (Masa Player >> Masa Puck)
+            // Si el jugador fuera estático: v1n_new = -v1n
+            // Con jugador moviéndose: v1n_new = 2*v2n - v1n
+            // Agregamos coeficiente de restitución (bounciness) + Extra Power
+
+            // Si el brazo se mueve HACIA el puck (v2n < 0 relativo a n?), n apunta de Player a Puck.
+            // Asi que si v2n > 0, el player empuja al puck. 
+
+            const restitution = 1.0; // Perfectamente elástico
+            const boost = 1.2; // Extra arcade speed
+
+            // Formula simplificada para "Pared Móvil con Masa Infinita":
+            let v1n_final = (2 * v2n - v1n) * restitution;
+
+            // Limitar la velocidad transferida del mouse para que no rompa la fisica
+            // A veces el mouse se mueve MUY rapido (teletransportación)
+            if (v1n_final > 40) v1n_final = 40;
+            if (v1n_final < -40) v1n_final = -40;
+
+            // Forzar rebote minimo si están muy pegados y v2n es bajo
+            if (Math.abs(v1n_final) < 2) {
+                v1n_final += 5; // Min push away
             }
-            if (speed < 2) { // Min push
-                puck.vx += nx * 2;
-                puck.vy += ny * 2;
+
+            // Convertir escalar normal/tangente de vuelta a vectores x/y
+            // La tangente se mantiene igual (sin fricción de superficie)
+            puck.vx = (v1n_final * nx + v1t * tx) * boost;
+            puck.vy = (v1n_final * ny + v1t * ty) * boost;
+
+            // Cap final de velocidad absoluta
+            const speed = Math.hypot(puck.vx, puck.vy);
+            if (speed > 35) {
+                puck.vx = (puck.vx / speed) * 35;
+                puck.vy = (puck.vy / speed) * 35;
             }
         }
     }
@@ -652,6 +689,12 @@ function clientInput() {
     // Enviar mi posición al host
     if (isHost) {
         // Direct update local
+        // Calculate velocity for self (Host)
+        const dx = mouse.x - players[myId].x;
+        const dy = mouse.y - players[myId].y;
+        players[myId].vx = dx;
+        players[myId].vy = dy;
+
         players[myId].x = mouse.x;
         players[myId].y = mouse.y;
 
