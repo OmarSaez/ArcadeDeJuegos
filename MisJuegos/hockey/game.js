@@ -42,7 +42,7 @@ let clientConns = []; // Si soy host (lista de {conn, id, nick, team, color, x, 
 
 // OBJETOS JUEGO
 const puck = { x: CANVAS_W / 2, y: CANVAS_H / 2, vx: 0, vy: 0, color: 'white' };
-const players = {}; // Diccionario id -> { x, y, nick, team, color, vx: 0, vy: 0 }
+const players = {}; // Diccionario id -> { x, y, rawX, rawY, kx, ky, nick, team, color, vx: 0, vy: 0 }
 
 // INPUT
 const mouse = { x: CANVAS_W / 2, y: CANVAS_H / 2 };
@@ -108,7 +108,13 @@ function screenCreate() {
         isHost = true;
         myId = id;
         // Add self to players
-        players[myId] = { x: 150, y: CANVAS_H / 2, nick: myNick, team: 'A', color: '#ff4757', ready: false };
+        players[myId] = {
+            x: 150, y: CANVAS_H / 2,
+            rawX: 150, rawY: CANVAS_H / 2,
+            kx: 0, ky: 0,
+            nick: myNick, team: 'A', color: '#ff4757', ready: false,
+            vx: 0, vy: 0
+        };
         myTeam = 'A'; myColor = '#ff4757'; myReady = false;
         myTeam = 'A'; myColor = '#ff4757'; myReady = false;
 
@@ -168,6 +174,8 @@ function setupHostConnection(conn) {
             // Registrar jugador oficialmente
             players[pId] = {
                 x: CANVAS_W / 2, y: CANVAS_H / 2,
+                rawX: CANVAS_W / 2, rawY: CANVAS_H / 2,
+                kx: 0, ky: 0,
                 vx: 0, vy: 0,
                 nick: data.nick,
                 team: data.team,
@@ -196,16 +204,23 @@ function setupHostConnection(conn) {
 
         if (data.type === 'INPUT') {
             if (players[pId]) {
-                // Calculate velocity based on difference
-                const dx = data.x - players[pId].x;
-                const dy = data.y - players[pId].y;
-                // Limit velocity to prevent teleporting gltiches from confusing physics
-                // Assume 60fps, so speed is pixels per frame
+                // Initial init of raw vars if missing (legacy safety)
+                if (players[pId].rawX === undefined) {
+                    players[pId].rawX = players[pId].x;
+                    players[pId].rawY = players[pId].y;
+                    players[pId].kx = 0; players[pId].ky = 0;
+                }
+
+                // Calculate velocity based on Input Difference
+                const dx = data.x - players[pId].rawX;
+                const dy = data.y - players[pId].rawY;
+
                 players[pId].vx = dx;
                 players[pId].vy = dy;
 
-                players[pId].x = data.x;
-                players[pId].y = data.y;
+                // Update Raw Input Target
+                players[pId].rawX = data.x;
+                players[pId].rawY = data.y;
             }
         }
     });
@@ -501,6 +516,28 @@ function startGame() {
 function updatePhysics() {
     if (!isHost) return;
 
+    // 0. Update Player Positions (Input + Knockback)
+    for (const pid in players) {
+        const p = players[pid];
+        if (p.rawX === undefined) continue;
+
+        // Friction on Knockback
+        p.kx *= 0.85; // Fast decay for snappy feel
+        p.ky *= 0.85;
+        if (Math.abs(p.kx) < 0.1) p.kx = 0;
+        if (Math.abs(p.ky) < 0.1) p.ky = 0;
+
+        // Apply
+        p.x = p.rawX + p.kx;
+        p.y = p.rawY + p.ky;
+
+        // Bound to Canvas
+        if (p.x < PADDLE_R) p.x = PADDLE_R;
+        if (p.x > CANVAS_W - PADDLE_R) p.x = CANVAS_W - PADDLE_R;
+        if (p.y < PADDLE_R) p.y = PADDLE_R;
+        if (p.y > CANVAS_H - PADDLE_R) p.y = CANVAS_H - PADDLE_R;
+    }
+
     // 1. Mover Puck
     puck.x += puck.vx;
     puck.y += puck.vy;
@@ -681,24 +718,43 @@ function updatePhysics() {
                 const minDist = PADDLE_R * 2; // Radio + Radio
 
                 if (dist < minDist) {
-                    // COLISIÓN!
-                    // Resolver overlap estático (Push apart 50% each)
+                    // COLISIÓN JUGUETONA!
                     const angle = Math.atan2(dy, dx);
+
+                    // 1. Minimum Push to fix overlap
                     const overlap = minDist - dist;
-                    const push = overlap / 2;
+                    const minPush = overlap * 0.5; // Shared adjustment
 
-                    const cos = Math.cos(angle);
-                    const sin = Math.sin(angle);
+                    // 2. Playful Bounce Force
+                    // More velocity difference = More bounce
+                    // We exaggerate the effect to make it feel like "sumo"
+                    const vRelX = p1.vx - p2.vx;
+                    const vRelY = p1.vy - p2.vy;
+                    const impactSpeed = Math.hypot(vRelX, vRelY);
 
-                    p1.x += cos * push;
-                    p1.y += sin * push;
-                    p2.x -= cos * push;
-                    p2.y -= sin * push;
+                    // Base bounce + Speed scaler
+                    const bounceForce = 15 + (impactSpeed * 1.5);
 
-                    // NOTA: Como la posición está ligada al mouse/input directo,
-                    // el "rebote" de velocidad no se notará mucho a menos que
-                    // alteremos las coordenadas input del usuario o agreguemos "fuerza".
-                    // En Arcade simple, el "Push Apart" es suficiente para bloquear el paso.
+                    const fx = Math.cos(angle);
+                    const fy = Math.sin(angle);
+
+                    // Apply to Knockback (kx, ky)
+                    // We mix explicit overlap fix + dynamic bounce
+                    const totalPush = minPush + bounceForce;
+
+                    // Apply impulse
+                    p1.kx += fx * totalPush * 0.5;
+                    p1.ky += fy * totalPush * 0.5;
+
+                    p2.kx -= fx * totalPush * 0.5;
+                    p2.ky -= fy * totalPush * 0.5;
+
+                    // Cap Knockback
+                    const MAX_KB = 150;
+                    p1.kx = Math.max(-MAX_KB, Math.min(MAX_KB, p1.kx));
+                    p1.ky = Math.max(-MAX_KB, Math.min(MAX_KB, p1.ky));
+                    p2.kx = Math.max(-MAX_KB, Math.min(MAX_KB, p2.kx));
+                    p2.ky = Math.max(-MAX_KB, Math.min(MAX_KB, p2.ky));
                 }
             }
         }
@@ -807,15 +863,26 @@ function resetPuck() {
 function clientInput() {
     // Enviar mi posición al host
     if (isHost) {
-        // Direct update local
+        if (!players[myId]) return;
+
+        // Init safety
+        if (players[myId].rawX === undefined) {
+            players[myId].rawX = players[myId].x;
+            players[myId].rawY = players[myId].y;
+            players[myId].kx = 0; players[myId].ky = 0;
+        }
+
         // Calculate velocity for self (Host)
-        const dx = mouse.x - players[myId].x;
-        const dy = mouse.y - players[myId].y;
+        const dx = mouse.x - players[myId].rawX;
+        const dy = mouse.y - players[myId].rawY;
         players[myId].vx = dx;
         players[myId].vy = dy;
 
-        players[myId].x = mouse.x;
-        players[myId].y = mouse.y;
+        // Update RAW input
+        players[myId].rawX = mouse.x;
+        players[myId].rawY = mouse.y;
+
+        // Actual x/y updated in physics loop now!
 
         // Broadcast movement in Lobby
         if (gameState === 'LOBBY') {
