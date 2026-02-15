@@ -321,6 +321,7 @@ function setupClientConnection(conn) {
                 }
             }
 
+            if (data.teams) teams = data.teams;
             if (data.scores) updateScores(data.scores);
             if (data.roundWins) roundWins = data.roundWins;
             if (data.round) currentRound = data.round;
@@ -572,7 +573,8 @@ function updatePhysics() {
         roundWins: roundWins,
         round: currentRound,
         gameOver: isGameOver,
-        winner: isGameOver ? (roundWins.A > roundWins.B ? 'A' : 'B') : null
+        winner: isGameOver ? (roundWins.A > roundWins.B ? 'A' : 'B') : null,
+        teams: teams
     };
     clientConns.forEach(c => c.conn.send({ type: 'GAME_UPDATE', ...state }));
 }
@@ -613,8 +615,13 @@ function score(team) {
 }
 
 function updateHUDOverlay() {
-    document.querySelector('#hud-rounds .score-a').innerText = roundWins.A;
-    document.querySelector('#hud-rounds .score-b').innerText = roundWins.B;
+    const elA = document.querySelector('#hud-rounds .score-a');
+    elA.innerText = roundWins.A;
+    elA.style.color = teams.A.color;
+
+    const elB = document.querySelector('#hud-rounds .score-b');
+    elB.innerText = roundWins.B;
+    elB.style.color = teams.B.color;
 }
 
 function showGameOver(winner) {
@@ -624,8 +631,13 @@ function showGameOver(winner) {
 
 function updateScores(s) {
     scores = s;
-    document.querySelector('#hud-score .score-a').innerText = s.A;
-    document.querySelector('#hud-score .score-b').innerText = s.B;
+    const elA = document.querySelector('#hud-score .score-a');
+    elA.innerText = s.A;
+    elA.style.color = teams.A.color;
+
+    const elB = document.querySelector('#hud-score .score-b');
+    elB.innerText = s.B;
+    elB.style.color = teams.B.color;
 }
 
 function resetPuck() {
