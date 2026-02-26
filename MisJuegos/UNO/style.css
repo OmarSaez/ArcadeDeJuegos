@@ -10,6 +10,7 @@
     --uno-yellow-bright: #ffff00;
     --card-width: 100px;
     --card-height: 150px;
+    --card-scale: 1;
 }
 
 #winner-name {
@@ -219,6 +220,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 20px;
+    /* Space between discard and draw piles */
 }
 
 /* Card Styling */
@@ -234,6 +237,7 @@ body {
     user-select: none;
     overflow: hidden;
     border: 4px solid white;
+    transform: scale(var(--card-scale));
 }
 
 .card:hover {
@@ -255,7 +259,7 @@ body {
     }
 
     100% {
-        transform: scale(1) translateY(0);
+        transform: scale(var(--card-scale)) translateY(0);
         opacity: 1;
         filter: blur(0);
     }
@@ -280,7 +284,7 @@ body {
 
     /* Make visible as soon as animation starts */
     100% {
-        transform: translate(0, 0) scale(1) rotate(0deg);
+        transform: translate(0, 0) scale(var(--card-scale)) rotate(0deg);
         opacity: 1;
         filter: blur(0);
     }
@@ -493,6 +497,12 @@ body {
 }
 
 @media (max-width: 768px) {
+    :root {
+        --card-scale: 0.8;
+        --card-width: 80px;
+        --card-height: 120px;
+    }
+
     #ui-layer {
         bottom: 10px;
         right: 0;
@@ -523,26 +533,7 @@ body {
     }
 
     .hand .card {
-        margin-left: -65px;
-        transform: scale(0.8);
-    }
-
-    @keyframes card-draw-anim {
-        0% {
-            transform: translate(-100px, -200px) scale(0) rotate(-45deg);
-            opacity: 0;
-            filter: blur(10px);
-        }
-
-        1% {
-            opacity: 1;
-        }
-
-        100% {
-            transform: translate(0, 0) scale(0.8) rotate(0deg);
-            opacity: 1;
-            filter: blur(0);
-        }
+        margin-left: -55px;
     }
 
     .menu-buttons {
@@ -623,19 +614,6 @@ body {
     animation: card-draw-anim 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
 }
 
-@keyframes card-draw-anim {
-    0% {
-        transform: translate(-150px, -150px) scale(0) rotate(-45deg);
-        opacity: 0;
-        filter: blur(5px);
-    }
-
-    100% {
-        transform: translate(0, 0) scale(1) rotate(0deg);
-        opacity: 1;
-        filter: blur(0);
-    }
-}
 
 .btn {
     padding: 12px 25px;
@@ -681,32 +659,24 @@ body {
     font-weight: 900;
 }
 
-/* Dynamic positioning handled by JS */
-.player-area {
-    /* base styles already present */
-}
 
-/* Responsive adjustments */
-@media (max-width: 800px) {
+@media (max-width: 800px) and (min-width: 769px) {
     :root {
-        --card-width: 60px;
-        --card-height: 90px;
+        --card-width: 80px;
+        --card-height: 120px;
+        --card-scale: 0.9;
     }
 
     .card .value {
-        font-size: 1.5rem;
+        font-size: 1.8rem;
     }
 
     .hand .card {
-        margin-left: -35px;
+        margin-left: -40px;
     }
 
     .player-area {
-        transform: scale(0.8);
-    }
-
-    .player-0 {
-        transform: translateX(-50%) scale(1.2);
+        transform: scale(0.9);
     }
 }
 
