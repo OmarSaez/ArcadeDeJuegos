@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNO Arcade - Premium Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+</head>
+
+<body>
+    <!-- Screen: Register Nickname -->
+    <div id="screen-nickname" class="overlay">
+        <div class="menu-card">
+            <h1>UNO Arcade</h1>
+            <p>Ingresa tu nombre para entrar al arcade</p>
+            <input type="text" id="nickname-input" placeholder="Tu Apodo..." maxlength="12">
+            <button id="btn-save-nickname" class="btn">Continuar</button>
+        </div>
+    </div>
+
+    <!-- Screen: Main Menu -->
+    <div id="screen-menu" class="overlay hidden">
+        <div class="menu-card">
+            <h2 id="welcome-text">¡Hola!</h2>
+            <div class="menu-buttons">
+                <button id="btn-create" class="btn">Crear Partida</button>
+                <button id="btn-join-view" class="btn">Unirse a Partida</button>
+                <button id="btn-back" class="btn secondary">Volver al Arcade</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen: Join Game -->
+    <div id="screen-join" class="overlay hidden">
+        <div class="menu-card">
+            <h2>Unirse a Partida</h2>
+            <p>Introduce el código de 4 dígitos</p>
+            <input type="text" id="join-code-input" placeholder="CÓDIGO" maxlength="4"
+                style="text-align: center; font-size: 2rem; letter-spacing: 10px;">
+            <div id="join-status" class="status-msg hidden"></div>
+            <div class="menu-buttons">
+                <button id="btn-join-action" class="btn">Conectar</button>
+                <button id="btn-back-menu-join" class="btn secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen: Lobby -->
+    <div id="screen-lobby" class="overlay hidden">
+        <div class="menu-card lobby-card">
+            <h2>Sala de Espera</h2>
+            <div class="game-code-area">
+                Código de la sala: <span id="display-game-code">----</span>
+            </div>
+            <div class="player-list-container">
+                <h3>Jugadores (<span id="player-count">0</span>/10)</h3>
+                <ul id="lobby-player-list">
+                    <!-- Players will appear here -->
+                </ul>
+            </div>
+            <div id="host-controls" class="hidden">
+                <button id="btn-start-game" class="btn uno-btn">Comenzar Juego</button>
+            </div>
+            <p id="client-wait-msg" class="hidden">Esperando a que el host inicie...</p>
+            <button id="btn-leave-lobby" class="btn secondary">Abandonar</button>
+        </div>
+    </div>
+
+    <!-- Game Container (Hidden until start) -->
+    <div id="game-container" class="hidden">
+        <div class="table">
+            <div id="discard-pile" class="pile">
+                <!-- Current top card will be here -->
+            </div>
+            <div id="draw-pile" class="pile deck">
+                <div class="card black back">
+                    <div class="card-inner">
+                        <div class="center-oval">
+                            <span class="value" style="font-size: 1.1rem; transform: rotate(25deg);">UNO</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Turn Indicator Moved Here -->
+            <div class="current-turn-info">
+                Turno de: <span id="current-player-name">Jugador 1</span>
+            </div>
+        </div>
+
+        <div id="players-container">
+            <!-- Players will be dynamically generated -->
+        </div>
+
+        <div id="ui-layer">
+            <button id="draw-btn" class="btn">Robar Carta</button>
+            <button id="uno-btn" class="btn uno-btn">¡UNO!</button>
+        </div>
+    </div>
+
+    <!-- Win Screen -->
+    <div id="screen-win" class="overlay hidden">
+        <div class="menu-card">
+            <h2 id="winner-msg">¡Has Ganado!</h2>
+            <p id="winner-name">Nombre del Jugador</p>
+            <div class="menu-buttons">
+                <button id="btn-play-again" class="btn uno-btn">Nueva Partida</button>
+                <button id="btn-back-arcade" class="btn secondary">Volver al Arcade</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Color Picker Modal for Wild Cards -->
+    <div id="color-picker" class="modal hidden">
+        <div class="modal-content">
+            <h3>Elige un color</h3>
+            <div class="color-options">
+                <div class="color-opt red" data-color="red"></div>
+                <div class="color-opt blue" data-color="blue"></div>
+                <div class="color-opt green" data-color="green"></div>
+                <div class="color-opt yellow" data-color="yellow"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+
+</html>
