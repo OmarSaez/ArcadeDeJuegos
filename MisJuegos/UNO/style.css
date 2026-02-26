@@ -396,6 +396,11 @@ body {
     z-index: 5;
 }
 
+.player-area.is-me {
+    z-index: 50;
+    /* Ensure local player is always on top of other players */
+}
+
 .player-name {
     background: rgba(0, 0, 0, 0.6);
     padding: 5px 15px;

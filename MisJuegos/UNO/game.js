@@ -201,6 +201,8 @@ class Game {
             firstCard = this.deck.pop();
         }
         this.discardPile.push(firstCard);
+        // Randomize starting player
+        this.currentPlayerIdx = Math.floor(Math.random() * this.players.length);
         net.broadcast({ type: 'START_GAME', gameState: this.getState() });
         this.render();
     }
@@ -301,7 +303,7 @@ class Game {
                 playerEl.id = `player-area-${player.id}`;
                 container.appendChild(playerEl);
             }
-            playerEl.className = `player-area player-${idx}`;
+            playerEl.className = idx === 0 ? `player-area player-${idx} is-me` : `player-area player-${idx}`;
 
             const angle = (idx / orderedPlayers.length) * 360;
             const radius = 35;
