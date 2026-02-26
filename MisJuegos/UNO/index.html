@@ -20,6 +20,8 @@
             <p>Ingresa tu nombre para entrar al arcade</p>
             <input type="text" id="nickname-input" placeholder="Tu Apodo..." maxlength="12">
             <button id="btn-save-nickname" class="btn">Continuar</button>
+            <button id="btn-back-arcade-init" class="btn secondary" style="margin-top: 10px; width: 100%;">Volver al
+                Arcade</button>
         </div>
     </div>
 
@@ -63,11 +65,13 @@
                     <!-- Players will appear here -->
                 </ul>
             </div>
-            <div id="host-controls" class="hidden">
-                <button id="btn-start-game" class="btn uno-btn">Comenzar Juego</button>
+            <div class="menu-buttons">
+                <div id="host-controls" class="hidden">
+                    <button id="btn-start-game" class="btn uno-btn">Comenzar Juego</button>
+                </div>
+                <p id="client-wait-msg" class="hidden">Esperando a que el host inicie...</p>
+                <button id="btn-leave-lobby" class="btn secondary">Abandonar</button>
             </div>
-            <p id="client-wait-msg" class="hidden">Esperando a que el host inicie...</p>
-            <button id="btn-leave-lobby" class="btn secondary">Abandonar</button>
         </div>
     </div>
 
@@ -102,11 +106,17 @@
         </div>
     </div>
 
-    <!-- Win Screen -->
     <div id="screen-win" class="overlay hidden">
-        <div class="menu-card">
+        <div class="menu-card win-card">
             <h2 id="winner-msg">¡Has Ganado!</h2>
             <p id="winner-name">Nombre del Jugador</p>
+            <div id="game-results" class="results-area">
+                <p>Duración: <span id="game-duration">00:00</span></p>
+                <p>Cartas Lanzadas: <span id="total-played">0</span></p>
+                <div id="player-stats-list" class="stats-list">
+                    <!-- Stat lines will be here -->
+                </div>
+            </div>
             <div class="menu-buttons">
                 <button id="btn-play-again" class="btn uno-btn">Nueva Partida</button>
                 <button id="btn-back-arcade" class="btn secondary">Volver al Arcade</button>

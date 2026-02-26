@@ -412,10 +412,46 @@ body {
 .hand {
     display: flex;
     justify-content: center;
+    max-width: 150px;
+    /* Constrain others' hands */
+}
+
+.hand.my-hand {
+    max-width: 85vw;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 15px 50px;
+    /* Added horizontal padding to prevent clipping first/last cards */
+    scrollbar-width: thin;
+    scrollbar-color: var(--uno-yellow) rgba(255, 255, 255, 0.1);
+    justify-content: flex-start;
+    /* Changed from center to prevent left-side clipping */
+}
+
+/* Custom Scrollbar */
+.hand.my-hand::-webkit-scrollbar {
+    height: 6px;
+}
+
+.hand.my-hand::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.hand.my-hand::-webkit-scrollbar-thumb {
+    background: var(--uno-yellow);
+    border-radius: 10px;
 }
 
 .hand .card {
-    margin-left: -50px;
+    margin-left: -55px;
+    /* High overlap for satellites */
+    flex-shrink: 0;
+}
+
+.hand.my-hand .card {
+    margin-left: -45px;
+    /* Better spacing for owner */
 }
 
 .hand .card:first-child {
@@ -447,6 +483,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    z-index: 1000;
+    /* Ensure buttons are above cards */
 }
 
 @media (max-width: 768px) {
@@ -501,6 +539,52 @@ body {
             filter: blur(0);
         }
     }
+
+    .menu-buttons {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .menu-buttons .btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+    }
+}
+
+/* Win Screen Stats Styling */
+.results-area {
+    margin: 15px 0;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    font-size: 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.results-area p {
+    margin: 5px 0;
+    color: var(--uno-yellow);
+    font-weight: 700;
+}
+
+.stats-list {
+    margin-top: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.win-card {
+    min-width: 320px;
 }
 
 .uno-btn.uno-active {

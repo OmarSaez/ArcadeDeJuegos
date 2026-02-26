@@ -168,7 +168,8 @@ class Game {
             ...p,
             hand: [],
             isMe: String(p.id) === String(net.myId),
-            unoCalled: false
+            unoCalled: false,
+            totalDrawn: 0
         }));
         this.deck = [];
         this.discardPile = [];
@@ -179,6 +180,9 @@ class Game {
         this.hasAnimated = false;
         this.gameover = false;
         this.prevHandSizes = {};
+        this.drawAccumulator = 0;
+        this.totalPlayed = 0;
+        this.startTime = Date.now();
 
         if (net.isHost && !initialState) {
             this.initNewGame();
@@ -242,7 +246,10 @@ class Game {
             direction: this.direction,
             selectedColor: this.selectedColor,
             justDrawnCardIdx: this.justDrawnCardIdx,
-            gameover: this.gameover
+            gameover: this.gameover,
+            drawAccumulator: this.drawAccumulator,
+            totalPlayed: this.totalPlayed,
+            startTime: this.startTime
         };
     }
 
@@ -259,13 +266,11 @@ class Game {
         this.selectedColor = state.selectedColor;
         this.justDrawnCardIdx = state.justDrawnCardIdx;
         this.gameover = state.gameover;
+        this.drawAccumulator = state.drawAccumulator || 0;
+        this.totalPlayed = state.totalPlayed || 0;
+        this.startTime = state.startTime || Date.now();
 
-        if (this.gameover) {
-            const winner = this.players.find(p => p.hand.length === 0);
-            if (winner) this.showWinScreen(winner);
-        } else {
-            this.render();
-        }
+        this.render();
     }
 
     animateDealing() {
@@ -338,6 +343,11 @@ class Game {
                 handEl = document.createElement('div');
                 handEl.className = 'hand';
                 playerEl.appendChild(handEl);
+            }
+            if (player.isMe) {
+                handEl.classList.add('my-hand');
+            } else {
+                handEl.classList.remove('my-hand');
             }
 
             const prevSize = this.prevHandSizes[player.id] || 0;
@@ -412,7 +422,10 @@ class Game {
         if (drawBtn) {
             drawBtn.disabled = !isMyTurn || this.gameover;
             drawBtn.style.opacity = (isMyTurn && !this.gameover) ? "1" : "0.5";
-            drawBtn.innerText = (isMyTurn && this.justDrawnCardIdx !== -1) ? "Pasar Turno" : "Robar Carta";
+            let text = "Robar Carta";
+            if (isMyTurn && this.justDrawnCardIdx !== -1) text = "Pasar Turno";
+            else if (this.drawAccumulator > 0) text = `Comer +${this.drawAccumulator}`;
+            drawBtn.innerText = text;
         }
 
         // UNO Button Logic: High tension
@@ -428,6 +441,14 @@ class Game {
                 unoBtn.classList.add('uno-active');
             } else {
                 unoBtn.classList.remove('uno-active');
+            }
+        }
+
+        if (this.gameover) {
+            const winner = this.players.find(p => p.hand.length === 0);
+            const winScreen = document.getElementById('screen-win');
+            if (winner && winScreen.classList.contains('hidden')) {
+                this.showWinScreen(winner);
             }
         }
     }
@@ -455,6 +476,12 @@ class Game {
 
     canPlay(card) {
         const top = this.discardPile[this.discardPile.length - 1];
+
+        // If there is a draw pending, you can ONLY play another draw card to stack it
+        if (this.drawAccumulator > 0) {
+            return (card.accion === ACTIONS.DRAW2 || card.accion === ACTIONS.WILD_DRAW4);
+        }
+
         const currentMatchColor = this.selectedColor || top.color;
         if (card.color === 'black') return true;
         if (card.color === currentMatchColor) return true;
@@ -502,6 +529,7 @@ class Game {
             this.discardPile.push(card);
             this.selectedColor = action.color || null;
             this.justDrawnCardIdx = -1;
+            this.totalPlayed++;
 
             if (player.hand.length !== 1) player.unoCalled = false;
 
@@ -517,22 +545,27 @@ class Game {
                 if (this.players.length === 2) skipNext = true;
                 else this.direction *= -1;
             } else if (card.accion === ACTIONS.DRAW2) {
-                this.forceDraw(this.nextPlayerIdx(), 2);
-                skipNext = true;
+                this.drawAccumulator += 2;
             } else if (card.accion === ACTIONS.WILD_DRAW4) {
-                this.forceDraw(this.nextPlayerIdx(), 4);
-                skipNext = true;
+                this.drawAccumulator += 4;
             }
 
             this.moveTurn();
             if (skipNext) this.moveTurn();
             this.syncState();
         } else if (action.type === 'DRAW') {
-            if (this.deck.length === 0) this.reshuffleDiscardIntoDeck();
-            const card = this.deck.pop();
-            player.hand.push(card);
-            player.unoCalled = false;
-            this.justDrawnCardIdx = player.hand.length - 1;
+            if (this.drawAccumulator > 0) {
+                this.forceDraw(this.players.indexOf(player), this.drawAccumulator);
+                this.drawAccumulator = 0;
+                this.moveTurn();
+            } else {
+                if (this.deck.length === 0) this.reshuffleDiscardIntoDeck();
+                const card = this.deck.pop();
+                player.hand.push(card);
+                player.totalDrawn++;
+                player.unoCalled = false;
+                this.justDrawnCardIdx = player.hand.length - 1;
+            }
             this.syncState();
         } else if (action.type === 'PASS') {
             this.justDrawnCardIdx = -1;
@@ -545,6 +578,7 @@ class Game {
         for (let i = 0; i < count; i++) {
             if (this.deck.length === 0) this.reshuffleDiscardIntoDeck();
             this.players[playerIdx].hand.push(this.deck.pop());
+            this.players[playerIdx].totalDrawn++;
         }
         this.players[playerIdx].unoCalled = false;
     }
@@ -569,6 +603,24 @@ class Game {
         const msg = winner.isMe ? "¡HAS GANADO!" : `¡${winner.nickname} ha ganado!`;
         document.getElementById('winner-msg').innerText = msg;
         document.getElementById('winner-name').innerText = winner.nickname;
+
+        // Stats calculation
+        const durationSec = Math.floor((Date.now() - this.startTime) / 1000);
+        const mins = Math.floor(durationSec / 60).toString().padStart(2, '0');
+        const secs = (durationSec % 60).toString().padStart(2, '0');
+
+        document.getElementById('game-duration').innerText = `${mins}:${secs}`;
+        document.getElementById('total-played').innerText = this.totalPlayed;
+
+        const statsList = document.getElementById('player-stats-list');
+        statsList.innerHTML = '';
+        this.players.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'stat-item';
+            div.innerHTML = `<span>${p.nickname}:</span> <span>${p.totalDrawn} cartas comidas</span>`;
+            statsList.appendChild(div);
+        });
+
         showScreen('screen-win');
     }
 }
@@ -610,6 +662,8 @@ document.getElementById('draw-btn').onclick = () => {
 document.getElementById('uno-btn').onclick = () => {
     if (window.game) window.game.sendAction({ type: 'UNO_CALL' });
 };
+const ARCADE_URL = 'https://omarsaez.github.io/ArcadeDeJuegos/';
+
 document.getElementById('btn-play-again').onclick = () => {
     if (net.isHost) {
         window.game = new Game(net.playersReady);
@@ -619,11 +673,12 @@ document.getElementById('btn-play-again').onclick = () => {
         alert("Eperando a que el host inicie una nueva partida...");
     }
 };
-document.getElementById('btn-back-arcade').onclick = () => location.reload();
+document.getElementById('btn-back-arcade').onclick = () => location.href = ARCADE_URL;
+document.getElementById('btn-back-arcade-init').onclick = () => location.href = ARCADE_URL;
 
 const colorOpts = document.querySelectorAll('.color-opt');
 colorOpts.forEach(opt => { opt.onclick = () => { window.game.selectColor(opt.getAttribute('data-color')); }; });
 
 document.getElementById('btn-back-menu-join').onclick = () => showScreen('screen-menu');
 document.getElementById('btn-leave-lobby').onclick = () => location.reload();
-document.getElementById('btn-back').onclick = () => alert("Volviendo al arcade...");
+document.getElementById('btn-back').onclick = () => location.href = ARCADE_URL;
