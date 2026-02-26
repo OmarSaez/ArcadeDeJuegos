@@ -273,14 +273,14 @@ class Game {
         this.hasAnimated = true;
         const cards = document.querySelectorAll('.card');
         cards.forEach((card, i) => {
-            card.style.animationDelay = `${i * 0.05}s`;
-            card.classList.add('dealing');
+            card.style.animationDelay = `${i * 0.04}s`;
+            card.classList.add('drawing');
         });
     }
 
     render() {
         const container = document.getElementById('players-container');
-        container.innerHTML = '';
+        // Do NOT wipe container, we will update/reuse player areas
         const myPlayerIndex = this.players.findIndex(p => p.isMe);
         const myIndex = myPlayerIndex === -1 ? 0 : myPlayerIndex;
 
@@ -290,7 +290,12 @@ class Game {
         }
 
         orderedPlayers.forEach((player, idx) => {
-            const playerEl = document.createElement('div');
+            let playerEl = document.getElementById(`player-area-${player.id}`);
+            if (!playerEl) {
+                playerEl = document.createElement('div');
+                playerEl.id = `player-area-${player.id}`;
+                container.appendChild(playerEl);
+            }
             playerEl.className = `player-area player-${idx}`;
 
             const angle = (idx / orderedPlayers.length) * 360;
@@ -299,47 +304,79 @@ class Game {
             playerEl.style.top = `${50 + radius * Math.sin((angle + 90) * Math.PI / 180)}%`;
             playerEl.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
 
-            const nameEl = document.createElement('div');
-            nameEl.className = 'player-name';
+            let nameEl = playerEl.querySelector('.player-name');
+            if (!nameEl) {
+                nameEl = document.createElement('div');
+                nameEl.className = 'player-name';
+                playerEl.appendChild(nameEl);
+            }
             nameEl.innerText = `${player.nickname} (${player.hand.length})`;
 
             if (this.players[this.currentPlayerIdx].id === player.id) {
                 nameEl.style.color = 'var(--uno-yellow)';
                 nameEl.style.boxShadow = '0 0 15px var(--uno-yellow)';
+            } else {
+                nameEl.style.color = 'white';
+                nameEl.style.boxShadow = 'none';
             }
 
+
+            let badge = playerEl.querySelector('.uno-badge');
             if (player.unoCalled) {
-                const badge = document.createElement('div');
-                badge.className = 'uno-badge';
-                badge.innerText = '¡UNO!';
-                playerEl.appendChild(badge);
+                if (!badge) {
+                    badge = document.createElement('div');
+                    badge.className = 'uno-badge';
+                    badge.innerText = '¡UNO!';
+                    playerEl.appendChild(badge);
+                }
+            } else if (badge) {
+                badge.remove();
             }
 
-            playerEl.appendChild(nameEl);
-            const handEl = document.createElement('div');
-            handEl.className = 'hand';
+            let handEl = playerEl.querySelector('.hand');
+            if (!handEl) {
+                handEl = document.createElement('div');
+                handEl.className = 'hand';
+                playerEl.appendChild(handEl);
+            }
 
             const prevSize = this.prevHandSizes[player.id] || 0;
+            const currentSize = player.hand.length;
+
+            // FIX: If cards were removed (played), we MUST re-render or update content 
+            // since we don't know which index was removed. Wipe is safest and fast.
+            if (currentSize < handEl.children.length) {
+                handEl.innerHTML = '';
+            }
 
             player.hand.forEach((card, cardIdx) => {
-                const cardEl = card.render();
+                let cardEl = handEl.children[cardIdx];
 
-                // Animate if it's a newly drawn card (but not during initial deal animation)
-                if (this.hasAnimated && cardIdx >= prevSize) {
-                    cardEl.classList.add('drawing');
-                    cardEl.style.animationDelay = `${(cardIdx - prevSize) * 0.1}s`;
-                }
+                // Only create new card if it doesn't exist
+                if (!cardEl) {
+                    cardEl = card.render();
+                    cardEl.dataset.cardId = `${card.color}-${card.tipo}-${card.value}`;
 
-                if (!player.isMe) {
-                    cardEl.classList.add('back');
-                    cardEl.innerHTML = `<div class="card-inner"><div class="center-oval"><span class="value">UNO</span></div></div>`;
+                    // Animate if it's a newly drawn card
+                    if (this.hasAnimated && (cardIdx >= prevSize)) {
+                        cardEl.classList.add('drawing');
+                        cardEl.style.animationDelay = `${(cardIdx - prevSize) * 0.1}s`;
+                    }
+
+                    if (!player.isMe) {
+                        cardEl.classList.add('back');
+                        cardEl.innerHTML = `<div class="card-inner"><div class="center-oval"><span class="value">UNO</span></div></div>`;
+                    } else {
+                        cardEl.onclick = () => this.tryPlayCard(cardIdx);
+                    }
+                    handEl.appendChild(cardEl);
                 } else {
-                    cardEl.onclick = () => this.tryPlayCard(cardIdx);
+                    // Update existing card index if it's me (for onclick)
+                    if (player.isMe) {
+                        cardEl.onclick = () => this.tryPlayCard(cardIdx);
+                    }
                 }
-                handEl.appendChild(cardEl);
             });
-            playerEl.appendChild(handEl);
-            container.appendChild(playerEl);
         });
 
         const discardEl = document.getElementById('discard-pile');
@@ -348,10 +385,15 @@ class Game {
 
         if (topCard) {
             const cardEl = topCard.render();
-            // If it's a new card (different from current DOM), add animation
-            if (!lastCardInDOM || lastCardInDOM.innerText !== cardEl.innerText || lastCardInDOM.className !== cardEl.className) {
+            const currentCardId = `${topCard.color}-${topCard.tipo}-${topCard.value}`;
+
+            // Compare IDs ignoring classes to prevent redundant animations when drawing
+            const lastCardId = lastCardInDOM ? (lastCardInDOM.dataset.cardId || "") : "";
+
+            if (lastCardId !== currentCardId) {
                 cardEl.classList.add('playing');
             }
+            cardEl.dataset.cardId = currentCardId;
 
             if (this.selectedColor) {
                 cardEl.style.borderColor = `var(--uno-${this.selectedColor})`;
@@ -373,13 +415,16 @@ class Game {
             drawBtn.innerText = (isMyTurn && this.justDrawnCardIdx !== -1) ? "Pasar Turno" : "Robar Carta";
         }
 
-        // UNO Button Logic
+        // UNO Button Logic: High tension
         const unoBtn = document.getElementById('uno-btn');
         if (unoBtn) {
-            const anyoneNeedsUno = this.players.some(p => p.hand.length === 1 && !p.unoCalled);
-            const iNeedToCallUno = (me && me.hand.length === 2 && isMyTurn);
+            // PULSE only if:
+            // 1. Someone ELSE has 1 card AND hasn't called it (I can punish them)
+            // 2. I have 1 card AND haven't called it yet (Action required)
+            const othersNeedUno = this.players.some(p => !p.isMe && p.hand.length === 1 && !p.unoCalled);
+            const iNeedToCallUno = (me && me.hand.length === 1 && !me.unoCalled);
 
-            if (anyoneNeedsUno || iNeedToCallUno) {
+            if (othersNeedUno || iNeedToCallUno) {
                 unoBtn.classList.add('uno-active');
             } else {
                 unoBtn.classList.remove('uno-active');
@@ -429,6 +474,9 @@ class Game {
 
     executeAction(action, senderId) {
         if (this.gameover) return;
+
+        // Store current hand sizes to calculate which cards are new for animations
+        this.players.forEach(p => { this.prevHandSizes[p.id] = p.hand.length; });
 
         if (action.type === 'UNO_CALL') {
             const caller = this.players.find(p => String(p.id) === String(senderId));
