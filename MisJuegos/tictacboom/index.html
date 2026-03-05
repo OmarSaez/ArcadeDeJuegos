@@ -113,10 +113,12 @@
             height: 40px;
             background: #8e44ad;
             position: absolute;
-            top: -30px;
+            top: -40px;
             left: 50%;
             transform: translateX(-50%);
             z-index: -1;
+            transform-origin: bottom;
+            /* Se consume hacia abajo */
         }
 
         .spark {
@@ -125,11 +127,13 @@
             background: var(--accent);
             border-radius: 50%;
             position: absolute;
+            /* Se posicionará dinámicamente con JS */
             top: -45px;
             left: 50%;
             transform: translateX(-50%);
             animation: flicker 0.1s infinite;
             display: none;
+            z-index: 2;
         }
 
         @keyframes flicker {
@@ -140,7 +144,7 @@
 
             100% {
                 opacity: 0.5;
-                transform: translateX(-50%) scale(1.2);
+                transform: translateX(-50%) scale(1.5);
             }
         }
 
@@ -216,25 +220,35 @@
             color: #c0392b;
         }
 
+        .remote-typing-error {
+            animation: shake-input 0.3s;
+            border-color: #c0392b !important;
+            background: rgba(192, 57, 43, 0.2) !important;
+        }
+
         @keyframes explode-anim {
             0% {
                 transform: scale(1);
                 opacity: 1;
+                filter: brightness(1);
             }
 
-            50% {
-                transform: scale(3) rotate(20deg);
-                opacity: 0.8;
+            10% {
+                transform: scale(1.2);
+                filter: brightness(5);
             }
 
             100% {
-                transform: scale(10) rotate(-20deg);
+                transform: scale(15);
                 opacity: 0;
+                filter: brightness(10);
             }
         }
 
         .exploding {
-            animation: explode-anim 0.6s forwards ease-out;
+            animation: explode-anim 0.5s forwards cubic-bezier(0.1, 0.8, 0.3, 1);
+            pointer-events: none;
+            /* Prevenir que bloquee clicks */
         }
 
         @keyframes screen-shake-hard {
@@ -242,16 +256,40 @@
                 transform: translate(0, 0) rotate(0);
             }
 
-            25% {
-                transform: translate(-20px, 20px) rotate(-5deg);
+            10% {
+                transform: translate(-30px, -20px) rotate(-5deg);
+            }
+
+            20% {
+                transform: translate(30px, 20px) rotate(5deg);
+            }
+
+            30% {
+                transform: translate(-30px, 10px) rotate(-3deg);
+            }
+
+            40% {
+                transform: translate(30px, -10px) rotate(3deg);
             }
 
             50% {
-                transform: translate(20px, -20px) rotate(5deg);
+                transform: translate(-20px, 30px) rotate(-5deg);
             }
 
-            75% {
-                transform: translate(-20px, -10px) rotate(-5deg);
+            60% {
+                transform: translate(20px, -30px) rotate(5deg);
+            }
+
+            70% {
+                transform: translate(-10px, 20px) rotate(-3deg);
+            }
+
+            80% {
+                transform: translate(10px, -20px) rotate(3deg);
+            }
+
+            90% {
+                transform: translate(-5px, -5px) rotate(1deg);
             }
 
             100% {
@@ -317,7 +355,8 @@
             justify-content: center;
             width: 100%;
             height: 100%;
-            overflow-y: auto;
+            overflow: hidden;
+            /* Evitar scrollbars por la explosión */
         }
 
         @media (max-width: 768px) {
@@ -445,6 +484,64 @@
             border-bottom: 1px solid #444;
             padding-bottom: 2px;
         }
+
+        /* DIFFICULTY SELECTOR */
+        #diff-menu {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2c3e50;
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            width: 280px;
+            padding: 8px;
+            z-index: 100;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            margin-bottom: 15px;
+        }
+
+        .diff-option {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+            text-align: left;
+            margin-bottom: 4px;
+        }
+
+        .diff-option:hover {
+            background: rgba(241, 196, 15, 0.1);
+        }
+
+        .diff-option.active {
+            background: rgba(241, 196, 15, 0.2);
+            border: 1px solid var(--accent);
+        }
+
+        .diff-label {
+            font-weight: bold;
+            display: block;
+            font-size: 1rem;
+        }
+
+        .diff-time {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .check-mark {
+            color: var(--accent);
+            font-weight: bold;
+            display: none;
+        }
+
+        .active .check-mark {
+            display: block;
+        }
     </style>
 </head>
 
@@ -474,8 +571,21 @@
     <div id="screen-lobby" class="screen hidden">
         <h2>SALA: <span id="lobby-code" style="color:var(--accent)">----</span></h2>
         <div id="lobby-list" style="margin: 20px;"></div>
-        <div id="host-controls" class="hidden">
-            <button class="btn" onclick="startGame()">COMENZAR PARTIDA</button>
+        <div id="host-controls" class="hidden" style="width: 100%; max-width: 320px; position: relative;">
+            <div style="position: relative; width: 100%;">
+                <button class="btn"
+                    style="background:#34495e; border: 1px solid var(--accent); width: 100%; margin: 5px 0;"
+                    onclick="toggleDiffMenu()" id="btn-select-time">
+                    Seleccionar tiempo: Fácil
+                </button>
+                <div id="diff-menu" class="hidden">
+                    <!-- Javascript will fill this -->
+                </div>
+            </div>
+            <button class="btn" style="width: 100%; margin: 5px 0;" onclick="startGame()">COMENZAR PARTIDA</button>
+        </div>
+        <div id="client-info" class="hidden" style="margin-top: 10px; color: #94a3b8;">
+            Tiempo de ronda: <span id="client-diff-label" style="color: var(--accent); font-weight: bold;">Fácil</span>
         </div>
         <p id="wait-msg">Esperando al líder...</p>
     </div>
@@ -497,6 +607,14 @@
         <div id="input-area" class="hidden">
             <input type="text" id="word-input" placeholder="Escribe la palabra...">
             <button class="btn" onclick="submitWord()">ENVIAR</button>
+        </div>
+
+        <!-- Live Typing Display for others -->
+        <div id="remote-typing-container" class="hidden"
+            style="margin: 10px 0; min-height: 50px; width: 100%; max-width: 400px; display: flex; justify-content: center;">
+            <div id="remote-typing-text"
+                style="font-size: 1.4rem; text-transform: uppercase; letter-spacing: 2px; color: #fff; background: rgba(255,255,255,0.1); padding: 8px 25px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.3); min-width: 100px; text-align: center;">
+            </div>
         </div>
 
         <div id="player-list"></div>
@@ -560,8 +678,18 @@
             timer: 0,
             usedWords: new Set(),
             sessionWords: [],
-            gameStartTime: 0
+            gameStartTime: 0,
+            difficultyTime: 120000 // Default: Fácil (120s)
         };
+
+        const DIFFICULTIES = {
+            ULTRA_EASY: { label: "Ultra fácil", time: 180000, text: "3 minutos" },
+            EASY: { label: "Fácil", time: 120000, text: "2 minutos" },
+            MEDIUM: { label: "Medio", time: 90000, text: "1 minuto y 30 segundos" },
+            HARD: { label: "Difícil", time: 60000, text: "1 minuto" },
+            ULTRA_HARD: { label: "Ultra difícil", time: 30000, text: "30 segundos" }
+        };
+        let currentDiffKey = 'EASY';
 
         // Diccionario (Simplificado)
         // Diccionario (Simplificado - Nivel Fácil/Medio)
@@ -591,7 +719,7 @@
             peer = new Peer(Math.random().toString(36).substr(2, 4).toUpperCase());
             peer.on('open', id => {
                 myId = id; isHost = true;
-                players = [{ id, name: myName, lives: 2 }]; // 2 Vidas
+                players = [{ id, name: myName, lives: 2, timeRemaining: 0 }]; // 2 Vidas
                 setupHost();
                 updateLobby();
                 show('screen-lobby');
@@ -604,7 +732,11 @@
             document.getElementById('wait-msg').classList.add('hidden');
             peer.on('connection', conn => {
                 clientConns[conn.peer] = conn;
-                conn.on('open', () => conn.send({ type: 'UPDATE_PLAYERS', list: players }));
+                conn.on('open', () => {
+                    conn.send({ type: 'UPDATE_PLAYERS', list: players });
+                    // Also send current difficulty to new joiners
+                    conn.send({ type: 'UPDATE_DIFFICULTY', difficulty: currentDiffKey });
+                });
                 conn.on('data', data => handleHostData(conn.peer, data));
             });
         }
@@ -661,7 +793,7 @@
 
         function handleHostData(id, data) {
             if (data.type === 'LOGIN') {
-                players.push({ id, name: data.name, lives: 2 });
+                players.push({ id, name: data.name, lives: 2, timeRemaining: 0 });
                 broadcast({ type: 'UPDATE_PLAYERS', list: players });
             }
             else if (data.type === 'SUBMIT_WORD') {
@@ -679,6 +811,11 @@
                     passBomb();
                 }
             }
+            else if (data.type === 'TYPING') {
+                if (id === gameState.currentPlayerId) {
+                    broadcast({ type: 'TYPING', text: data.text, playerId: id });
+                }
+            }
         }
 
         function startGame() {
@@ -690,38 +827,53 @@
             nextRound();
         }
 
+        let lastTick = 0;
         function nextRound() {
             gameState.usedWords.clear();
             // New Syllable
             gameState.syllable = SYLLABLES[Math.floor(Math.random() * SYLLABLES.length)];
 
-            // Random Explosion Time (45s to 80s)
-            const duration = Math.random() * 35000 + 45000;
-            explosionTime = Date.now() + duration;
-            sentFast = false;
-            sentCritical = false;
+            // Fixed time from selected difficulty
+            const duration = gameState.difficultyTime;
+            players.forEach(p => {
+                p.timeRemaining = duration;
+            });
 
             broadcast({
                 type: 'NEW_TURN',
                 syllable: gameState.syllable,
-                playerId: gameState.currentPlayerId
+                playerId: gameState.currentPlayerId,
+                list: players
             });
 
             // Start Bomb Timer
             if (bombInterval) clearInterval(bombInterval);
+            lastTick = Date.now();
+            sentFast = false;
+            sentCritical = false;
+
             bombInterval = setInterval(() => {
-                const left = explosionTime - Date.now();
-                if (left <= 0) {
-                    clearInterval(bombInterval);
-                    explodeBomb();
-                } else if (left < 10000 && !sentCritical) {
-                    sentCritical = true;
-                    broadcast({ type: 'BOMB_UPDATE', status: 'CRITICAL' });
-                } else if (left < 18000 && !sentFast) {
-                    sentFast = true;
-                    broadcast({ type: 'BOMB_UPDATE', status: 'FAST' });
+                const now = Date.now();
+                const delta = now - lastTick;
+                lastTick = now;
+
+                const p = players.find(x => x.id === gameState.currentPlayerId);
+                if (p) {
+                    p.timeRemaining -= delta;
+                    if (p.timeRemaining <= 0) {
+                        p.timeRemaining = 0;
+                        clearInterval(bombInterval);
+                        explodeBomb();
+                    } else if (p.timeRemaining < gameState.difficultyTime * 0.2 && !sentCritical) {
+                        sentCritical = true;
+                        broadcast({ type: 'BOMB_UPDATE', status: 'CRITICAL', time: p.timeRemaining });
+                    } else if (p.timeRemaining < gameState.difficultyTime * 0.4 && !sentFast) {
+                        sentFast = true;
+                        broadcast({ type: 'BOMB_UPDATE', status: 'FAST', time: p.timeRemaining });
+                    }
+                    updateGameUI(); // Host updates local UI smoothly
                 }
-            }, 250);
+            }, 100);
         }
 
         function passBomb() {
@@ -734,8 +886,11 @@
             } while (players[idx].lives <= 0 && loops < players.length);
 
             gameState.currentPlayerId = players[idx].id;
+            lastTick = Date.now(); // Reset tick to avoid charging next player for transition time
+            sentFast = false; // Reset warning flags for the new player's time
+            sentCritical = false;
 
-            broadcast({ type: 'PASS_BOMB', newPlayerId: gameState.currentPlayerId });
+            broadcast({ type: 'PASS_BOMB', newPlayerId: gameState.currentPlayerId, list: players });
         }
 
         function explodeBomb() {
@@ -790,8 +945,11 @@
             }
             else if (data.type === 'NEW_TURN') {
                 show('screen-game');
-                document.getElementById('syllable-display').innerText = data.syllable;
+                const sd = document.getElementById('syllable-display');
+                sd.innerText = data.syllable;
+                sd.style.transform = "scale(1)"; // Reset tras explosión
                 document.getElementById('used-words-list').innerHTML = ''; // Clear List
+                players = data.list; // Sync initial times
                 updateTurn(data.playerId);
                 startTicking();
             }
@@ -803,37 +961,43 @@
                 list.insertBefore(div, list.firstChild);
             }
             else if (data.type === 'BOMB_UPDATE') {
-                const b = document.querySelector('.bomb-body');
-                b.classList.remove('ticking', 'fast-ticking', 'critical-ticking');
-
-                if (data.status === 'CRITICAL') b.classList.add('critical-ticking');
-                else if (data.status === 'FAST') b.classList.add('fast-ticking');
-                else b.classList.add('ticking');
+                const p = players.find(x => x.id === gameState.currentPlayerId);
+                if (p && data.time !== undefined) p.timeRemaining = data.time;
+                updateGameUI();
             }
             else if (data.type === 'REJECT_WORD') {
                 if (data.playerId === myId) {
                     const inp = document.getElementById('word-input');
                     inp.classList.add('input-error');
                     setTimeout(() => inp.classList.remove('input-error'), 400);
+                } else {
+                    const display = document.getElementById('remote-typing-text');
+                    display.classList.add('remote-typing-error');
+                    setTimeout(() => display.classList.remove('remote-typing-error'), 400);
                 }
             }
             else if (data.type === 'PASS_BOMB') {
+                players = data.list; // Sync remaining times
                 updateTurn(data.newPlayerId);
             }
             else if (data.type === 'EXPLOSION') {
                 const b = document.querySelector('.bomb-body');
+                stopTicking(); // Stop sound/spark but don't remove exploding class yet
                 b.classList.add('exploding');
                 document.body.classList.add('shake-screen');
-                document.body.style.background = 'white';
 
-                setTimeout(() => document.body.style.background = '#c0392b', 100);
+                // Narrative sequenced flash
+                document.body.style.background = 'black'; // Sudden darkness
+                setTimeout(() => document.body.style.background = 'white', 50); // Flash of light
+                setTimeout(() => document.body.style.background = '#c0392b', 150); // Intense red
+                setTimeout(() => document.body.style.background = 'black', 1000); // Fading to black
                 setTimeout(() => {
-                    document.body.style.background = '#2c3e50';
+                    document.body.style.background = '#2c3e50'; // Back to normal
                     document.body.classList.remove('shake-screen');
-                }, 2000);
+                }, 2500);
 
-                document.getElementById('syllable-display').innerText = "💥 BOOM 💥";
-                stopTicking();
+                document.getElementById('syllable-display').innerText = "💥💥 BOOM 💥💥";
+                document.getElementById('syllable-display').style.transform = "scale(1.5)";
             }
             else if (data.type === 'GAME_OVER') {
                 show('screen-results');
@@ -851,9 +1015,32 @@
 
                 startConfetti();
             }
+            else if (data.type === 'UPDATE_DIFFICULTY') {
+                currentDiffKey = data.difficulty;
+                gameState.difficultyTime = DIFFICULTIES[currentDiffKey].time;
+                const label = DIFFICULTIES[currentDiffKey].label;
+
+                if (isHost) {
+                    document.getElementById('btn-select-time').innerText = "Seleccionar tiempo: " + label;
+                    renderDiffOptions();
+                } else {
+                    document.getElementById('client-info').classList.remove('hidden');
+                    document.getElementById('client-diff-label').innerText = label;
+                }
+            }
+            else if (data.type === 'TYPING') {
+                if (data.playerId !== myId) {
+                    const container = document.getElementById('remote-typing-container');
+                    const textDisplay = document.getElementById('remote-typing-text');
+                    textDisplay.innerText = data.text;
+                    container.classList.toggle('hidden', data.text.trim() === '');
+                }
+            }
         }
 
+        let clientTimerInterval;
         function updateTurn(pid) {
+            gameState.currentPlayerId = pid;
             const p = players.find(x => x.id === pid);
             document.getElementById('turn-msg').innerText = "Turno de: " + (p ? p.name : '?');
 
@@ -865,23 +1052,113 @@
             } else {
                 document.getElementById('input-area').classList.add('hidden');
             }
+
+            // Sync: Hide live typing when turn starts
+            document.getElementById('remote-typing-container').classList.add('hidden');
+            document.getElementById('remote-typing-text').innerText = '';
+
+            // Client side timer simulation for smoother UI
+            if (clientTimerInterval) clearInterval(clientTimerInterval);
+
+            // Only non-hosts simulate time locally for smooth UI. 
+            // The Host already has the authoritative bombInterval running.
+            if (!isHost) {
+                clientTimerInterval = setInterval(() => {
+                    const activeP = players.find(x => x.id === gameState.currentPlayerId);
+                    if (activeP && activeP.timeRemaining > 0) {
+                        activeP.timeRemaining -= 100;
+                        updateGameUI();
+                    }
+                }, 100);
+            }
+
             updateGameUI();
+        }
+
+        function updateBombVisual(time) {
+            const b = document.querySelector('.bomb-body');
+            if (!b) return;
+            // No quitar 'exploding' si acabamos de explotar
+            if (b.classList.contains('exploding')) return;
+
+            b.classList.remove('ticking', 'fast-ticking', 'critical-ticking');
+
+            if (time < (gameState.difficultyTime * 0.2)) {
+                b.classList.add('critical-ticking');
+            } else if (time < (gameState.difficultyTime * 0.4)) {
+                b.classList.add('fast-ticking');
+            } else {
+                b.classList.add('ticking');
+            }
+
+            // Actualizar Mecha dinámicamente
+            const fuse = document.querySelector('.fuse');
+            const spark = document.getElementById('spark');
+            if (fuse && spark) {
+                // Porcentaje de tiempo restante (0 a 1)
+                const ratio = Math.max(0, time / gameState.difficultyTime);
+
+                // La mecha mide 40px originalmente. 
+                // Se escala de 1 a 0 hacia abajo.
+                fuse.style.transform = `translateX(-50%) scaleY(${ratio})`;
+
+                // La mecha empieza en top -40px y termina en 0px (borde de la bomba)
+                const sparkPos = -40 * ratio - 5;
+                spark.style.top = `${sparkPos}px`;
+            }
         }
 
         // UI Helpers
         function updateLobby() {
             const list = document.getElementById('lobby-list');
             list.innerHTML = players.map(p => `<div>${p.name}</div>`).join('');
+            if (isHost) renderDiffOptions();
+        }
+
+        function toggleDiffMenu() {
+            if (!isHost) return;
+            document.getElementById('diff-menu').classList.toggle('hidden');
+        }
+
+        function renderDiffOptions() {
+            const menu = document.getElementById('diff-menu');
+            if (!menu) return;
+            menu.innerHTML = Object.keys(DIFFICULTIES).map(key => {
+                const d = DIFFICULTIES[key];
+                return `
+                    <div class="diff-option ${key === currentDiffKey ? 'active' : ''}" onclick="selectDifficulty('${key}')">
+                        <div>
+                            <span class="diff-label">${d.label}</span>
+                            <span class="diff-time">${d.text}</span>
+                        </div>
+                        <span class="check-mark">✓</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectDifficulty(key) {
+            currentDiffKey = key;
+            gameState.difficultyTime = DIFFICULTIES[key].time;
+            broadcast({ type: 'UPDATE_DIFFICULTY', difficulty: key });
+            toggleDiffMenu();
         }
 
         function updateGameUI() {
             const list = document.getElementById('player-list');
-            list.innerHTML = players.map(p => `
+            list.innerHTML = players.map(p => {
+                const seconds = Math.max(0, Math.ceil((p.timeRemaining || 0) / 1000));
+                return `
                 <div class="player-card ${p.lives <= 0 ? 'dead' : ''} ${p.id === gameState.currentPlayerId ? 'active' : ''}">
-                    <div>${p.name}</div>
+                    <div style="font-weight:bold;">${p.name}</div>
                     <div class="lives">${'❤️'.repeat(p.lives)}</div>
+                    <div style="font-size: 1.2rem; font-weight: bold; margin-top:5px; color: ${seconds < 10 ? '#ef4444' : 'white'}">${seconds}s</div>
                 </div>
-            `).join('');
+            `}).join('');
+
+            // Update bomb visual state based on active player's time
+            const activeP = players.find(x => x.id === gameState.currentPlayerId);
+            if (activeP) updateBombVisual(activeP.timeRemaining);
         }
 
         function submitWord() {
@@ -896,11 +1173,15 @@
         // --- ANIMATIONS ---
         function startTicking() {
             document.getElementById('spark').style.display = 'block';
-            document.querySelector('.bomb-body').className = 'bomb-body ticking';
+            const b = document.querySelector('.bomb-body');
+            if (b) b.classList.remove('exploding'); // Forzar reset visual
         }
         function stopTicking() {
             document.getElementById('spark').style.display = 'none';
-            document.querySelector('.bomb-body').className = 'bomb-body';
+            const b = document.querySelector('.bomb-body');
+            if (b) {
+                b.classList.remove('ticking', 'fast-ticking', 'critical-ticking');
+            }
         }
 
         // --- CONFETTI ---
@@ -944,6 +1225,15 @@
         // Enter Key Support
         document.getElementById('word-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') submitWord();
+        });
+
+        document.getElementById('word-input').addEventListener('input', (e) => {
+            const text = e.target.value;
+            if (isHost) {
+                handleHostData(myId, { type: 'TYPING', text });
+            } else {
+                hostConn.send({ type: 'TYPING', text });
+            }
         });
     </script>
 </body>
