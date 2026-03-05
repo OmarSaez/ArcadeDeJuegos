@@ -408,33 +408,34 @@
 
             /* Top Bar Compact */
             #top-bar {
-                height: auto;
-                min-height: 50px;
-                padding: 10px;
-                flex-wrap: wrap;
-                /* Allow wrapping if needed */
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                height: 40px;
+                padding: 5px;
             }
 
             #top-bar>div {
-                gap: 10px !important;
+                gap: 5px !important;
+                font-size: 0.7rem;
             }
 
             #timer {
-                font-size: 1.2rem !important;
-            }
-
-            #game-room-code {
                 font-size: 1rem !important;
             }
 
             #word-display {
-                font-size: 1.2rem !important;
-                margin: 5px 0;
-                order: 3;
-                /* Move word to bottom of topbar if wrapped? No, keep center */
-                width: 100%;
-                /* If wrapped, take full line */
-                text-align: center;
+                font-size: 1rem !important;
+                letter-spacing: 2px;
+                width: auto;
+                background: none;
+                padding: 0;
+            }
+
+            #game-room-code,
+            #round-info {
+                font-size: 0.9rem !important;
             }
 
             /* Re-order top bar items for mobile using order if needed, but flex-wrap might suffice */
@@ -442,14 +443,6 @@
                Row 1: Room | Time | Round 
                Row 2: Word 
             */
-            #top-bar {
-                display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
-                grid-template-areas:
-                    "left right round"
-                    "word word word";
-                gap: 5px;
-            }
 
             #top-bar>div:nth-child(1) {
                 grid-area: left;
@@ -478,9 +471,8 @@
             /* Canvas: Full Width, Aspect Ratio Maintained */
             .canvas-wrapper {
                 width: 100%;
-                aspect-ratio: 4/3;
+                aspect-ratio: 3/4;
                 flex: none;
-                /* Do not stretch vertically, enforce ratio */
                 background: #ccc;
             }
 
@@ -499,8 +491,8 @@
             }
 
             .color-btn {
-                width: 25px;
-                height: 25px;
+                width: 20px;
+                height: 20px;
             }
 
             .tool-btn {
@@ -606,8 +598,8 @@
                 </div>
 
                 <div class="canvas-wrapper">
-                    <canvas id="main-canvas" width="800" height="600" style="position:absolute; z-index:1;"></canvas>
-                    <canvas id="temp-canvas" width="800" height="600"
+                    <canvas id="main-canvas" width="600" height="800" style="position:absolute; z-index:1;"></canvas>
+                    <canvas id="temp-canvas" width="600" height="800"
                         style="position:absolute; z-index:2; pointer-events:none;"></canvas>
                     <div id="input-layer" style="position:absolute; z-index:10; cursor:crosshair;"></div>
 
@@ -706,30 +698,44 @@
     <script>
         // --- CONSTANTES ---
         const WORDS_DB = [
-            // Originales (40)
+            // Objetos (Fáciles)
             "CASA", "PERRO", "GATO", "AUTO", "AVION", "SOL", "LUNA", "ARBOL", "FLOR", "MONTAÑA",
             "RIO", "MAR", "PEZ", "PAJARO", "MANZANA", "BANANA", "UVA", "PIZZA", "HAMBURGUESA", "HELADO",
             "FUTBOL", "BASQUET", "TENIS", "GUITARRA", "PIANO", "LIBRO", "LAPIZ", "SILLA", "MESA", "CAMA",
             "RELOJ", "GAFAS", "SOMBRERO", "ZAPATO", "CAMISA", "PANTALON", "VESTIDO", "ANILLO", "COLLAR", "CORAZON",
+            "BOTAS", "GORRA", "BOLSO", "PARAGUAS", "LLAVE", "VELA", "ESCOBA", "BALDE", "TIJERA", "REGLA",
+            "RADIO", "COFRE", "CARTA", "SOBRE", "DADO", "IMAN", "MARTILLO", "CLAVO", "HUERTO", "BOMBA",
 
-            // Animales
+            // Animales (Reconocibles)
             "CABALLO", "VACA", "CERDO", "OVEJA", "LEON", "TIGRE", "ELEFANTE", "JIRAFA", "MONO", "RATON",
             "CONEJO", "TORTUGA", "SERPIENTE", "DELFIN", "BALLENA", "TIBURON", "OSO", "PINGUINO", "GALLINA", "PATO",
+            "ARANA", "ABEJA", "MOSCA", "PULPO", "LORO", "CAMELLO", "RANA", "CISNE", "BUHO", "LOBO",
+            "ZORRO", "CARACOL", "CONEJO", "CABRA", "TOPITO", "ORUGA", "ERIZO", "PULGA", "MOSQUITO", "CANGREJO",
 
-            // Objetos cotidianos
-            "TELEFONO", "COMPUTADOR", "TELEVISION", "MOCHILA", "BOTELLA", "TAZA", "PLATO", "CUCHARA", "TENEDOR", "CUCHILLO",
-            "LLAVE", "PUERTA", "VENTANA", "ESPEJO", "CEPILLO", "JABON", "TOALLA", "BOLSO", "PARAGUAS", "LINTERN A",
-
-            // Comida y bebida
+            // Comida y Bebida
             "PAN", "QUESO", "HUEVO", "LECHE", "PASTA", "ARROZ", "SOPA", "ENSALADA", "PASTEL", "GALLETAS",
-            "CHOCOLATE", "CARAMELO", "CAFÉ", "TE", "JUGO",
+            "CHOCOLATE", "CARAMELO", "CAFÉ", "TE", "JUGO", "VINO", "AGUA", "SODA", "DONA", "TACO",
+            "CARNE", "POLLO", "PAPA", "TOMATE", "PERA", "KIWI", "LIMON", "NARANJA", "SANDIA", "CEREZA",
 
-            // Naturaleza y clima
+            // Naturaleza y Clima
             "NUBE", "LLUVIA", "NIEVE", "VIENTO", "RAYO", "TRUENO", "FUEGO", "HOJA", "SEMILLA", "PLAYA",
+            "DESIERTO", "VOLCAN", "ISLA", "CUEVA", "PIEDRA", "ARENA", "PASTO", "SELVA", "BOSQUE", "LAGO",
+            "PLANETA", "COMETA", "ESTRELLA", "UNIVERSO", "TIERRA", "MARTE", "HUELLA", "RAMA", "RAIZ", "TRONCO",
 
-            // Misceláneos fáciles de dibujar
-            "BICICLETA", "MOTO", "CAMION", "BARCO", "TREN",
-            "PELOTA", "COMETA", "GLOBO", "REGALO", "ESTRELLA"
+            // Deportes y Ocio
+            "PELOTA", "BATE", "RED", "ARCO", "PISCINA", "PATIN", "SKI", "BICI", "MOTO", "CAMION",
+            "TREN", "BARCO", "COHETE", "ANCLA", "FARO", "MAPA", "BRUJULA", "BANDERA", "TROFEO", "MEDALLA",
+            "COMETA", "GLOBO", "REGALO", "FIESTA", "TORTA", "BORDA", "CINE", "RADIO", "TELE", "FOTO",
+
+            // Partes del cuerpo y Ropa
+            "MANO", "PIE", "OJO", "BOCA", "NARIZ", "OREJA", "PELO", "DEDO", "CARA", "MUELA",
+            "BRAZO", "PIERNA", "LENGUA", "UNS", "PECHO", "PANTALON", "FALDA", "MEDIA", "SACO", "ABRIGO",
+            "BUFANDA", "GUANTE", "RELOJ", "LENTES", "CORONA", "CAPA", "CORBATA", "PIJAMA", "DISFRAZ", "MASCARA",
+
+            // Acciones (Fáciles de representar)
+            "CORRER", "SALTAR", "DORMIR", "COMER", "BEBER", "CAMINAR", "NADAR", "VOLAR", "LLORAR", "REIR",
+            "BAILAR", "CANTAR", "BAÑARSE", "VER", "OIR", "MIRAR", "GRITAR", "ABRAZAR", "BESAR", "PATEAR",
+            "PINTAR", "DIBUJAR", "ESPECULAR", "LEER", "ESCRIBIR", "LAVAR", "LIMPIAR", "COCINAR", "JUGAR", "PESCAR"
         ];
 
 
@@ -769,7 +775,8 @@
             state: 'LOBBY',
             currentWord: '',
             drawerIndex: 0,
-            timer: 0
+            timer: 0,
+            usedWords: [] // Track words used in current game
         };
         let turnInterval;
         // ==========================================
@@ -1011,6 +1018,7 @@
             gameState.state = 'GAME';
             gameState.round = 1;
             gameState.drawerIndex = -1; // Next will be 0
+            gameState.usedWords = []; // Reset banned words
 
             nextTurn();
         }
@@ -1029,9 +1037,19 @@
             broadcast({ type: 'PLAYERS_UPDATE', list: players });
             broadcast({ type: 'CLEAR_CANVAS' });
 
+            // Pick 3 UNUSED and UNIQUE options
+            const available = WORDS_DB.filter(w => !gameState.usedWords.includes(w));
+
+            // Safety: if we ran out of words (unlikely), reset
+            if (available.length < 3) gameState.usedWords = [];
+
+            const pool = available.length >= 3 ? available : WORDS_DB;
             const options = [];
+            const tempPool = [...pool];
+
             for (let i = 0; i < 3; i++) {
-                options.push(WORDS_DB[Math.floor(Math.random() * WORDS_DB.length)]);
+                const idx = Math.floor(Math.random() * tempPool.length);
+                options.push(tempPool.splice(idx, 1)[0]);
             }
 
             const drawerId = players[gameState.drawerIndex].id;
@@ -1045,6 +1063,7 @@
 
         function startGameTurn(word) {
             gameState.currentWord = word;
+            gameState.usedWords.push(word); // Ban word for the rest of the game
             gameState.timer = 60; const hint = word.split('').map(() => '_').join(' ');
 
             Object.values(clientConns).forEach(c => {
@@ -1294,12 +1313,8 @@
 
         function drawShape(c, tool, x0, y0, x1, y1, color) {
             c.strokeStyle = color;
-            c.fillStyle = color; // Fill or Stroke? "Pinturillo" usually stroke but filled shapes are nice.
-            // Let's do STROKE for now, maybe fill?
-            // Requests said "rect, circle, triangle". Usually filled is better for pixel art, stroke for
-            diagram.
-                // Lets do Stroke with width 4.
-                c.lineWidth = 4;
+            c.fillStyle = color;
+            c.lineWidth = 4;
             c.beginPath();
 
             const w = x1 - x0;

@@ -610,7 +610,7 @@
             </div>
 
             <div style="margin-top: 30px;">
-                <button class="btn" onclick="requestRestart()">REVANCHA</button>
+                <button id="btn-rematch" class="btn" onclick="requestRestart()">REVANCHA</button>
                 <button class="btn secondary"
                     onclick="window.location.href='https://omarsaez.github.io/ArcadeDeJuegos/'"
                     style="font-size: 1rem; padding: 10px 20px;">VOLVER AL ARCADE</button>
@@ -635,6 +635,9 @@
         let gameStartTime = 0;
         let pieceCounts = { 1: 0, 2: 0 };
         let sessionWins = { 1: 0, 2: 0 };
+        let lastLoser = 0; // Tracks which player lost the last game
+        let iWantRestart = false;
+        let opponentWantsRestart = false;
 
         // --- P2P VARS ---
         let peer;
@@ -699,18 +702,15 @@
             conn.on('open', () => {
                 console.log("Conectado!");
                 if (isHost) {
-                    // Host starts game
-                    setTimeout(() => {
-                        conn.send({ type: 'INIT_GAME' });
-                        startGame(true); // Host starts first
-                    }, 500);
+                    // Host starts game with a random player
+                    setTimeout(hostStartRound, 500);
                 }
             });
 
             conn.on('data', (data) => {
                 switch (data.type) {
-                    case 'INIT_GAME':
-                        startGame(false); // Client goes second
+                    case 'START_GAME':
+                        startGame(data.starter === myPlayerId);
                         break;
                     case 'MOVE':
                         handleRemoteMove(data.col);
@@ -718,20 +718,30 @@
                     case 'HOVER':
                         handleRemoteHover(data.col);
                         break;
-                    case 'Chat': // Case sensitive protection
+                    case 'Chat':
                     case 'CHAT':
-                        showChatBubble(data.msg, data.isHost ? 1 : 2); // Identify by role roughly or pass ID
-                        // Simplification: if I receive CHAT, it's from OPPONENT.
-                        showChatBubble(data.msg, isHost ? 2 : 1); // If I am host, opp is 2.
+                        showChatBubble(data.msg, isHost ? 2 : 1);
                         break;
                     case 'RESTART_REQ':
-                        if (confirm("El rival quiere reiniciar. ¿Aceptas?")) {
-                            restartGame();
-                            conn.send({ type: 'RESTART_ACK' });
+                        opponentWantsRestart = true;
+                        if (iWantRestart) {
+                            if (isHost) {
+                                hostStartRound();
+                            } else {
+                                conn.send({ type: 'RESTART_ACK' });
+                            }
+                        } else {
+                            // Show minor indicator that rival wants to play again
+                            document.getElementById('wait-msg').classList.remove('hidden');
+                            document.getElementById('wait-msg').innerText = "¡El rival quiere revancha!";
+                            document.getElementById('btn-rematch').innerText = "ACEPTAR REVANCHA";
                         }
                         break;
                     case 'RESTART_ACK':
-                        restartGame();
+                        opponentWantsRestart = true;
+                        if (isHost && iWantRestart) {
+                            hostStartRound();
+                        }
                         break;
                 }
             });
@@ -747,13 +757,30 @@
         // GAME LOGIC
         // ==========================================
 
+        function hostStartRound() {
+            if (!isHost) return;
+            // If there's a last loser, they start. Otherwise, random.
+            let starter;
+            if (lastLoser !== 0) {
+                starter = lastLoser;
+            } else {
+                starter = Math.random() < 0.5 ? 1 : 2;
+            }
+
+            conn.send({ type: 'START_GAME', starter: starter });
+            startGame(myPlayerId === starter);
+        }
+
         function startGame(isMyTurnNow) {
             show('screen-game');
             resetBoardState();
             renderBoard();
 
             gameActive = true;
-            isMyTurn = isMyTurnNow; // Host always starts? Let's say yes for simplicity (Red starts)
+            isMyTurn = isMyTurnNow;
+            iWantRestart = false;
+            opponentWantsRestart = false;
+            document.getElementById('btn-rematch').innerText = "REVANCHA";
 
             // Stats Reset
             gameStartTime = Date.now();
@@ -1020,13 +1047,14 @@
                     gameActive = false;
                     highlightWin(win);
                     sessionWins[playerId]++;
+                    lastLoser = (playerId === 1 ? 2 : 1); // Loser of this round starts next
                     fireConfetti(); // JUICE
                     showResult(playerId === myPlayerId ? "VICTORIA" : "DERROTA");
                 }, 600); // Wait for drop
             } else if (checkDraw()) {
                 gameActive = false;
+                lastLoser = 0; // Reset on draw so next start is random
                 showResult("EMPATE");
-                //uiStatus.innerText = "EMPATE";
             }
         }
 
@@ -1083,16 +1111,21 @@
         }
 
         function requestRestart() {
+            iWantRestart = true;
             conn.send({ type: 'RESTART_REQ' });
             document.getElementById('wait-msg').classList.remove('hidden');
             document.getElementById('wait-msg').innerText = "Esperando al rival...";
+
+            // If handshake already complete
+            if (opponentWantsRestart) {
+                if (isHost) {
+                    hostStartRound();
+                } else {
+                    conn.send({ type: 'RESTART_ACK' });
+                }
+            }
         }
 
-        function restartGame() {
-            // Host restarts -> Host Turn (Red)
-            // Or default to P1 always starts
-            startGame(myPlayerId === P1);
-        }
 
         function showResult(title) {
             const now = Date.now();
