@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Damas - Arcade</title>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff4d4d;
+            /* Red Piece */
+            --secondary: #333333;
+            /* Black Piece */
+            --bg: #0f172a;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --board-dark: #1e293b;
+            --board-light: #334155;
+            --accent: #5eead4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- LOBBY STYLES --- */
+        #lobby {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lobby-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 3rem;
+            border-radius: 2rem;
+            width: 400px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(to right, #ff4d4d, #f97316);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin: 1rem 0;
+            border: none;
+            border-radius: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #ff4d4d, #f97316);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(255, 77, 77, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--glass-border);
+            color: white;
+        }
+
+        .btn-outline:hover {
+            border-color: #ff4d4d;
+            background: rgba(255, 77, 77, 0.1);
+        }
+
+        input {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 1rem;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            outline: none;
+        }
+
+        /* --- GAME UI --- */
+        #game-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .status-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 90vmin;
+            height: 90vmin;
+            max-width: 500px;
+            max-height: 500px;
+            border: 8px solid #0f172a;
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .square {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .square.light {
+            background-color: var(--board-light);
+        }
+
+        .square.dark {
+            background-color: var(--board-dark);
+        }
+
+        .square.highlight::after {
+            content: '';
+            position: absolute;
+            width: 40%;
+            height: 40%;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .piece {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .piece::before {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+        }
+
+        .piece.red {
+            background: radial-gradient(circle at 30% 30%, #ff6b6b, #b91c1c);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .piece.black {
+            background: radial-gradient(circle at 30% 30%, #4b5563, #111827);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .piece.king::after {
+            content: '👑';
+            font-size: 1.2rem;
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+        }
+
+        .piece.help-hint {
+            box-shadow: 0 0 0 4px #fbbf24, 0 4px 10px rgba(0, 0, 0, 0.5);
+            animation: pulse-gold 2s infinite;
+        }
+
+        @keyframes pulse-gold {
+            0% {
+                box-shadow: 0 0 0 2px #fbbf24;
+            }
+
+            50% {
+                box-shadow: 0 0 20px 4px #fbbf24;
+            }
+
+            100% {
+                box-shadow: 0 0 0 2px #fbbf24;
+            }
+        }
+
+        .piece.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px var(--accent);
+            z-index: 3;
+        }
+
+        /* HUD */
+        .hud-top {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .hud-card {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            padding: 0.8rem 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--glass-border);
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-back {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+        }
+
+        .turn-indicator {
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        /* Notifications */
+        #notification {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff4d4d;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 2rem;
+            font-weight: bold;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        #notification.show {
+            opacity: 1;
+        }
+
+        /* WIN MODAL */
+        #modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.98);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(15px);
+        }
+
+        .modal-content {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 3rem;
+            border-radius: 2rem;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 1rem;
+        }
+
+        .stat-item {
+            text-align: left;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .help-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .help-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #fbbf24;
+        }
+
+        .help-toggle.on {
+            color: #fbbf24;
+            border-color: #fbbf24;
+        }
+
+        .stat-team {
+            border-bottom: 2px solid var(--glass-border);
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="notification">MSJ</div>
+
+    <!-- LOBBY -->
+    <div id="lobby">
+        <div class="lobby-card" id="lobby-main">
+            <h1>DAMAS</h1>
+            <button class="btn btn-primary" onclick="hostGame()">CREAR PARTIDA</button>
+            <div style="margin: 1.5rem 0; opacity: 0.5;">— O —</div>
+            <input type="text" id="code-input" placeholder="CÓDIGO DE SALA" maxlength="4">
+            <button class="btn btn-outline" onclick="joinGame()">UNIRSE</button>
+            <a href="https://omarsaez.github.io/ArcadeDeJuegos/" class="btn-back"
+                style="display: inline-block; margin-top: 20px;">VOLVER AL ARCADE</a>
+        </div>
+
+        <div class="lobby-card" id="lobby-waiting" style="display: none;">
+            <h1>SALA DE ESPERA</h1>
+            <div id="waiting-status" style="margin-bottom: 2rem; font-size: 1.1rem;">Esperando rival...</div>
+            <div style="opacity: 0.6; font-size: 0.8rem; margin-bottom: 0.5rem;">CÓDIGO DE SALA:</div>
+            <div id="display-code"
+                style="font-size: 2rem; font-weight: bold; color: #ff4d4d; letter-spacing: 5px; margin-bottom: 2rem;">
+                ----</div>
+            <button class="btn btn-outline" onclick="location.reload()">CANCELAR</button>
+        </div>
+    </div>
+
+    <!-- GAME UI -->
+    <div id="game-container">
+        <div class="hud-top">
+            <div class="hud-item" style="pointer-events: auto;">
+                <a href="https://omarsaez.github.io/ArcadeDeJuegos/" class="btn-back">VOLVER AL ARCADE</a>
+            </div>
+            <div class="hud-card">
+                <div class="turn-indicator" id="turn-display">TURNO: ROJO</div>
+            </div>
+        </div>
+
+        <div id="board"></div>
+
+        <div class="status-bar" style="margin-top: 20px;">
+            <div>Fichas Rojas: <span id="count-red">12</span></div>
+            <div>Fichas Negras: <span id="count-black">12</span></div>
+        </div>
+
+        <button class="help-toggle" id="help-toggle" onclick="toggleHelp()">
+            <span>MODO AYUDA:</span> <span id="help-status">OFF</span>
+        </button>
+    </div>
+
+    <!-- WIN MODAL -->
+    <div id="modal">
+        <div class="modal-content">
+            <h1 id="win-title" style="font-size: 3rem; margin-bottom: 0.5rem;">¡VICTORIA!</h1>
+            <p id="win-message" style="opacity: 0.7;"></p>
+
+            <div id="game-stats" class="stats-grid">
+                <!-- Estadísticas aquí -->
+            </div>
+
+            <button class="btn btn-primary" onclick="requestRematch()">REVANCHA</button>
+            <a href="https://omarsaez.github.io/ArcadeDeJuegos/" class="btn-outline btn"
+                style="text-decoration: none;">MENU PRINCIPAL</a>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN P2P ---
+        let peer;
+        let conn;
+        let isHost = false;
+        let myId;
+        let myNick = "";
+        let rivalNick = "Rival";
+
+        // Estadísticas persistentes (Historial)
+        let totalWins = { host: 0, guest: 0 };
+        let lastWinner = null; // 'host' o 'guest'
+
+        let boardState = []; // 8x8 array
+        let currentTurn = 'red'; // 'red' o 'black'
+        let myColor = ''; // 'red' o 'black'
+        let selectedSquare = null;
+        let validMoves = [];
+        let helpMode = false;
+
+        // Estadísticas de partida actual
+        let startTime = null;
+        let stats = {
+            host: { moves: 0, kings: 0, captured: 0 },
+            guest: { moves: 0, kings: 0, captured: 0 }
+        };
+
+        // Inicializar tablero
+        function initBoard() {
+            boardState = Array(8).fill(null).map(() => Array(8).fill(null));
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if ((row + col) % 2 !== 0) {
+                        if (row < 3) boardState[row][col] = { color: 'black', king: false };
+                        if (row > 4) boardState[row][col] = { color: 'red', king: false };
+                    }
+                }
+            }
+        }
+
+        // --- P2P LOGIC ---
+
+        function initPeer(id) {
+            peer = new Peer(id);
+            peer.on('open', (assignedId) => {
+                myId = assignedId;
+                if (isHost) {
+                    document.getElementById('display-code').innerText = assignedId;
+                }
+            });
+
+            peer.on('connection', (c) => {
+                if (isHost && !conn) {
+                    handleConnection(c);
+                } else {
+                    c.on('open', () => {
+                        c.send({ type: 'ERROR', msg: 'SALA LLENA' });
+                        setTimeout(() => c.close(), 500);
+                    });
+                }
+            });
+
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id' && isHost) {
+                    hostGame(); // Reintentar con otro ID
+                } else {
+                    showNotification("Error: " + err.type);
+                }
+            });
+        }
+
+        function hostGame() {
+            isHost = true;
+            myColor = 'red';
+            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+            document.getElementById('lobby-main').style.display = 'none';
+            document.getElementById('lobby-waiting').style.display = 'block';
+            initPeer(shortId);
+        }
+
+        function joinGame() {
+            const hostCode = document.getElementById('code-input').value.toUpperCase();
+            if (!hostCode) return;
+
+            isHost = false;
+            myColor = 'black';
+            peer = new Peer();
+            peer.on('open', () => {
+                const c = peer.connect(hostCode);
+                handleConnection(c);
+            });
+        }
+
+        function handleConnection(c) {
+            conn = c;
+            conn.on('open', () => {
+                document.getElementById('lobby').style.display = 'none';
+                document.getElementById('game-container').style.display = 'flex';
+
+                if (isHost) {
+                    initBoard();
+                    renderBoard(); // Renderizar inmediatamente para el Host
+                    startTime = Date.now(); // Iniciar tiempo
+                    sendState();
+                }
+            });
+
+            conn.on('data', (data) => {
+                switch (data.type) {
+                    case 'REMATCH_REQ':
+                        if (isHost) handleRematchRequest();
+                        break;
+                    case 'STATE':
+                        boardState = data.board;
+                        currentTurn = data.turn;
+                        stats = data.stats;
+                        totalWins = data.totalWins;
+                        if (!isHost) myColor = data.guestColor; // Recibir mi nuevo color si soy el guest
+                        if (!startTime && data.startTime) startTime = data.startTime;
+                        document.getElementById('modal').style.display = 'none';
+                        renderBoard();
+                        checkWinner();
+                        break;
+                    case 'MOVE':
+                        if (isHost) {
+                            boardState = data.board;
+                            currentTurn = data.turn;
+                            stats = data.stats;
+                            sendState();
+                            renderBoard();
+                            checkWinner();
+                        }
+                        break;
+                    case 'ERROR':
+                        showNotification(data.msg);
+                        break;
+                }
+            });
+
+            conn.on('close', () => {
+                alert("Conexión perdida con el rival");
+                location.reload();
+            });
+        }
+
+        function sendState() {
+            // El Host calcula el color del Guest (opuesto al suyo)
+            const guestColor = (myColor === 'red' ? 'black' : 'red');
+            const payload = {
+                type: isHost ? 'STATE' : 'MOVE',
+                board: boardState,
+                turn: currentTurn,
+                stats: stats,
+                totalWins: totalWins,
+                startTime: startTime,
+                guestColor: guestColor
+            };
+            conn.send(payload);
+        }
+
+        // --- GAME LOGIC ---
+
+        function updatePlayerHUD() {
+            // This function is not used in the provided snippet, but if it were, it would need updates.
+            // For now, it's left as is, assuming it might be removed or updated elsewhere.
+            if (isHost) {
+                document.getElementById('p1-name').innerText = `Red: ${myNick} (Tú)`;
+                document.getElementById('p2-name').innerText = `Black: ${rivalNick}`;
+            } else {
+                document.getElementById('p1-name').innerText = `Red: ${rivalNick}`;
+                document.getElementById('p2-name').innerText = `Black: ${myNick} (Tú)`;
+            }
+        }
+
+        function renderBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = "";
+            let redCount = 0;
+            let blackCount = 0;
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.row = r;
+                    square.dataset.col = c;
+
+                    const pieceData = boardState[r][c];
+                    if (pieceData) {
+                        const piece = document.createElement('div');
+                        piece.className = `piece ${pieceData.color} ${pieceData.king ? 'king' : ''}`;
+                        if (selectedSquare && selectedSquare.r === r && selectedSquare.c === c) {
+                            piece.classList.add('selected');
+                        }
+
+                        // Permitir clic solo si es mi color y mi turno
+                        if (pieceData.color === myColor && currentTurn === myColor) {
+                            piece.style.cursor = 'pointer';
+                            piece.onclick = (e) => {
+                                e.stopPropagation();
+                                selectPiece(r, c);
+                            };
+
+                            // Modo Ayuda
+                            if (helpMode && getValidMoves(r, c).length > 0) {
+                                piece.classList.add('help-hint');
+                            }
+                        } else {
+                            piece.style.cursor = 'default';
+                        }
+
+                        square.appendChild(piece);
+                        if (pieceData.color === 'red') redCount++;
+                        else blackCount++;
+                    }
+
+                    // Si es un movimiento válido, resaltar y permitir click
+                    if (validMoves.some(m => m.r === r && m.c === c)) {
+                        square.classList.add('highlight');
+                        square.onclick = () => executeMove(r, c);
+                    } else {
+                        square.onclick = null;
+                    }
+
+                    boardEl.appendChild(square);
+                }
+            }
+
+            document.getElementById('count-red').innerText = redCount;
+            document.getElementById('count-black').innerText = blackCount;
+            document.getElementById('turn-display').innerText = `TURNO: ${currentTurn === 'red' ? 'ROJO' : 'NEGRO'}`;
+            document.getElementById('turn-display').style.color = currentTurn === 'red' ? '#ff4d4d' : '#94a3b8';
+        }
+
+        function selectPiece(r, c) {
+            if (currentTurn !== myColor) return;
+
+            // Si hacemos click en la misma, deseleccionamos
+            if (selectedSquare && selectedSquare.r === r && selectedSquare.c === c) {
+                selectedSquare = null;
+                validMoves = [];
+                renderBoard();
+                return;
+            }
+
+            selectedSquare = { r, c };
+            validMoves = getValidMoves(r, c);
+            renderBoard();
+        }
+
+        function getValidMoves(r, c) {
+            const piece = boardState[r][c];
+            if (!piece) return [];
+
+            let moves = [];
+            const directions = [];
+
+            if (piece.color === 'red' || piece.king) directions.push({ dr: -1, dc: -1 }, { dr: -1, dc: 1 });
+            if (piece.color === 'black' || piece.king) directions.push({ dr: 1, dc: -1 }, { dr: 1, dc: 1 });
+
+            directions.forEach(d => {
+                // Movimiento normal
+                let nr = r + d.dr;
+                let nc = c + d.dc;
+                if (isInside(nr, nc) && !boardState[nr][nc]) {
+                    moves.push({ r: nr, c: nc, type: 'normal' });
+                }
+
+                // Captura
+                let jr = r + (d.dr * 2);
+                let jc = c + (d.dc * 2);
+                if (isInside(jr, jc) && !boardState[jr][jc]) {
+                    const middlePiece = boardState[r + d.dr][c + d.dc];
+                    if (middlePiece && middlePiece.color !== piece.color) {
+                        moves.push({ r: jr, c: jc, type: 'capture', capR: r + d.dr, capC: c + d.dc });
+                    }
+                }
+            });
+
+            // En damas clásicas, si hay capturas, son obligatorias.
+            // Para este MVP vamos a filtrar si existen capturas.
+            const captures = moves.filter(m => m.type === 'capture');
+            return captures.length > 0 ? captures : moves;
+        }
+
+        function isInside(r, c) {
+            return r >= 0 && r < 8 && c >= 0 && c < 8;
+        }
+
+        function executeMove(nr, nc) {
+            const move = validMoves.find(m => m.r === nr && m.c === nc);
+            if (!move) return;
+
+            const piece = boardState[selectedSquare.r][selectedSquare.c];
+            const movingColor = piece.color;
+
+            // Identificar si el que mueve es el host o guest basado en su color actual
+            const roleKey = (movingColor === myColor) ? (isHost ? 'host' : 'guest') : (isHost ? 'guest' : 'host');
+
+            // Estadísticas: Movimientos
+            stats[roleKey].moves++;
+
+            // Mover pieza
+            boardState[nr][nc] = piece;
+            boardState[selectedSquare.r][selectedSquare.c] = null;
+
+            // Si es captura, eliminar pieza comida
+            if (move.type === 'capture') {
+                boardState[move.capR][move.capC] = null;
+                stats[roleKey].captured++; // Estadísticas: Capturas
+            }
+
+            // Coronación (Dama)
+            if (piece.color === 'red' && nr === 0 && !piece.king) {
+                piece.king = true;
+                stats[roleKey].kings++; // Estadísticas: Damas
+            }
+            if (piece.color === 'black' && nr === 7 && !piece.king) {
+                piece.king = true;
+                stats[roleKey].kings++; // Estadísticas: Damas
+            }
+
+            // Cambio de turno
+            currentTurn = (currentTurn === 'red' ? 'black' : 'red');
+
+            selectedSquare = null;
+            validMoves = [];
+
+            renderBoard();
+            sendState();
+            checkWinner();
+        }
+
+        function checkWinner() {
+            let red = 0;
+            let black = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (boardState[r][c]?.color === 'red') red++;
+                    if (boardState[r][c]?.color === 'black') black++;
+                }
+            }
+
+            if (red === 0) endGame('black');
+            if (black === 0) endGame('red');
+        }
+
+        function endGame(winnerColor) {
+            // Determinar si el ganador fue el host o el guest según el color con el que jugaba
+            const winnerRole = (winnerColor === myColor) ? (isHost ? 'host' : 'guest') : (isHost ? 'guest' : 'host');
+
+            lastWinner = winnerRole;
+            totalWins[winnerRole]++;
+
+            const durationMs = Date.now() - startTime;
+            const minutes = Math.floor(durationMs / 60000);
+            const seconds = Math.floor((durationMs % 60000) / 1000);
+            const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            document.getElementById('modal').style.display = 'flex';
+            document.getElementById('win-title').innerText = (winnerRole === (isHost ? 'host' : 'guest')) ? '¡HAS GANADO!' : '¡HAS PERDIDO!';
+
+            const myWins = isHost ? totalWins.host : totalWins.guest;
+            const rivalWins = isHost ? totalWins.guest : totalWins.host;
+            document.getElementById('win-message').innerText = `HISTORIAL: Tú ${myWins} - ${rivalWins} Rival`;
+
+            const statsGrid = document.getElementById('game-stats');
+
+            const myRole = isHost ? 'host' : 'guest';
+            const rivalRole = isHost ? 'guest' : 'host';
+            const myColorName = myColor === 'red' ? 'ROJO' : 'NEGRO';
+            const rivalColorName = myColor === 'red' ? 'NEGRO' : 'ROJO';
+
+            statsGrid.innerHTML = `
+                <div style="grid-column: span 2; text-align: center; margin-bottom: 10px;">
+                    <span class="stat-label">TIEMPO DE JUEGO:</span>
+                    <span class="stat-value" style="display: block; font-size: 2rem;">${timeStr}</span>
+                </div>
+                
+                <div class="stat-item">
+                    <div class="stat-team" style="color: ${myColor === 'red' ? '#ff4d4d' : '#94a3b8'};"><div class="status-dot" style="background: ${myColor === 'red' ? '#ff4d4d' : '#94a3b8'};"></div> TÚ (${myColorName})</div>
+                    <div class="stat-label">MOVIMIENTOS</div>
+                    <div class="stat-value">${stats[myRole].moves}</div>
+                    <div class="stat-label">DAMAS LOGRADAS</div>
+                    <div class="stat-value">${stats[myRole].kings}</div>
+                    <div class="stat-label">FICHAS COMIDAS</div>
+                    <div class="stat-value">${stats[myRole].captured}</div>
+                </div>
+
+                <div class="stat-item">
+                    <div class="stat-team" style="color: ${myColor === 'red' ? '#94a3b8' : '#ff4d4d'};"><div class="status-dot" style="background: ${myColor === 'red' ? '#94a3b8' : '#ff4d4d'};"></div> RIVAL (${rivalColorName})</div>
+                    <div class="stat-label">MOVIMIENTOS</div>
+                    <div class="stat-value">${stats[rivalRole].moves}</div>
+                    <div class="stat-label">DAMAS LOGRADAS</div>
+                    <div class="stat-value">${stats[rivalRole].kings}</div>
+                    <div class="stat-label">FICHAS COMIDAS</div>
+                    <div class="stat-value">${stats[rivalRole].captured}</div>
+                </div>
+            `;
+        }
+
+        function requestRematch() {
+            if (isHost) {
+                handleRematchRequest();
+            } else {
+                conn.send({ type: 'REMATCH_REQ' });
+                showNotification("Pidiendo revancha...");
+            }
+        }
+
+        function handleRematchRequest() {
+            if (!isHost) return;
+
+            // Invertir colores para la revancha
+            myColor = (myColor === 'red' ? 'black' : 'red');
+
+            initBoard();
+
+            // Estadísticas limpias
+            stats = { host: { moves: 0, kings: 0, captured: 0 }, guest: { moves: 0, kings: 0, captured: 0 } };
+
+            // El que perdió empieza (y empieza quien sea Rojo)
+            // Si el host perdio, ahora el host sera Rojo para empezar
+            currentTurn = 'red';
+
+            startTime = Date.now();
+            document.getElementById('modal').style.display = 'none';
+
+            renderBoard();
+            sendState();
+            showNotification("¡Revancha: Colores invertidos!");
+        }
+
+        function toggleHelp() {
+            helpMode = !helpMode;
+            const btn = document.getElementById('help-toggle');
+            const status = document.getElementById('help-status');
+            btn.classList.toggle('on', helpMode);
+            status.innerText = helpMode ? 'ON' : 'OFF';
+            renderBoard();
+        }
+
+        function showNotification(msg) {
+            const el = document.getElementById('notification');
+            el.innerText = msg;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        // Iniciar vacío por si acaso
+        initBoard();
+
+    </script>
+</body>
+
+</html>
