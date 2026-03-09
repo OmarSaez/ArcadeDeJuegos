@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vuelo Infinito - Arcade</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <!-- Parallax Background Layers -->
+        <div id="sky-layers">
+            <div class="layer layer-space"></div>
+            <div class="layer layer-upper-atmo"></div>
+            <div class="layer layer-clouds"></div>
+            <div class="layer layer-ground"></div>
+        </div>
+
+        <!-- HUD -->
+        <div id="hud" class="hidden">
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="label">Distancia:</span>
+                    <span id="dist-val">0</span>m
+                </div>
+                <div class="stat-item">
+                    <span class="label">Altura:</span>
+                    <span id="alt-val">0</span>m
+                </div>
+                <div class="stat-item">
+                    <span class="label">💰:</span>
+                    <span id="coin-val">0</span>
+                </div>
+                <div id="shield-display" class="stat-item">
+                    <!-- Shields will appear here as emojis -->
+                </div>
+            </div>
+            <div id="boost-bar-container">
+                <div id="boost-bar"></div>
+            </div>
+        </div>
+
+        <!-- Start/Menu Screens -->
+        <div id="ui-overlay">
+            <!-- Main Menu -->
+            <div id="main-menu" class="menu-screen">
+                <h1 class="game-title">VUELO <span class="accent">INFINITO</span></h1>
+                <p class="game-subtitle">¡Llega hasta las estrellas!</p>
+
+                <div class="plane-preview">
+                    <svg viewBox="0 0 100 60" width="150">
+                        <path d="M10,30 Q30,5 90,25 L95,30 L90,35 Q30,55 10,30" fill="#4ade80" />
+                        <path d="M40,20 L60,5 L70,25 Z" fill="#2d8a4e" />
+                        <path d="M40,40 L60,55 L70,35 Z" fill="#2d8a4e" />
+                        <circle cx="80" cy="30" r="3" fill="white" opacity="0.6" />
+                    </svg>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="btn-play" class="primary-btn">DESPEGAR</button>
+                    <button id="btn-upgrades" class="secondary-btn">MEJORAS (Taller)</button>
+                </div>
+
+                <div class="global-stats">
+                    <span>Récord: <span id="best-dist">0</span>m</span>
+                    <span>Monedas: <span class="total-coins">0</span></span>
+                </div>
+            </div>
+
+            <!-- Upgrade Shop -->
+            <div id="shop-menu" class="menu-screen hidden">
+                <div class="shop-header">
+                    <button id="btn-back" class="secondary-btn" style="padding: 10px; border-radius: 10px;">←</button>
+                    <h2>TALLER DE MEJORAS</h2>
+                    <div class="shop-coins"><span class="coin">💰</span> <span id="shop-coins-val">0</span></div>
+                </div>
+
+                <div class="menu-content">
+                    <div class="upgrade-grid">
+                        <div class="upgrade-card" data-upgrade="thrust">
+                            <div class="up-icon">🚀</div>
+                            <div class="up-info">
+                                <h3>Motor</h3>
+                                <p>Potencia de lanzamiento inicial</p>
+                                <div class="level-dots"><span
+                                        class="dot active"></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">100 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="aero">
+                            <div class="up-icon">🦅</div>
+                            <div class="up-info">
+                                <h3>Aerodinámica</h3>
+                                <p>Reduce la resistencia del aire</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">150 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="fuel">
+                            <div class="up-icon">⛽</div>
+                            <div class="up-info">
+                                <h3>Tanque Combustible</h3>
+                                <p>Más tiempo de impulso (Boost)</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">200 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="boost">
+                            <div class="up-icon">⚡</div>
+                            <div class="up-info">
+                                <h3>Potencia de Impulso</h3>
+                                <p>Fuerza del turbo especial</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">250 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="magnet">
+                            <div class="up-icon">🧲</div>
+                            <div class="up-info">
+                                <h3>Imán</h3>
+                                <p>Atrae monedas cercanas</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">300 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="coinValue">
+                            <div class="up-icon">💎</div>
+                            <div class="up-info">
+                                <h3>Valor Extra</h3>
+                                <p>Las monedas valen más</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">250 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="trampoline">
+                            <div class="up-icon">🌀</div>
+                            <div class="up-info">
+                                <h3>Trampolines</h3>
+                                <p>Desbloquea y agranda trampolines</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">300 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="shield">
+                            <div class="up-icon">🛡️</div>
+                            <div class="up-info">
+                                <h3>Escudo</h3>
+                                <p>Protección contra un choque por nivel</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">500 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="luck">
+                            <div class="up-icon">🍀</div>
+                            <div class="up-info">
+                                <h3>Suerte</h3>
+                                <p>Más objetos positivos en el camino</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">400 <span class="coin">💰</span></button>
+                        </div>
+
+                        <div class="upgrade-card" data-upgrade="precision">
+                            <div class="up-icon">🎯</div>
+                            <div class="up-info">
+                                <h3>Control Precisión</h3>
+                                <p>Barra de despegue más lenta y fácil</p>
+                                <div class="level-dots">
+                                    <span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">350 <span class="coin">💰</span></button>
+                        </div>
+                        <div class="upgrade-card hidden" id="legendary-card" data-upgrade="legendary">
+                            <div class="up-icon">👑</div>
+                            <div class="up-info">
+                                <h3>Alas de Leyenda</h3>
+                                <p>Velocidad horizontal +30% y Avión de Oro</p>
+                                <div class="level-dots">
+                                    <span></span>
+                                </div>
+                            </div>
+                            <button class="buy-btn">5000 <span class="coin">💰</span></button>
+                        </div>
+                    </div>
+
+                    <button id="btn-reset" class="secondary-btn"
+                        style="margin-top: 30px; opacity: 0.5; font-size: 0.8rem;">Borrar Progreso</button>
+                </div>
+            </div>
+
+            <!-- Launch Screen -->
+            <div id="launch-screen" class="menu-screen hidden">
+                <div class="launch-power-container">
+                    <div id="perfect-text">¡PERFECT!</div>
+                    <div id="power-bar-bg">
+                        <div id="power-bar"></div>
+                    </div>
+                    <p>¡MANTÉN PARA CARGAR!</p>
+                    <p class="hint">Suelta en el momento justo para el máximo impulso</p>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="results-screen" class="menu-screen hidden">
+                <div id="new-record-banner" class="hidden">¡NUEVO RECORD!</div>
+                <h2>VUELO FINALIZADO</h2>
+                <div class="results-stats">
+                    <div class="res-item">
+                        <span class="label">Distancia:</span>
+                        <span class="value"><span id="res-dist">0</span>m</span>
+                    </div>
+                    <div class="res-item">
+                        <span class="label">Altura Máxima:</span>
+                        <span class="value"><span id="res-alt">0</span>m</span>
+                    </div>
+                    <div class="res-item highlight">
+                        <span class="label">Monedas Ganadas:</span>
+                        <span class="value" id="res-coins">+0</span>
+                    </div>
+                    <div id="multiplier-bonus" class="hidden">¡Bono x1.5 por RECORD!</div>
+                </div>
+                <button id="btn-finish" class="primary-btn">CONTINUAR</button>
+            </div>
+        </div>
+
+        <!-- Canvas for the game -->
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+
+</html>
