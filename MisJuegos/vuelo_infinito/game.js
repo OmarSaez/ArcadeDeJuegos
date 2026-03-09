@@ -180,7 +180,13 @@ function updateUIStrings() {
     if (isGameMaxed()) {
         if (legendaryCard) legendaryCard.classList.remove('hidden');
         const title = document.querySelector('.shop-header h2');
-        if (title) title.innerHTML = '✨ TALLER DEL LEYENDA ✨';
+        if (title) {
+            if (hasLegendary()) {
+                title.innerHTML = '✨ RECUERDO DEL LEYENDA ✨';
+            } else {
+                title.innerHTML = '✨ TALLER DEL LEYENDA ✨';
+            }
+        }
         title.style.background = 'linear-gradient(to right, #fbbf24, #f59e0b)';
         title.style.webkitBackgroundClip = 'text';
         title.style.webkitTextFillColor = 'transparent';
@@ -328,7 +334,8 @@ function resetGame() {
     plane.vy = 0;
     plane.angle = 0;
     plane.fuel = 100;
-    plane.maxFuel = 100 + (playerData.upgrades.fuel - 1) * 50;
+    const legendaryFuelMult = hasLegendary() ? 2 : 1;
+    plane.maxFuel = (100 + (playerData.upgrades.fuel - 1) * 50) * legendaryFuelMult;
     plane.fuel = plane.maxFuel;
     coins = [];
     obstacles = [];
@@ -477,29 +484,34 @@ function update(dt) {
         // Base drag reduction from Aero
         let dragAmount = plane.drag * Math.max(0.1, (1 - aeroLvl * 0.15));
         // Legendary Bonus reduces drag significantly and extends top speed
-        if (hasLegendary()) dragAmount *= 0.5;
+        const legendaryDragMult = hasLegendary() ? 0.3 : 1.0;
+        plane.vx *= (1 - dragAmount * legendaryDragMult);
 
-        plane.vx *= (1 - dragAmount);
-
-        // Cap horizontal speed
-        const maxVX = hasLegendary() ? 60 : 40;
+        // Cap horizontal speed - Legendary gets a huge boost
+        const maxVX = hasLegendary() ? 100 : 40;
         if (plane.vx > maxVX) plane.vx = maxVX;
 
         // SANITY CHECK: Anti-Glitch for existing massive numbers
         if (distance > 100000000) distance = 0;
-        if (plane.vx > 1000) plane.vx = 60;
+        if (plane.vx > 1000) plane.vx = 80;
 
-        distance += plane.vx * 0.1;
+        // Apply legendary speed bonus directly to position (+30% distance per speed)
+        const moveMult = hasLegendary() ? 1.3 : 1.0;
+        distance += plane.vx * 0.1 * moveMult;
 
         // Vertical Gravity & Lift
         plane.vy += plane.gravity;
-        const maxLift = 0.3;
-        const currentLift = Math.min(maxLift, plane.vx * plane.lift);
+
+        // Lift based on speed
+        // Legendary has more vertical power
+        const maxLift = hasLegendary() ? 0.4 : 0.3;
+        const currentLift = Math.min(maxLift, plane.vx * plane.lift * (hasLegendary() ? 1.5 : 1.0));
         plane.vy -= currentLift;
 
         // Hard cap vertical speed to prevent physics explosion
-        if (plane.vy < -15) plane.vy = -15;
-        if (plane.vy > 15) plane.vy = 15;
+        const maxVY = hasLegendary() ? 30 : 15;
+        if (plane.vy < -maxVY) plane.vy = -maxVY;
+        if (plane.vy > maxVY) plane.vy = maxVY;
 
         // Perfect Particles during flight
         if (perfectParticlesTimer > 0) {
@@ -593,8 +605,9 @@ function update(dt) {
             }
         }
 
-        // Tops out?
-        if (worldY > 200000) worldY = 200000;
+        // Tops out? 100k if legendary, else 20k
+        const worldTop = hasLegendary() ? 1000000 : 200000;
+        if (worldY > worldTop) worldY = worldTop;
 
         // Max altitude tracker
         const currentAlt = worldY / 10;
@@ -691,7 +704,8 @@ function update(dt) {
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             const magnetLvl = playerData.upgrades.magnet || 0;
-            const magnetRadius = magnetLvl * 60; // Increased radius slightly
+            const legendaryMagnetMult = hasLegendary() ? 2 : 1;
+            const magnetRadius = magnetLvl * 60 * legendaryMagnetMult; // Increased radius slightly
             if (magnetRadius > 0 && dist < magnetRadius) {
                 // Aggressive pull: factor increases as distance decreases
                 const pullFactor = 0.15 + (magnetLvl * 0.02);
@@ -727,7 +741,7 @@ function update(dt) {
 
             if (dist < 35) {
                 if (obstacles[i].type === 'balloon') {
-                    plane.vy = -6; // Small boost from balloon
+                    plane.vy = hasLegendary() ? -12 : -6; // Powerful boost if legendary
                     createExplosion(obstacles[i].x, obsScreenY, '#ef4444', 10);
                 } else {
                     if (activeShields > 0 && shieldCooldown <= 0) {
@@ -763,8 +777,8 @@ function update(dt) {
             const bScreenY = canvas.height - 100 - (boosters[i].worldY - cameraY);
             const dist = Math.sqrt((plane.x - boosters[i].x) ** 2 + (plane.y - bScreenY) ** 2);
             if (dist < 50) {
-                plane.vx += 5;
-                plane.vy = -5;
+                plane.vx += hasLegendary() ? 10 : 5;
+                plane.vy = hasLegendary() ? -10 : -5;
                 createExplosion(boosters[i].x, bScreenY, '#38bdf8', 15);
                 boosters.splice(i, 1);
             } else if (boosters[i].x < -100) boosters.splice(i, 1);
@@ -793,10 +807,11 @@ function update(dt) {
         const trampLevel = playerData.upgrades.trampoline || 0;
         const trampLuckFactor = 1 + (luckLevel * 0.1);
         if (trampLevel > 0 && frames % Math.max(60, Math.floor(180 / trampLuckFactor)) === 0 && currentAlt < 200) {
+            const legendaryTrampMult = hasLegendary() ? 3 : 1;
             trampolines.push({
                 x: canvas.width + 100,
                 worldY: 0,
-                width: 100 + (trampLevel - 1) * 40
+                width: (100 + (trampLevel - 1) * 40) * legendaryTrampMult
             });
         }
         for (let i = trampolines.length - 1; i >= 0; i--) {
