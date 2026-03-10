@@ -41,6 +41,10 @@
             <div id="boost-bar-container">
                 <div id="boost-bar"></div>
             </div>
+            <!-- Speedometer -->
+            <div id="speedometer">
+                <div class="speed-val"><span id="speed-val">0</span> <small>km/h</small></div>
+            </div>
             <!-- Time Warp Controls (Legendary Only) -->
             <div id="time-warp-controls" class="hidden">
                 <button class="warp-btn active" data-speed="1">x1</button>
@@ -69,6 +73,7 @@
 
                 <div class="global-stats">
                     <span>Récord: <span id="best-dist">0</span>m</span>
+                    <span>Vel. Máx: <span id="best-speed">0</span>km/h</span>
                     <span>Monedas: <span class="total-coins">0</span></span>
                 </div>
             </div>
@@ -246,6 +251,10 @@
                     <div class="res-item">
                         <span class="label">Altura Máxima:</span>
                         <span class="value"><span id="res-alt">0</span>m</span>
+                    </div>
+                    <div class="res-item">
+                        <span class="label">Velocidad Máxima:</span>
+                        <span class="value"><span id="res-top-speed">0</span>km/h</span>
                     </div>
                     <div class="res-item highlight">
                         <span class="label">Monedas Ganadas:</span>

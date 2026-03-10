@@ -21,8 +21,11 @@ const bestDistDisplay = document.getElementById('best-dist');
 const totalCoinsDisplays = document.querySelectorAll('.total-coins, #shop-coins-val');
 const timeWarpControls = document.getElementById('time-warp-controls');
 const warpBtns = document.querySelectorAll('.warp-btn');
+const speedValEl = document.getElementById('speed-val');
+const bestSpeedDisplay = document.getElementById('best-speed');
 let timeScale = 1;
 let hasShowedWinBannerThisRun = false;
+let sessionMaxSpeed = 0;
 
 // Results Displays
 const resDist = document.getElementById('res-dist');
@@ -56,6 +59,7 @@ let perfectParticlesTimer = 0;
 let playerData = {
     totalCoins: 0,
     bestDistance: 0,
+    bestSpeed: 0,
     upgrades: {
         thrust: 0,
         aero: 0,
@@ -73,17 +77,17 @@ let playerData = {
 
 // Upgrade Constants
 const UPGRADE_COSTS = {
-    thrust: [20, 50, 100, 200, 500],
-    aero: [20, 50, 100, 200, 500],
-    fuel: [20, 50, 100, 200, 500],
-    boost: [20, 50, 100, 200, 500],
-    magnet: [20, 50, 100, 200, 500],
-    coinValue: [20, 50, 100, 200, 500],
+    thrust: [20, 100, 250, 500, 1000],
+    aero: [20, 100, 250, 500, 1000],
+    fuel: [20, 100, 250, 500, 1000],
+    boost: [20, 100, 250, 500, 1000],
+    magnet: [20, 100, 250, 500, 1000],
+    coinValue: [20, 100, 250, 500, 1000],
     trampoline: [100, 150, 200, 250, 300],
-    shield: [100, 150, 200, 250, 300],
+    shield: [100, 300, 500, 1000, 2000],
     luck: [150, 300, 600, 1000, 2000],
     precision: [50, 100, 200, 400, 800],
-    legendary: [5000]
+    legendary: [10000]
 };
 
 // Plane Constants & Physics
@@ -129,6 +133,7 @@ function loadData() {
         // Deep merge upgrades and other fields
         playerData.totalCoins = parsed.totalCoins || 0;
         playerData.bestDistance = parsed.bestDistance || 0;
+        playerData.bestSpeed = parsed.bestSpeed || 0;
         playerData.hasWon = parsed.hasWon || false;
         if (parsed.upgrades) {
             playerData.upgrades = { ...playerData.upgrades, ...parsed.upgrades };
@@ -148,7 +153,8 @@ function resize() {
 }
 
 function updateUIStrings() {
-    bestDistDisplay.textContent = Math.floor(playerData.bestDistance);
+    if (bestDistDisplay) bestDistDisplay.textContent = Math.floor(playerData.bestDistance);
+    if (bestSpeedDisplay) bestSpeedDisplay.textContent = Math.floor(playerData.bestSpeed);
     totalCoinsDisplays.forEach(el => {
         if (el) el.textContent = Math.floor(playerData.totalCoins);
     });
@@ -246,6 +252,7 @@ function attachEventListeners() {
             playerData = {
                 totalCoins: 0,
                 bestDistance: 0,
+                bestSpeed: 0,
                 hasWon: false,
                 upgrades: {
                     thrust: 0,
@@ -384,6 +391,7 @@ function resetGame() {
     plane.x = 100;
     plane.y = canvas.height - 100;
     plane.vx = 0;
+    sessionMaxSpeed = 0;
     launchPower = 0;
     powerDirection = 1;
     if (powerBar) powerBar.style.width = '0%';
@@ -481,6 +489,16 @@ function calculateResults() {
     if (bonusText) bonusText.classList.add('hidden');
     resDist.textContent = Math.floor(distance);
     resAlt.textContent = Math.floor(maxAltitude);
+
+    // Show session max speed
+    const resTopSpeed = document.getElementById('res-top-speed');
+    if (resTopSpeed) resTopSpeed.textContent = sessionMaxSpeed;
+
+    // Check for speed record
+    if (sessionMaxSpeed > playerData.bestSpeed) {
+        playerData.bestSpeed = sessionMaxSpeed;
+    }
+
     resCoinsEl.textContent = `+${baseGained}`;
 
     // Game Win Message (Only first run after legendary)
@@ -700,6 +718,12 @@ function update(dt) {
         // Updates Displays
         distVal.textContent = Math.floor(distance);
         altVal.textContent = Math.max(0, Math.floor(maxAltitude));
+
+        // Speed calculation and record
+        const currentSpeed = Math.floor(plane.vx * 10);
+        if (currentSpeed > sessionMaxSpeed) sessionMaxSpeed = currentSpeed;
+        if (speedValEl) speedValEl.textContent = currentSpeed;
+
         const distanceBonus = Math.floor(distance / 10);
         coinVal.textContent = sessionCoins + distanceBonus;
         boostBar.style.width = (plane.fuel / plane.maxFuel * 100) + '%';
