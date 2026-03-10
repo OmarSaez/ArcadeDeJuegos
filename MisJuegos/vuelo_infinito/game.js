@@ -19,6 +19,10 @@ const coinVal = document.getElementById('coin-val');
 const boostBar = document.getElementById('boost-bar');
 const bestDistDisplay = document.getElementById('best-dist');
 const totalCoinsDisplays = document.querySelectorAll('.total-coins, #shop-coins-val');
+const timeWarpControls = document.getElementById('time-warp-controls');
+const warpBtns = document.querySelectorAll('.warp-btn');
+let timeScale = 1;
+let hasShowedWinBannerThisRun = false;
 
 // Results Displays
 const resDist = document.getElementById('res-dist');
@@ -122,7 +126,13 @@ function loadData() {
     const saved = localStorage.getItem('vuelo_infinito_data');
     if (saved) {
         const parsed = JSON.parse(saved);
-        playerData = { ...playerData, ...parsed };
+        // Deep merge upgrades and other fields
+        playerData.totalCoins = parsed.totalCoins || 0;
+        playerData.bestDistance = parsed.bestDistance || 0;
+        playerData.hasWon = parsed.hasWon || false;
+        if (parsed.upgrades) {
+            playerData.upgrades = { ...playerData.upgrades, ...parsed.upgrades };
+        }
     }
     updateUIStrings();
 }
@@ -205,6 +215,10 @@ function hasLegendary() {
     return (playerData.upgrades.legendary || 0) > 0;
 }
 
+function isLegendaryPowerActive() {
+    return hasLegendary() && distance < 100000;
+}
+
 function updateShieldHUD() {
     if (!shieldDisplay) return;
     shieldDisplay.innerHTML = '';
@@ -242,6 +256,16 @@ function attachEventListeners() {
     });
     window.addEventListener('keyup', (e) => {
         if (e.code === 'Space') handleInteractionEnd(e);
+    });
+
+    // Time Warp Handlers
+    warpBtns.forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            timeScale = parseInt(btn.dataset.speed);
+            warpBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        };
     });
 }
 
@@ -293,6 +317,16 @@ function showScreen(screen) {
     } else if (screen === 'FLYING') {
         gameState = 'FLYING';
         hud.classList.remove('hidden');
+        if (hasLegendary()) {
+            timeWarpControls.classList.remove('hidden');
+        } else {
+            timeWarpControls.classList.add('hidden');
+        }
+        timeScale = 1;
+        warpBtns.forEach(b => {
+            b.classList.remove('active');
+            if (b.dataset.speed === "1") b.classList.add('active');
+        });
     } else if (screen === 'RESULTS') {
         gameState = 'RESULTS';
         resultsScreen.classList.remove('hidden');
@@ -417,15 +451,23 @@ function calculateResults() {
 
     const isNewRecord = distance > playerData.bestDistance;
     const banner = document.getElementById('new-record-banner');
+    const winBanner = document.getElementById('game-won-banner');
     const bonusText = document.getElementById('multiplier-bonus');
     const resCoinsEl = document.getElementById('res-coins');
 
     // Reset UI
-    banner.classList.add('hidden');
-    bonusText.classList.add('hidden');
+    if (banner) banner.classList.add('hidden');
+    if (winBanner) winBanner.classList.add('hidden');
+    if (bonusText) bonusText.classList.add('hidden');
     resDist.textContent = Math.floor(distance);
     resAlt.textContent = Math.floor(maxAltitude);
     resCoinsEl.textContent = `+${baseGained}`;
+
+    // Game Win Message (Only first run after legendary)
+    if (hasLegendary() && !playerData.hasWon) {
+        if (winBanner) winBanner.classList.remove('hidden');
+        playerData.hasWon = true; // Mark as won forever
+    }
 
     let finalTotal = baseGained;
 
@@ -436,8 +478,8 @@ function calculateResults() {
         // Step 1: Show base coins
         // Step 2: After 800ms, show record banner and bonus badge
         setTimeout(() => {
-            banner.classList.remove('hidden');
-            bonusText.classList.remove('hidden');
+            if (banner) banner.classList.remove('hidden');
+            if (bonusText) bonusText.classList.remove('hidden');
 
             // Step 3: Animate coins from base to final
             let currentDisplay = baseGained;
@@ -464,7 +506,16 @@ function gameLoop(timestamp) {
     const dt = timestamp - lastTime;
     lastTime = timestamp;
 
-    update(dt);
+    // Apply Time Warp: Run update multiple times or with scaled time
+    // For physics stability, we run the update loop multiple times
+    if (gameState === 'FLYING') {
+        for (let i = 0; i < timeScale; i++) {
+            update(dt);
+        }
+    } else {
+        update(dt);
+    }
+
     draw();
 
     requestAnimationFrame(gameLoop);
@@ -487,11 +538,13 @@ function update(dt) {
         // Base drag reduction from Aero
         let dragAmount = plane.drag * Math.max(0.1, (1 - aeroLvl * 0.15));
         // Legendary Bonus reduces drag significantly and extends top speed
-        const legendaryDragMult = hasLegendary() ? 0.3 : 1.0;
+        // Only active for the first 100k of flight to allow ending the run
+        const isGodMode = isLegendaryPowerActive();
+        const legendaryDragMult = isGodMode ? 0.3 : 1.0;
         plane.vx *= (1 - dragAmount * legendaryDragMult);
 
-        // Cap horizontal speed - Legendary gets a huge boost
-        const maxVX = hasLegendary() ? 100 : 40;
+        // Cap horizontal speed
+        const maxVX = isGodMode ? 100 : 40;
         if (plane.vx > maxVX) plane.vx = maxVX;
 
         // SANITY CHECK: Anti-Glitch for existing massive numbers
@@ -499,7 +552,7 @@ function update(dt) {
         if (plane.vx > 1000) plane.vx = 80;
 
         // Apply legendary speed bonus directly to position (+30% distance per speed)
-        const moveMult = hasLegendary() ? 1.3 : 1.0;
+        const moveMult = isGodMode ? 1.3 : 1.0;
         distance += plane.vx * 0.1 * moveMult;
 
         // Vertical Gravity & Lift
@@ -507,12 +560,12 @@ function update(dt) {
 
         // Lift based on speed
         // Legendary has more vertical power
-        const maxLift = hasLegendary() ? 0.4 : 0.3;
-        const currentLift = Math.min(maxLift, plane.vx * plane.lift * (hasLegendary() ? 1.5 : 1.0));
+        const maxLift = isGodMode ? 0.4 : 0.3;
+        const currentLift = Math.min(maxLift, plane.vx * plane.lift * (isGodMode ? 1.5 : 1.0));
         plane.vy -= currentLift;
 
         // Hard cap vertical speed to prevent physics explosion
-        const maxVY = hasLegendary() ? 30 : 15;
+        const maxVY = isGodMode ? 30 : 15;
         if (plane.vy < -maxVY) plane.vy = -maxVY;
         if (plane.vy > maxVY) plane.vy = maxVY;
 
@@ -616,6 +669,14 @@ function update(dt) {
         const currentAlt = worldY / 10;
         if (currentAlt > maxAltitude) maxAltitude = currentAlt;
 
+        // Feedback when Legendary Power ends
+        if (hasLegendary() && distance >= 100000 && distance < 101000) {
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('SOBRECARGA FINALIZADA - RETORNO A VUELO NORMAL', canvas.width / 2, 150);
+        }
+
         // Updates Displays
         distVal.textContent = Math.floor(distance);
         altVal.textContent = Math.max(0, Math.floor(maxAltitude));
@@ -633,8 +694,8 @@ function update(dt) {
         // Spawn Heavenly Clouds (High Altitude > 15k)
         if (frames % 30 === 0 && currentAlt > 15000) {
             clouds.push({
-                x: canvas.width + 100,
-                worldY: worldY + (Math.random() * 600 - 300),
+                x: plane.x + (canvas.width + Math.random() * 800),
+                worldY: worldY - (Math.random() * 2000 - 1000) - (plane.vy * 50),
                 size: 80 + Math.random() * 100,
                 speed: 1 + Math.random() * 1.5,
                 opacity: 0.6 + Math.random() * 0.4,
@@ -649,43 +710,75 @@ function update(dt) {
         // Spawn Planets (Space only: 5k to 15k)
         if (frames % 300 === 0 && currentAlt > 5000 && currentAlt < 15000) {
             planets.push({
-                x: canvas.width + 100,
-                worldY: worldY + (Math.random() * 1000 - 500),
+                x: plane.x + (canvas.width + 500 + Math.random() * 1000),
+                worldY: worldY - (Math.random() * 2000 - 1000) - (plane.vy * 80),
                 size: 80 + Math.random() * 150,
                 type: Math.floor(Math.random() * 3) // 0: Mars-like, 1: Ringed, 2: Blue
             });
         }
 
-        // --- RADIAL SPAWNING LOGIC ---
-        // Items spawn in a wide vertical arc ahead of the player to cover all directions
+        // --- RADIAL SPAWNING LOGIC (180 degrees ahead/up/down) ---
+        // Generates things in a half-circle ahead of the player
+        if (distance < 110000) { // Stop spawning powerups after 110k distance
+            const spawnRadius = 800 + Math.random() * 400;
+            const generatePoint = () => {
+                const angle = (Math.random() - 0.5) * Math.PI; // -90 to 90 degrees
+                return {
+                    x: plane.x + Math.cos(angle) * spawnRadius,
+                    worldY: worldY - Math.sin(angle) * spawnRadius
+                };
+            };
 
-        // Spawn Coins relative to current position (High spread)
-        if (frames % Math.max(10, Math.floor(40 / (1 + luckBonus))) === 0) {
-            coins.push({
-                x: canvas.width + 100,
-                worldY: Math.max(50, worldY + (Math.random() * 1000 - 500)),
-                size: 15,
-                angle: 0
-            });
-        }
-
-        // Spawn Obstacles (Only below heaven)
-        if (frames % Math.max(20, Math.floor(80 / (1 + luckBonus * 0.5))) === 0 && currentAlt < 15000) {
-            const isAtLowAlt = currentAlt < 1000;
-            let type = 'bird';
-            if (isAtLowAlt) {
-                const balloonProb = 0.3 + (luckLevel * 0.1);
-                type = Math.random() < balloonProb ? 'balloon' : 'bird';
-            } else {
-                type = 'satellite';
+            // Spawn Coins relative to current position (Keep coins spawning!)
+            if (frames % Math.max(10, Math.floor(40 / (1 + luckBonus))) === 0) {
+                const p = generatePoint();
+                coins.push({ x: p.x, worldY: Math.max(50, p.worldY), size: 15, angle: 0 });
             }
 
-            obstacles.push({
-                x: canvas.width + 100,
-                worldY: Math.max(60, worldY + (Math.random() * 1200 - 600)),
-                size: 20 + Math.random() * 15,
-                type: type
-            });
+            // Spawn Obstacles (Only below heaven)
+            if (frames % Math.max(20, Math.floor(80 / (1 + luckBonus * 0.5))) === 0 && currentAlt < 15000) {
+                const isAtLowAlt = currentAlt < 1000;
+                let type = 'bird';
+                if (isAtLowAlt) {
+                    const balloonProb = 0.3 + (luckLevel * 0.1);
+                    type = Math.random() < balloonProb ? 'balloon' : 'bird';
+                } else {
+                    type = 'satellite';
+                }
+
+                const p = generatePoint();
+                obstacles.push({
+                    x: p.x,
+                    worldY: Math.max(60, p.worldY),
+                    size: 20 + Math.random() * 15,
+                    type: type
+                });
+            }
+
+            // Spawn & Update Boosters (Air)
+            if (frames % Math.max(50, Math.floor(150 / (1 + luckBonus))) === 0) {
+                const p = generatePoint();
+                boosters.push({
+                    x: p.x,
+                    worldY: Math.max(100, p.worldY),
+                    size: 30
+                });
+            }
+
+            // Spawn & Update Fuel Items
+            if (frames % Math.max(100, Math.floor(250 / (1 + luckBonus))) === 0) {
+                const p = generatePoint();
+                fuelItems.push({
+                    x: p.x,
+                    worldY: Math.max(150, p.worldY),
+                    size: 25
+                });
+            }
+        } else {
+            // After 110k, only spawn coins sporadically so they can finish the run
+            if (frames % 60 === 0) {
+                coins.push({ x: plane.x + 1000, worldY: worldY + (Math.random() * 400 - 200), size: 15, angle: 0 });
+            }
         }
 
         // Update Clouds
@@ -700,14 +793,13 @@ function update(dt) {
             coins[i].x -= plane.vx;
             coins[i].angle += 0.1;
 
-            // Magnetism Logic
             const coinScreenY = canvas.height - 100 - (coins[i].worldY - cameraY);
             const dx = plane.x - coins[i].x;
             const dy = plane.y - coinScreenY;
             const dist = Math.sqrt(dx * dx + dy * dy);
-
+            // Magnetism Logic - Disables after 100k
             const magnetLvl = playerData.upgrades.magnet || 0;
-            const legendaryMagnetMult = hasLegendary() ? 2 : 1;
+            const legendaryMagnetMult = isLegendaryPowerActive() ? 2 : 1;
             const magnetRadius = magnetLvl * 60 * legendaryMagnetMult; // Increased radius slightly
             if (magnetRadius > 0 && dist < magnetRadius) {
                 // Aggressive pull: factor increases as distance decreases
@@ -744,7 +836,7 @@ function update(dt) {
 
             if (dist < 35) {
                 if (obstacles[i].type === 'balloon') {
-                    plane.vy = hasLegendary() ? -12 : -6; // Powerful boost if legendary
+                    plane.vy = isLegendaryPowerActive() ? -12 : -6; // Powerful boost if legendary and active
                     createExplosion(obstacles[i].x, obsScreenY, '#ef4444', 10);
                 } else {
                     if (activeShields > 0 && shieldCooldown <= 0) {
@@ -767,34 +859,19 @@ function update(dt) {
         // Update shield cooldown
         if (shieldCooldown > 0) shieldCooldown--;
 
-        // Spawn & Update Boosters (Air)
-        if (frames % Math.max(50, Math.floor(150 / (1 + luckBonus))) === 0) {
-            boosters.push({
-                x: canvas.width + 100,
-                worldY: Math.max(100, worldY + (Math.random() * 800 - 400)),
-                size: 30
-            });
-        }
         for (let i = boosters.length - 1; i >= 0; i--) {
             boosters[i].x -= plane.vx;
             const bScreenY = canvas.height - 100 - (boosters[i].worldY - cameraY);
             const dist = Math.sqrt((plane.x - boosters[i].x) ** 2 + (plane.y - bScreenY) ** 2);
             if (dist < 50) {
-                plane.vx += hasLegendary() ? 10 : 5;
-                plane.vy = hasLegendary() ? -10 : -5;
+                const isGodMode = isLegendaryPowerActive();
+                plane.vx += isGodMode ? 10 : 5;
+                plane.vy = isGodMode ? -10 : -5;
                 createExplosion(boosters[i].x, bScreenY, '#38bdf8', 15);
                 boosters.splice(i, 1);
             } else if (boosters[i].x < -100) boosters.splice(i, 1);
         }
 
-        // Spawn & Update Fuel Items
-        if (frames % Math.max(100, Math.floor(250 / (1 + luckBonus))) === 0) {
-            fuelItems.push({
-                x: canvas.width + 100,
-                worldY: Math.max(150, worldY + (Math.random() * 800 - 400)),
-                size: 25
-            });
-        }
         for (let i = fuelItems.length - 1; i >= 0; i--) {
             fuelItems[i].x -= plane.vx;
             const fScreenY = canvas.height - 100 - (fuelItems[i].worldY - cameraY);
@@ -1119,6 +1196,24 @@ function draw() {
         ctx.fillStyle = 'black';
         ctx.textBaseline = 'middle';
         ctx.fillText('✈️', 0, 0);
+
+        // Height label below plane
+        const altText = Math.floor(worldY / 10) + " m";
+        ctx.font = 'bold 14px Outfit';
+        const textWidth = ctx.measureText(altText).width;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.beginPath();
+        const padding = 6;
+        const rectW = textWidth + padding * 2;
+        const rectH = 20;
+        const rectX = -rectW / 2;
+        const rectY = 40;
+        ctx.roundRect(rectX, rectY, rectW, rectH, 5);
+        ctx.fill();
+
+        ctx.fillStyle = 'white';
+        ctx.fillText(altText, 0, rectY + rectH / 2);
 
         // Reset shadow
         ctx.shadowBlur = 0;

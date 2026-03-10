@@ -154,6 +154,36 @@ canvas {
     transition: width 0.1s;
 }
 
+#time-warp-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.warp-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    pointer-events: auto;
+}
+
+.warp-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.warp-btn.active {
+    background: #fbbf24;
+    color: #000;
+    border-color: #fbbf24;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+}
+
 /* UI Overlay Screens */
 #ui-overlay {
     position: absolute;
@@ -519,6 +549,32 @@ canvas {
     to {
         transform: scale(1.1);
         opacity: 1;
+    }
+}
+
+#game-won-banner {
+    background: linear-gradient(to right, #fbbf24, #f59e0b, #fbbf24);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin-bottom: 5px;
+    text-align: center;
+    line-height: 1.1;
+    animation: shine 3s linear infinite, bounceIn 1s ease-out;
+}
+
+#game-won-banner small {
+    font-size: 1rem;
+    -webkit-text-fill-color: #f59e0b;
+    opacity: 0.8;
+}
+
+@keyframes shine {
+    to {
+        background-position: 200% center;
     }
 }
 

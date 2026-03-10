@@ -41,6 +41,13 @@
             <div id="boost-bar-container">
                 <div id="boost-bar"></div>
             </div>
+            <!-- Time Warp Controls (Legendary Only) -->
+            <div id="time-warp-controls" class="hidden">
+                <button class="warp-btn active" data-speed="1">x1</button>
+                <button class="warp-btn" data-speed="2">x2</button>
+                <button class="warp-btn" data-speed="4">x4</button>
+                <button class="warp-btn" data-speed="10">x10</button>
+            </div>
         </div>
 
         <!-- Start/Menu Screens -->
@@ -231,6 +238,8 @@
 
             <!-- Results Screen -->
             <div id="results-screen" class="menu-screen hidden">
+                <div id="game-won-banner" class="hidden">✨ TE HAS PASADO EL JUEGO ✨<br><small>FELICIDADES
+                        LEYENDA</small></div>
                 <div id="new-record-banner" class="hidden">¡NUEVO RECORD!</div>
                 <h2>VUELO FINALIZADO</h2>
                 <div class="results-stats">
