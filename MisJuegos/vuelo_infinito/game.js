@@ -186,10 +186,10 @@ function updateUIStrings() {
             } else {
                 title.innerHTML = '✨ TALLER DEL LEYENDA ✨';
             }
+            title.style.background = 'linear-gradient(to right, #fbbf24, #f59e0b)';
+            title.style.webkitBackgroundClip = 'text';
+            title.style.webkitTextFillColor = 'transparent';
         }
-        title.style.background = 'linear-gradient(to right, #fbbf24, #f59e0b)';
-        title.style.webkitBackgroundClip = 'text';
-        title.style.webkitTextFillColor = 'transparent';
     }
 
     updateShieldHUD();
@@ -234,19 +234,21 @@ function attachEventListeners() {
 
     // Launch mechanism
     window.addEventListener('mousedown', handleInteractionStart);
-    window.addEventListener('touchstart', handleInteractionStart);
+    window.addEventListener('touchstart', handleInteractionStart, { passive: false });
     window.addEventListener('mouseup', handleInteractionEnd);
-    window.addEventListener('touchend', handleInteractionEnd);
+    window.addEventListener('touchend', handleInteractionEnd, { passive: false });
     window.addEventListener('keydown', (e) => {
-        if (e.code === 'Space') handleInteractionStart();
+        if (e.code === 'Space') handleInteractionStart(e);
     });
     window.addEventListener('keyup', (e) => {
-        if (e.code === 'Space') handleInteractionEnd();
+        if (e.code === 'Space') handleInteractionEnd(e);
     });
 }
 
 function handleInteractionStart(e) {
-    if (e.type === 'keydown' && e.code !== 'Space') return;
+    if (e && e.target && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) return;
+    if (e && e.type === 'touchstart') e.preventDefault();
+    if (e && e.type === 'keydown' && e.code !== 'Space') return;
 
     if (gameState === 'LAUNCHING') {
         isHoldingPower = true;
@@ -256,7 +258,8 @@ function handleInteractionStart(e) {
 }
 
 function handleInteractionEnd(e) {
-    if (e.type === 'keyup' && e.code !== 'Space') return;
+    if (e && e.type === 'touchstart') e.preventDefault();
+    if (e && e.type === 'keyup' && e.code !== 'Space') return;
 
     if (gameState === 'LAUNCHING' && isHoldingPower) {
         isHoldingPower = false;
