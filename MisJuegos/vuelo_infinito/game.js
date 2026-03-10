@@ -242,6 +242,26 @@ function attachEventListeners() {
     document.getElementById('btn-reset').onclick = () => {
         if (confirm('¿Estás seguro de que quieres borrar todo tu progreso? Esta acción no se puede deshacer.')) {
             localStorage.removeItem('vuelo_infinito_data');
+            // Re-initialize with default empty state
+            playerData = {
+                totalCoins: 0,
+                bestDistance: 0,
+                hasWon: false,
+                upgrades: {
+                    thrust: 0,
+                    aero: 0,
+                    fuel: 0,
+                    boost: 0,
+                    magnet: 0,
+                    coinValue: 0,
+                    trampoline: 0,
+                    shield: 0,
+                    luck: 0,
+                    precision: 0,
+                    legendary: 0
+                }
+            };
+            saveData();
             location.reload();
         }
     };
@@ -372,7 +392,7 @@ function resetGame() {
     plane.angle = 0;
     plane.fuel = 100;
     const legendaryFuelMult = hasLegendary() ? 2 : 1;
-    plane.maxFuel = (100 + (playerData.upgrades.fuel - 1) * 50) * legendaryFuelMult;
+    plane.maxFuel = (100 + (playerData.upgrades.fuel) * 50) * legendaryFuelMult;
     plane.fuel = plane.maxFuel;
     coins = [];
     obstacles = [];
@@ -602,7 +622,7 @@ function update(dt) {
         const fuelLvl = playerData.upgrades.fuel || 0;
         const boostLvl = playerData.upgrades.boost || 0;
 
-        if (plane.boostActive && plane.fuel > 0 && fuelLvl > 0) {
+        if (plane.boostActive && plane.fuel > 0) {
             const boostPower = 0.2 + (boostLvl * 0.2); // Base boost + level scaling
             plane.vy -= boostPower;
             plane.vx += boostPower * 0.2;
