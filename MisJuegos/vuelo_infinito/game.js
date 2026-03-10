@@ -23,6 +23,13 @@ const timeWarpControls = document.getElementById('time-warp-controls');
 const warpBtns = document.querySelectorAll('.warp-btn');
 const speedValEl = document.getElementById('speed-val');
 const bestSpeedDisplay = document.getElementById('best-speed');
+const bestAltDisplay = document.getElementById('best-alt');
+const hudBestSpeed = document.getElementById('hud-best-speed');
+const statDistCont = document.getElementById('stat-dist');
+const statAltCont = document.getElementById('stat-alt');
+const statSpeedCont = document.getElementById('stat-speed');
+const statCoinsCont = document.getElementById('stat-coins');
+const bestCoinsDisplay = document.getElementById('best-coins');
 let timeScale = 1;
 let hasShowedWinBannerThisRun = false;
 let sessionMaxSpeed = 0;
@@ -60,6 +67,8 @@ let playerData = {
     totalCoins: 0,
     bestDistance: 0,
     bestSpeed: 0,
+    bestAltitude: 0,
+    bestCoins: 0,
     upgrades: {
         thrust: 0,
         aero: 0,
@@ -77,16 +86,16 @@ let playerData = {
 
 // Upgrade Constants
 const UPGRADE_COSTS = {
-    thrust: [20, 100, 250, 500, 1000],
-    aero: [20, 100, 250, 500, 1000],
-    fuel: [20, 100, 250, 500, 1000],
-    boost: [20, 100, 250, 500, 1000],
-    magnet: [20, 100, 250, 500, 1000],
-    coinValue: [20, 100, 250, 500, 1000],
-    trampoline: [100, 150, 200, 250, 300],
-    shield: [100, 300, 500, 1000, 2000],
-    luck: [150, 300, 600, 1000, 2000],
-    precision: [50, 100, 200, 400, 800],
+    thrust: [100, 200, 400, 750, 1200, 1800, 2500, 3300, 4100, 5000],
+    aero: [100, 200, 400, 750, 1200, 1800, 2500, 3300, 4100, 5000],
+    fuel: [100, 200, 400, 750, 1200, 1800, 2500, 3300, 4100, 5000],
+    boost: [100, 200, 400, 750, 1200, 1800, 2500, 3300, 4100, 5000],
+    magnet: [100, 200, 400, 750, 1200, 1800, 2500, 3300, 4100, 5000],
+    coinValue: [100, 200, 400, 750, 1200, 1800, 2500, 3300, 4100, 5000],
+    trampoline: [100, 200, 400, 750, 1200, 1800, 2500, 3300, 4100, 5000],
+    shield: [150, 300, 600, 1000, 1500, 2200, 3000, 3700, 4400, 5000],
+    luck: [200, 400, 800, 1400, 2100, 2900, 3700, 4300, 4700, 5000],
+    precision: [100, 250, 550, 1000, 1600, 2300, 3100, 3800, 4500, 5000],
     legendary: [10000]
 };
 
@@ -134,6 +143,8 @@ function loadData() {
         playerData.totalCoins = parsed.totalCoins || 0;
         playerData.bestDistance = parsed.bestDistance || 0;
         playerData.bestSpeed = parsed.bestSpeed || 0;
+        playerData.bestAltitude = parsed.bestAltitude || 0;
+        playerData.bestCoins = parsed.bestCoins || 0;
         playerData.hasWon = parsed.hasWon || false;
         if (parsed.upgrades) {
             playerData.upgrades = { ...playerData.upgrades, ...parsed.upgrades };
@@ -155,6 +166,9 @@ function resize() {
 function updateUIStrings() {
     if (bestDistDisplay) bestDistDisplay.textContent = Math.floor(playerData.bestDistance);
     if (bestSpeedDisplay) bestSpeedDisplay.textContent = Math.floor(playerData.bestSpeed);
+    if (bestAltDisplay) bestAltDisplay.textContent = Math.floor(playerData.bestAltitude);
+    if (bestCoinsDisplay) bestCoinsDisplay.textContent = Math.floor(playerData.bestCoins);
+    if (hudBestSpeed) hudBestSpeed.textContent = Math.floor(playerData.bestSpeed);
     totalCoinsDisplays.forEach(el => {
         if (el) el.textContent = Math.floor(playerData.totalCoins);
     });
@@ -214,7 +228,7 @@ function updateUIStrings() {
 function isGameMaxed() {
     // Game is "maxed" for normal upgrades to reveal legendary
     const normalUpgrades = ['thrust', 'aero', 'fuel', 'boost', 'magnet', 'coinValue', 'trampoline', 'shield', 'luck', 'precision'];
-    return normalUpgrades.every(key => (playerData.upgrades[key] || 0) >= 5);
+    return normalUpgrades.every(key => (playerData.upgrades[key] || 0) >= 10);
 }
 
 function hasLegendary() {
@@ -253,6 +267,8 @@ function attachEventListeners() {
                 totalCoins: 0,
                 bestDistance: 0,
                 bestSpeed: 0,
+                bestAltitude: 0,
+                bestCoins: 0,
                 hasWon: false,
                 upgrades: {
                     thrust: 0,
@@ -366,7 +382,7 @@ function buyUpgrade(type) {
     const level = playerData.upgrades[type];
     const cost = UPGRADE_COSTS[type][level];
 
-    if (playerData.totalCoins >= cost && level < 5) {
+    if (playerData.totalCoins >= cost && level < 10) {
         playerData.totalCoins -= cost;
         playerData.upgrades[type]++;
         saveData();
@@ -395,12 +411,20 @@ function resetGame() {
     launchPower = 0;
     powerDirection = 1;
     if (powerBar) powerBar.style.width = '0%';
+    if (hudBestSpeed) hudBestSpeed.textContent = '0';
+
+    // Reset record feedback
+    if (statDistCont) statDistCont.classList.remove('record-broken');
+    if (statAltCont) statAltCont.classList.remove('record-broken');
+    if (statSpeedCont) statSpeedCont.classList.remove('record-broken');
+    if (statCoinsCont) statCoinsCont.classList.remove('record-broken');
+
     plane.vx = 0;
     plane.vy = 0;
     plane.angle = 0;
     plane.fuel = 100;
     const legendaryFuelMult = hasLegendary() ? 2 : 1;
-    plane.maxFuel = (100 + (playerData.upgrades.fuel) * 50) * legendaryFuelMult;
+    plane.maxFuel = (100 + (playerData.upgrades.fuel) * 25) * legendaryFuelMult;
     plane.fuel = plane.maxFuel;
     coins = [];
     obstacles = [];
@@ -411,7 +435,7 @@ function resetGame() {
     particles = [];
     clouds = [];
     stars = [];
-    activeShields = playerData.upgrades.shield || 0;
+    activeShields = Math.ceil((playerData.upgrades.shield || 0) / 2);
     updateShieldHUD();
     shieldCooldown = 0;
 
@@ -440,7 +464,7 @@ function spawnCloud(x = canvas.width + 100, worldYPos = Math.random() * 1000 + 1
 
 function launch() {
     const thrustLvl = playerData.upgrades.thrust || 0;
-    const powerMult = 5 + (thrustLvl * 6);
+    const powerMult = 5 + (thrustLvl * 3);
     let finalPower = (launchPower / 100) * powerMult;
 
     // Perfect Launch Check (Above 98%)
@@ -477,63 +501,99 @@ function calculateResults() {
     const distanceBonus = Math.floor(distance / 10);
     const baseGained = sessionCoins + distanceBonus;
 
-    const isNewRecord = distance > playerData.bestDistance;
     const banner = document.getElementById('new-record-banner');
     const winBanner = document.getElementById('game-won-banner');
-    const bonusText = document.getElementById('multiplier-bonus');
+    const bonusList = document.getElementById('bonus-list');
     const resCoinsEl = document.getElementById('res-coins');
 
     // Reset UI
     if (banner) banner.classList.add('hidden');
     if (winBanner) winBanner.classList.add('hidden');
-    if (bonusText) bonusText.classList.add('hidden');
+    if (bonusList) {
+        bonusList.innerHTML = '';
+        bonusList.classList.add('hidden');
+    }
     resDist.textContent = Math.floor(distance);
     resAlt.textContent = Math.floor(maxAltitude);
-
-    // Show session max speed
     const resTopSpeed = document.getElementById('res-top-speed');
     if (resTopSpeed) resTopSpeed.textContent = sessionMaxSpeed;
 
-    // Check for speed record
+    // Determine Records
+    const records = [];
+    if (distance > playerData.bestDistance) {
+        records.push({ label: 'DISTANCIA', value: distance, key: 'bestDistance' });
+    }
+    if (maxAltitude > playerData.bestAltitude) {
+        records.push({ label: 'ALTURA', value: maxAltitude, key: 'bestAltitude' });
+    }
     if (sessionMaxSpeed > playerData.bestSpeed) {
-        playerData.bestSpeed = sessionMaxSpeed;
+        records.push({ label: 'VELOCIDAD', value: sessionMaxSpeed, key: 'bestSpeed' });
+    }
+    if (baseGained > playerData.bestCoins) {
+        records.push({ label: 'MONEDAS', value: baseGained, key: 'bestCoins' });
     }
 
+    // Initial Display
     resCoinsEl.textContent = `+${baseGained}`;
 
-    // Game Win Message (Only first run after legendary)
+    // Show Win Banner
     if (hasLegendary() && !playerData.hasWon) {
         if (winBanner) winBanner.classList.remove('hidden');
-        playerData.hasWon = true; // Mark as won forever
+        playerData.hasWon = true;
     }
 
-    let finalTotal = baseGained;
+    // Sequential Bonuses
+    let currentTotal = baseGained;
 
-    if (isNewRecord) {
-        playerData.bestDistance = distance;
-        finalTotal = Math.floor(baseGained * 1.5);
+    if (records.length > 0) {
+        if (banner) banner.classList.remove('hidden');
+        if (bonusList) bonusList.classList.remove('hidden');
 
-        // Step 1: Show base coins
-        // Step 2: After 800ms, show record banner and bonus badge
-        setTimeout(() => {
-            if (banner) banner.classList.remove('hidden');
-            if (bonusText) bonusText.classList.remove('hidden');
+        let delay = 800;
+        records.forEach((rec, index) => {
+            setTimeout(() => {
+                // Add bonus item to list
+                const item = document.createElement('div');
+                item.className = 'bonus-item';
+                item.textContent = `¡Bono x1.5 por RECORD ${rec.label}!`;
+                bonusList.appendChild(item);
 
-            // Step 3: Animate coins from base to final
-            let currentDisplay = baseGained;
-            const increment = Math.ceil((finalTotal - baseGained) / 20);
-            const counterInterval = setInterval(() => {
-                currentDisplay += increment;
-                if (currentDisplay >= finalTotal) {
-                    currentDisplay = finalTotal;
-                    clearInterval(counterInterval);
-                }
-                resCoinsEl.textContent = `+${currentDisplay}`;
-            }, 30);
-        }, 800);
+                // Calculate new total
+                const previousTotal = currentTotal;
+                currentTotal = Math.floor(currentTotal * 1.5);
+
+                // Animate counter
+                let displayVal = previousTotal;
+                const increment = Math.ceil((currentTotal - previousTotal) / 15);
+                const counterId = setInterval(() => {
+                    displayVal += increment;
+                    if (displayVal >= currentTotal) {
+                        displayVal = currentTotal;
+                        clearInterval(counterId);
+
+                        // If it was the last record, save and update UI
+                        if (index === records.length - 1) {
+                            finalizeResults(currentTotal, records);
+                        }
+                    }
+                    resCoinsEl.textContent = `+${displayVal}`;
+                }, 30);
+
+            }, delay);
+            delay += 1000; // 1 second between each bonus
+        });
+    } else {
+        finalizeResults(currentTotal, []);
     }
+}
 
-    playerData.totalCoins += finalTotal;
+function finalizeResults(finalCoins, brokenRecordsArray) {
+    // Update historical records
+    brokenRecordsArray.forEach(rec => {
+        playerData[rec.key] = rec.value;
+    });
+
+    playerData.totalCoins += finalCoins;
     saveData();
     updateUIStrings();
 }
@@ -562,7 +622,7 @@ function gameLoop(timestamp) {
 function update(dt) {
     if (gameState === 'LAUNCHING' && isHoldingPower) {
         const precisionLevel = playerData.upgrades.precision || 0;
-        const speedFactor = Math.max(0.5, 4 - (precisionLevel * 0.7)); // Slower speed with higher level
+        const speedFactor = Math.max(0.5, 4 - (precisionLevel * 0.35)); // Slower speed with higher level
         launchPower += speedFactor * powerDirection;
         if (launchPower >= 100 || launchPower <= 0) powerDirection *= -1;
         powerBar.style.width = launchPower + '%';
@@ -574,15 +634,26 @@ function update(dt) {
         // --- STABLE PHYSICS ---
         const aeroLvl = playerData.upgrades.aero || 0;
         // Base drag reduction from Aero
-        let dragAmount = plane.drag * Math.max(0.1, (1 - aeroLvl * 0.15));
+        let dragAmount = plane.drag * Math.max(0.1, (1 - aeroLvl * 0.075));
         // Legendary Bonus reduces drag significantly and extends top speed
         // Only active for the first 100k of flight to allow ending the run
         const isGodMode = isLegendaryPowerActive();
         const legendaryDragMult = isGodMode ? 0.3 : 1.0;
+        // Natural air resistance
         plane.vx *= (1 - dragAmount * legendaryDragMult);
 
-        // Cap horizontal speed
-        const maxVX = isGodMode ? 100 : 40;
+        // --- DIVE PHYSICS ---
+        // Gravity helps horizontal speed when diving (vy > 0)
+        // Subtler conversion for a gradual, challenging acceleration
+        if (plane.vy > 0) {
+            plane.vx += plane.vy * 0.008;
+            // Also apply a bit of extra drag when falling fast to cap it naturally
+            if (plane.vy > 10) plane.vx *= 0.995;
+        }
+
+        // Horizontal Speed Logic
+        // In God Mode or high skill runs, we allow much higher speeds
+        const maxVX = isGodMode ? 300 : 80; // Increased significantly
         if (plane.vx > maxVX) plane.vx = maxVX;
 
         // SANITY CHECK: Anti-Glitch for existing massive numbers
@@ -597,15 +668,16 @@ function update(dt) {
         plane.vy += plane.gravity;
 
         // Lift based on speed
-        // Legendary has more vertical power
-        const maxLift = isGodMode ? 0.4 : 0.3;
-        const currentLift = Math.min(maxLift, plane.vx * plane.lift * (isGodMode ? 1.5 : 1.0));
+        // If the plane is falling (vy > 0), kill ALL lift to prevent gliding
+        // This makes the fall feel heavy and fast ("caer en picado")
+        const currentLift = (plane.vy > 0) ? 0 : Math.min(0.4, plane.vx * plane.lift * (isGodMode ? 1.5 : 1.0));
         plane.vy -= currentLift;
 
-        // Hard cap vertical speed to prevent physics explosion
-        const maxVY = isGodMode ? 30 : 15;
-        if (plane.vy < -maxVY) plane.vy = -maxVY;
+        // Cap downward vertical speed to prevent physics explosion
+        // (Upward speed is now unlimited by skill and luck!)
+        const maxVY = isGodMode ? 60 : 30; // Increased downward cap for stability
         if (plane.vy > maxVY) plane.vy = maxVY;
+        // Note: No upward cap (plane.vy < -maxVY) as requested!
 
         // Perfect Particles during flight
         if (perfectParticlesTimer > 0) {
@@ -641,7 +713,7 @@ function update(dt) {
         const boostLvl = playerData.upgrades.boost || 0;
 
         if (plane.boostActive && plane.fuel > 0) {
-            const boostPower = 0.2 + (boostLvl * 0.2); // Base boost + level scaling
+            const boostPower = 0.2 + (boostLvl * 0.1); // Base boost + level scaling
             plane.vy -= boostPower;
             plane.vx += boostPower * 0.2;
             plane.fuel -= 1.5;
@@ -664,9 +736,18 @@ function update(dt) {
 
         worldY -= plane.vy; // Update world height
 
-        // Camera Magic: Keep plane in view vertically
-        const targetCameraY = worldY - (canvas.height * 0.5);
-        cameraY += (targetCameraY - cameraY) * 0.1; // Smooth follow
+        // Camera Logic: Keep plane in view even at extreme speeds
+        const targetCameraY = worldY - (canvas.height * 0.6); // Adjusted offset
+
+        // Dynamic Lerp: The faster we move vertically, the faster the camera snaps
+        const vertSpeed = Math.abs(plane.vy);
+        const lerpFactor = Math.min(0.5, 0.1 + (vertSpeed * 0.02));
+        cameraY += (targetCameraY - cameraY) * lerpFactor;
+
+        // Safety: Hard snap camera if plane is about to leave screen
+        const relativeY = worldY - cameraY;
+        if (relativeY > canvas.height * 0.8) cameraY = worldY - canvas.height * 0.8;
+        if (relativeY < canvas.height * 0.2) cameraY = worldY - canvas.height * 0.2;
 
         // Screen Shake Apply
         if (screenShake > 0) {
@@ -683,17 +764,20 @@ function update(dt) {
                 activeShields--;
                 updateShieldHUD();
                 const shieldLvl = playerData.upgrades.shield || 1;
-                const bounceMult = 1 + (shieldLvl * 0.05);
+                const bounceMult = 1 + (shieldLvl * 0.025);
                 plane.vy = -26 * bounceMult; // Double normal trampoline (+ level bonus)
                 plane.vx += 3;
                 createExplosion(plane.x, canvas.height - 100 + cameraY, '#38bdf8', 30);
                 worldY = 1; // Kick off ground
             } else {
                 worldY = 0;
-                plane.vy *= -0.2; // Small bounce
-                plane.vx -= 0.5; // Friction
+                // High impact penalty: lose 70% of speed when hitting ground
+                // This prevents bouncing forever at 400km/h
+                plane.vx *= 0.3;
+                plane.vy *= -0.1; // Minimal bounce
 
                 if (plane.vx < 0.5) {
+                    plane.vx = 0;
                     showScreen('RESULTS');
                 }
             }
@@ -719,13 +803,26 @@ function update(dt) {
         distVal.textContent = Math.floor(distance);
         altVal.textContent = Math.max(0, Math.floor(maxAltitude));
 
-        // Speed calculation and record
-        const currentSpeed = Math.floor(plane.vx * 10);
-        if (currentSpeed > sessionMaxSpeed) sessionMaxSpeed = currentSpeed;
+        const distanceBonus = Math.floor(distance / 10);
+        const totalCurrentCoins = sessionCoins + distanceBonus;
+
+        // Visual Record Feedback: Turn yellow if global record is broken during this run
+        if (distance > playerData.bestDistance && statDistCont) statDistCont.classList.add('record-broken');
+        if (maxAltitude > playerData.bestAltitude && statAltCont) statAltCont.classList.add('record-broken');
+        if (sessionMaxSpeed > playerData.bestSpeed && statSpeedCont) statSpeedCont.classList.add('record-broken');
+        if (totalCurrentCoins > playerData.bestCoins && statCoinsCont) statCoinsCont.classList.add('record-broken');
+
+        // Speed calculation - Now uses TOTAL VELOCITY (Magnitude)
+        // This ensures that when the plane goes up fast, the speedometer shows it!
+        const totalVel = Math.sqrt(plane.vx ** 2 + plane.vy ** 2);
+        const currentSpeed = Math.floor(totalVel * 10);
+        if (currentSpeed > sessionMaxSpeed) {
+            sessionMaxSpeed = currentSpeed;
+            if (hudBestSpeed) hudBestSpeed.textContent = sessionMaxSpeed;
+        }
         if (speedValEl) speedValEl.textContent = currentSpeed;
 
-        const distanceBonus = Math.floor(distance / 10);
-        coinVal.textContent = sessionCoins + distanceBonus;
+        coinVal.textContent = totalCurrentCoins;
         boostBar.style.width = (plane.fuel / plane.maxFuel * 100) + '%';
 
         // Sky background transition based on height (Scaled to 20k)
@@ -749,7 +846,7 @@ function update(dt) {
 
         // --- SPAWNING LOGIC with LUCK ---
         const luckLevel = playerData.upgrades.luck || 0;
-        const luckBonus = luckLevel * 0.2; // 20% increase in frequency per level
+        const luckBonus = luckLevel * 0.1; // 10% increase in frequency per level
 
         // Spawn Planets (Space only: 5k to 15k)
         if (frames % 300 === 0 && currentAlt > 5000 && currentAlt < 15000) {
@@ -844,7 +941,7 @@ function update(dt) {
             // Magnetism Logic - Disables after 100k
             const magnetLvl = playerData.upgrades.magnet || 0;
             const legendaryMagnetMult = isLegendaryPowerActive() ? 2 : 1;
-            const magnetRadius = magnetLvl * 60 * legendaryMagnetMult; // Increased radius slightly
+            const magnetRadius = magnetLvl * 30 * legendaryMagnetMult; // Increased radius slightly
             if (magnetRadius > 0 && dist < magnetRadius) {
                 // Aggressive pull: factor increases as distance decreases
                 const pullFactor = 0.15 + (magnetLvl * 0.02);
@@ -859,7 +956,7 @@ function update(dt) {
 
             if (dist < 40) {
                 const valueLvl = playerData.upgrades.coinValue || 0;
-                const coinBonus = valueLvl * 5;
+                const coinBonus = valueLvl * 2.5;
                 sessionCoins += 10 + coinBonus;
                 createExplosion(coins[i].x, coinScreenY, '#fbbf24', 5);
                 coins.splice(i, 1);
@@ -921,7 +1018,8 @@ function update(dt) {
             const fScreenY = canvas.height - 100 - (fuelItems[i].worldY - cameraY);
             const dist = Math.sqrt((plane.x - fuelItems[i].x) ** 2 + (plane.y - fScreenY) ** 2);
             if (dist < 45) {
-                plane.fuel = Math.min(plane.maxFuel, plane.fuel + plane.maxFuel * 0.15);
+                const refillPercent = 0.2 + Math.random() * 0.2; // 20% to 40%
+                plane.fuel = Math.min(plane.maxFuel, plane.fuel + plane.maxFuel * refillPercent);
                 createExplosion(fuelItems[i].x, fScreenY, '#ef4444', 8);
                 fuelItems.splice(i, 1);
             } else if (fuelItems[i].x < -100) fuelItems.splice(i, 1);
@@ -935,7 +1033,7 @@ function update(dt) {
             trampolines.push({
                 x: canvas.width + 100,
                 worldY: 0,
-                width: (100 + (trampLevel - 1) * 40) * legendaryTrampMult
+                width: (100 + (trampLevel - 1) * 17.7) * legendaryTrampMult
             });
         }
         for (let i = trampolines.length - 1; i >= 0; i--) {
@@ -1241,23 +1339,30 @@ function draw() {
         ctx.textBaseline = 'middle';
         ctx.fillText('✈️', 0, 0);
 
-        // Height label below plane
+        // Height & Speed label below plane
         const altText = Math.floor(worldY / 10) + " m";
-        ctx.font = 'bold 14px Outfit';
-        const textWidth = ctx.measureText(altText).width;
+        const totalVel = Math.sqrt(plane.vx ** 2 + plane.vy ** 2);
+        const speedText = Math.floor(totalVel * 10) + " km/h";
+        ctx.font = 'bold 12px Outfit';
+        const w1 = ctx.measureText(altText).width;
+        const w2 = ctx.measureText(speedText).width;
+        const textWidth = Math.max(w1, w2);
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.beginPath();
-        const padding = 6;
+        const padding = 8;
         const rectW = textWidth + padding * 2;
-        const rectH = 20;
+        const rectH = 34; // Taller for two lines
         const rectX = -rectW / 2;
         const rectY = 40;
-        ctx.roundRect(rectX, rectY, rectW, rectH, 5);
+        ctx.roundRect(rectX, rectY, rectW, rectH, 6);
         ctx.fill();
 
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = 'white';
-        ctx.fillText(altText, 0, rectY + rectH / 2);
+        ctx.fillText(altText, 0, rectY + 13);
+        ctx.fillText(speedText, 0, rectY + 27);
 
         // Reset shadow
         ctx.shadowBlur = 0;

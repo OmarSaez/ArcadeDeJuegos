@@ -91,7 +91,7 @@ canvas {
 
 .stats {
     display: flex;
-    gap: 20px;
+    gap: 15px;
     background: rgba(0, 0, 0, 0.4);
     /* Darker background for contrast */
     backdrop-filter: blur(15px);
@@ -111,6 +111,17 @@ canvas {
     text-transform: uppercase;
     opacity: 0.7;
     margin-bottom: 2px;
+}
+
+.stat-item.record-broken span:not(.label) {
+    color: #fbbf24;
+    /* Legendary Gold */
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+    transition: color 0.3s;
+}
+
+.stat-item {
+    transition: transform 0.2s;
 }
 
 .stat-item span:not(.label) {
@@ -182,43 +193,6 @@ canvas {
     color: #000;
     border-color: #fbbf24;
     box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
-}
-
-#speedometer {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 10px 25px;
-    border-radius: 30px;
-    color: white;
-    text-align: center;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-    z-index: 100;
-    transition: transform 0.2s, opacity 0.3s;
-}
-
-#speedometer.hidden {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-}
-
-.speed-val {
-    font-size: 1.8rem;
-    font-weight: 900;
-    font-family: 'Outfit', sans-serif;
-    color: #4ade80;
-    /* Match primary color */
-}
-
-.speed-val small {
-    font-size: 0.8rem;
-    opacity: 0.7;
-    margin-left: 2px;
-    color: white;
 }
 
 #ui-overlay {
@@ -416,9 +390,20 @@ canvas {
 .global-stats {
     display: flex;
     justify-content: center;
-    gap: 30px;
-    font-size: 0.9rem;
-    opacity: 0.8;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.stat-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
 }
 
 /* Shop Styling */
@@ -695,16 +680,24 @@ canvas {
     text-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
 }
 
-#multiplier-bonus {
+.results-bonus-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 15px;
+    width: 100%;
+}
+
+.bonus-item {
     color: #4ade80;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 800;
-    padding: 5px 15px;
+    padding: 8px 15px;
     background: rgba(74, 222, 128, 0.1);
-    border-radius: 20px;
-    margin-top: 10px;
+    border-radius: 12px;
     border: 1px solid rgba(74, 222, 128, 0.2);
-    animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-align: center;
 }
 
 @keyframes bounceIn {

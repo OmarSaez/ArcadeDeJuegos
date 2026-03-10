@@ -22,15 +22,19 @@
         <!-- HUD -->
         <div id="hud" class="hidden">
             <div class="stats">
-                <div class="stat-item">
+                <div id="stat-dist" class="stat-item">
                     <span class="label">Distancia:</span>
-                    <span id="dist-val">0</span>m
+                    <span><span id="dist-val">0</span>m</span>
                 </div>
-                <div class="stat-item">
+                <div id="stat-alt" class="stat-item">
                     <span class="label">Altura:</span>
-                    <span id="alt-val">0</span>m
+                    <span><span id="alt-val">0</span>m</span>
                 </div>
-                <div class="stat-item">
+                <div id="stat-speed" class="stat-item">
+                    <span class="label">Vel. Máx:</span>
+                    <span><span id="hud-best-speed">0</span>km/h</span>
+                </div>
+                <div id="stat-coins" class="stat-item">
                     <span class="label">💰:</span>
                     <span id="coin-val">0</span>
                 </div>
@@ -40,10 +44,6 @@
             </div>
             <div id="boost-bar-container">
                 <div id="boost-bar"></div>
-            </div>
-            <!-- Speedometer -->
-            <div id="speedometer">
-                <div class="speed-val"><span id="speed-val">0</span> <small>km/h</small></div>
             </div>
             <!-- Time Warp Controls (Legendary Only) -->
             <div id="time-warp-controls" class="hidden">
@@ -72,9 +72,11 @@
                 </div>
 
                 <div class="global-stats">
-                    <span>Récord: <span id="best-dist">0</span>m</span>
-                    <span>Vel. Máx: <span id="best-speed">0</span>km/h</span>
-                    <span>Monedas: <span class="total-coins">0</span></span>
+                    <div class="stat-pill">🏆 Record: <span id="best-dist">0</span>m</div>
+                    <div class="stat-pill">🏔️ Alt. Máx: <span id="best-alt">0</span>m</div>
+                    <div class="stat-pill">⚡ Vel. Máx: <span id="best-speed">0</span>km/h</div>
+                    <div class="stat-pill">💰 Máx Monedas: <span id="best-coins">0</span></div>
+                    <div class="stat-pill">💵 Total: <span class="total-coins">0</span></div>
                 </div>
             </div>
 
@@ -260,7 +262,7 @@
                         <span class="label">Monedas Ganadas:</span>
                         <span class="value" id="res-coins">+0</span>
                     </div>
-                    <div id="multiplier-bonus" class="hidden">¡Bono x1.5 por RECORD!</div>
+                    <div id="bonus-list" class="results-bonus-container hidden"></div>
                 </div>
                 <button id="btn-finish" class="primary-btn">CONTINUAR</button>
             </div>
