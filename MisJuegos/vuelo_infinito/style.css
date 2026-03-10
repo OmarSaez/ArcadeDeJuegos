@@ -269,6 +269,24 @@ canvas {
     margin-bottom: 30px;
 }
 
+.emoji-preview {
+    font-size: 5rem;
+    animation: floatPlane 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(74, 222, 128, 0.4));
+}
+
+@keyframes floatPlane {
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(5deg);
+    }
+
+    50% {
+        transform: translateY(-15px) rotate(-5deg);
+    }
+}
+
 .action-buttons {
     display: flex;
     flex-direction: column;
@@ -337,6 +355,26 @@ canvas {
 
 .secondary-btn:hover {
     background: var(--glass);
+}
+
+.arcade-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    text-decoration: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+}
+
+.arcade-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    filter: brightness(1.1);
 }
 
 .global-stats {
