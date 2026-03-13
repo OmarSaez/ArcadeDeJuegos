@@ -52,21 +52,17 @@ canvas {
     left: 0;
     z-index: 1;
     background: linear-gradient(to top,
-            #1a472a 0%,
-            #2d5a27 1%,
-            #4facfe 2%,
-            #00f2fe 5%,
-            #3a7bd5 10%,
-            #001f3f 20%,
-            #000c1d 35%,
-            #020617 50%,
-            #000000 65%,
-            #000000 75%,
-            #0c1a33 80%,
-            #3a7bd5 85%,
-            #e0f2fe 92%,
-            #ffffff 96%,
-            #fffbeb 100%);
+            #1a472a 0%,      /* 0m: Ground */
+            #4facfe 5%,      /* 2.5k: Sky Blue */
+            #1e3a8a 15%,     /* 7.5k: Dark Blue */
+            #020617 25%,     /* 12.5k: Deep Space */
+            #020617 30%,     /* 15k: HOLD DARKNESS UNTIL START */
+            #ffffff 40%,     /* 20k: HEAVEN REVEAL PEAK */
+            #ffffff 50%,     /* 25k: START OF Scenario 1 (Gold) */
+            #fbbf24 70%,     /* 35k: GOLDEN ETHER PEAK */
+            #a855f7 80%,     /* 40k: CREPÚSCULO PROFUNDO START */
+            #0f172a 95%,     /* Final Atmosphere Thinning */
+            #000000 100%);   /* 50k+: PURE SPACE BLACK */
     transition: transform 0.8s cubic-bezier(0.1, 0, 0.2, 1);
 }
 

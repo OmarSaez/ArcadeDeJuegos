@@ -45,6 +45,7 @@ let lastTime = 0;
 let distance = 0;
 let maxAltitude = 0;
 let sessionCoins = 0;
+let speedBonusCoins = 0;
 let launchPower = 0;
 let powerDirection = 1;
 let launchPhase = 'ANGLE'; // ANGLE or POWER
@@ -488,6 +489,7 @@ function resetGame() {
     distance = 0;
     maxAltitude = 0;
     sessionCoins = 0;
+    speedBonusCoins = 0;
     worldY = 0;
     cameraY = 0;
     plane.x = 100;
@@ -600,12 +602,13 @@ function launch() {
 
 function calculateResults() {
     const distanceBonus = Math.floor(distance / 10);
-    const baseGained = sessionCoins + distanceBonus;
+    const initialBase = sessionCoins + distanceBonus; // Regular coins + distance
 
     const banner = document.getElementById('new-record-banner');
     const winBanner = document.getElementById('game-won-banner');
     const bonusList = document.getElementById('bonus-list');
     const resCoinsEl = document.getElementById('res-coins');
+    const resCoinsBase = document.getElementById('res-coins-base');
 
     // Reset UI
     if (banner) banner.classList.add('hidden');
@@ -614,7 +617,6 @@ function calculateResults() {
         bonusList.innerHTML = '';
         bonusList.classList.add('hidden');
     }
-    const resCoinsBase = document.getElementById('res-coins-base');
     if (resCoinsBase) {
         resCoinsBase.classList.add('hidden');
         resCoinsBase.textContent = '';
@@ -626,7 +628,7 @@ function calculateResults() {
     const resTopSpeed = document.getElementById('res-top-speed');
     if (resTopSpeed) resTopSpeed.textContent = sessionMaxSpeed;
 
-    // Determine Records
+    // Determine Multiplier Records
     const records = [];
     if (distance > playerData.bestDistance) {
         records.push({ label: 'DISTANCIA', value: distance, key: 'bestDistance' });
@@ -637,69 +639,91 @@ function calculateResults() {
     if (sessionMaxSpeed > playerData.bestSpeed) {
         records.push({ label: 'VELOCIDAD', value: sessionMaxSpeed, key: 'bestSpeed' });
     }
-    if (baseGained > playerData.bestCoins) {
-        records.push({ label: 'MONEDAS', value: baseGained, key: 'bestCoins' });
-    }
 
     // Initial Display
-    resCoinsEl.textContent = `+${baseGained}`;
+    resCoinsEl.textContent = `+${initialBase}`;
+    let currentTotal = initialBase;
+    let delay = 600;
+
+    // STEP 1: Speed Bonus (Additive)
+    if (speedBonusCoins > 0) {
+        setTimeout(() => {
+            if (resCoinsBase) {
+                resCoinsBase.textContent = `+${currentTotal}`;
+                resCoinsBase.classList.remove('hidden');
+            }
+            if (bonusList) bonusList.classList.remove('hidden');
+
+            const item = document.createElement('div');
+            item.className = 'bonus-item';
+            item.style.color = '#fbbf24';
+            item.textContent = `¡BONO SUPERVELOCIDAD: +${speedBonusCoins}💰!`;
+            bonusList.appendChild(item);
+
+            const previousTotal = currentTotal;
+            currentTotal += speedBonusCoins;
+
+            animateCoinCounter(previousTotal, currentTotal, () => {
+                if (records.length === 0) finalizeResults(currentTotal, []);
+            });
+        }, delay);
+        delay += 1200;
+    }
+
+    // STEP 2: Record Multipliers (Multiplicative)
+    if (records.length > 0) {
+        records.forEach((rec, index) => {
+            setTimeout(() => {
+                if (banner) banner.classList.remove('hidden');
+                if (bonusList) bonusList.classList.remove('hidden');
+
+                // If no speed bonus happened, the strike-through starts here
+                if (index === 0 && speedBonusCoins <= 0 && resCoinsBase) {
+                    resCoinsBase.textContent = `+${currentTotal}`;
+                    resCoinsBase.classList.remove('hidden');
+                } else if (resCoinsBase) {
+                    // Update strike-through to the previous total before this multiplier
+                    resCoinsBase.textContent = `+${currentTotal}`;
+                }
+
+                const item = document.createElement('div');
+                item.className = 'bonus-item';
+                item.textContent = `¡Bono x1.5 por RECORD ${rec.label}!`;
+                bonusList.appendChild(item);
+
+                const previousTotal = currentTotal;
+                currentTotal = Math.floor(currentTotal * 1.5);
+
+                animateCoinCounter(previousTotal, currentTotal, () => {
+                    if (index === records.length - 1) finalizeResults(currentTotal, records);
+                });
+            }, delay);
+            delay += 1200;
+        });
+    } else if (speedBonusCoins <= 0) {
+        finalizeResults(currentTotal, []);
+    }
 
     // Show Win Banner
     if (hasLegendary() && !playerData.hasWon) {
         if (winBanner) winBanner.classList.remove('hidden');
         playerData.hasWon = true;
     }
+}
 
-    // Sequential Bonuses
-    let currentTotal = baseGained;
-
-    if (records.length > 0) {
-        if (banner) banner.classList.remove('hidden');
-        if (bonusList) bonusList.classList.remove('hidden');
-
-        // Delay strike-through to appear when the first bonus starts
-        let delay = 800;
-        records.forEach((rec, index) => {
-            setTimeout(() => {
-                // On the first record, show the base value being 'struck'
-                if (index === 0 && resCoinsBase) {
-                    resCoinsBase.textContent = `+${baseGained}`;
-                    resCoinsBase.classList.remove('hidden');
-                }
-
-                // Add bonus item to list
-                const item = document.createElement('div');
-                item.className = 'bonus-item';
-                item.textContent = `¡Bono x1.5 por RECORD ${rec.label}!`;
-                bonusList.appendChild(item);
-
-                // Calculate new total
-                const previousTotal = currentTotal;
-                currentTotal = Math.floor(currentTotal * 1.5);
-
-                // Animate counter
-                let displayVal = previousTotal;
-                const increment = Math.ceil((currentTotal - previousTotal) / 15);
-                const counterId = setInterval(() => {
-                    displayVal += increment;
-                    if (displayVal >= currentTotal) {
-                        displayVal = currentTotal;
-                        clearInterval(counterId);
-
-                        // If it was the last record, save and update UI
-                        if (index === records.length - 1) {
-                            finalizeResults(currentTotal, records);
-                        }
-                    }
-                    resCoinsEl.textContent = `+${displayVal}`;
-                }, 30);
-
-            }, delay);
-            delay += 1000; // 1 second between each bonus
-        });
-    } else {
-        finalizeResults(currentTotal, []);
-    }
+function animateCoinCounter(start, end, onComplete) {
+    let displayVal = start;
+    const resCoinsEl = document.getElementById('res-coins');
+    const increment = Math.ceil((end - start) / 15);
+    const counterId = setInterval(() => {
+        displayVal += increment;
+        if (displayVal >= end) {
+            displayVal = end;
+            clearInterval(counterId);
+            if (onComplete) onComplete();
+        }
+        resCoinsEl.textContent = `+${displayVal}`;
+    }, 30);
 }
 
 function finalizeResults(finalCoins, brokenRecordsArray) {
@@ -928,21 +952,46 @@ function update(dt) {
             }
         }
 
-        // Tops out? 100k if legendary, else 20k
-        const worldTop = hasLegendary() ? 1000000 : 200000;
+        // Tops out? 50k if base, 200k if legendary
+        const worldTop = hasLegendary() ? 2000000 : 500000;
         if (worldY > worldTop) worldY = worldTop;
 
         // Max altitude tracker
         const currentAlt = worldY / 10;
         if (currentAlt > maxAltitude) maxAltitude = currentAlt;
 
-        // Feedback when Legendary Power ends
-        if (hasLegendary() && distance >= 100000 && distance < 101000) {
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 24px Outfit';
+        // Feedback when reaching Space Thresholds
+        if (currentAlt >= 15000 && currentAlt < 15500) {
+            ctx.fillStyle = '#60a5fa';
+            ctx.font = 'bold 28px Outfit';
             ctx.textAlign = 'center';
-            ctx.fillText('SOBRECARGA FINALIZADA - RETORNO A VUELO NORMAL', canvas.width / 2, 150);
+            ctx.fillText('✨ CIELO ALCANZADO ✨', canvas.width / 2, 200);
+        } else if (currentAlt >= 25000 && currentAlt < 25500) {
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = 'bold 28px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('☀️ EL ÉTER DORADO ☀️', canvas.width / 2, 200);
+        } else if (currentAlt >= 40000 && currentAlt < 40500) {
+            ctx.fillStyle = '#a855f7';
+            ctx.font = 'bold 28px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('🔮 CREPÚSCULO PROFUNDO 🔮', canvas.width / 2, 200);
+        } else if (currentAlt >= 50000 && currentAlt < 50500) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 28px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('🚀 FRONTERA ESPACIAL SUPERADA 🚀', canvas.width / 2, 200);
         }
+
+        // Feedback when reaching the Black Hole (Edge of Reality)
+        if (currentAlt >= 190000) {
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 32px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('🕳️ EL HORIZONTE DE SUCESOS 🕳️', canvas.width / 2, 250);
+        }
+
+        // Feedback when Legendary Power ends
 
         // Updates Displays
         distVal.textContent = Math.floor(distance);
@@ -958,7 +1007,6 @@ function update(dt) {
         if (totalCurrentCoins > playerData.bestCoins && statCoinsCont) statCoinsCont.classList.add('record-broken');
 
         // Speed calculation - Now uses TOTAL VELOCITY (Magnitude)
-        // This ensures that when the plane goes up fast, the speedometer shows it!
         const totalVel = Math.sqrt(plane.vx ** 2 + plane.vy ** 2);
         const currentSpeed = Math.floor(totalVel * 10);
         if (currentSpeed > sessionMaxSpeed) {
@@ -967,15 +1015,51 @@ function update(dt) {
         }
         if (speedValEl) speedValEl.textContent = currentSpeed;
 
+        // High Speed Effects (> 1000 km/h)
+        if (currentSpeed > 1000) {
+            const speedExcess = currentSpeed - 1000;
+            // Add gradual screen shake
+            screenShake = Math.max(screenShake, Math.min(12, speedExcess * 0.01));
+
+            // Spawn fire particles
+            const fireIntensity = Math.min(5, Math.floor(speedExcess / 200) + 1);
+            for (let i = 0; i < fireIntensity; i++) {
+                particles.push({
+                    x: plane.x - 20 - (Math.random() * 20),
+                    y: plane.y + (Math.random() * 20 - 10),
+                    vx: -plane.vx * 0.2,
+                    vy: (Math.random() - 0.5) * 5,
+                    size: 10 + Math.random() * 15,
+                    life: 0.6 + Math.random() * 0.4,
+                    color: Math.random() > 0.5 ? '#f97316' : '#ef4444' // Orange or Red
+                });
+            }
+            
+            // Speed Bonus: 2 coins per second (1 every 30 frames)
+            if (frames % 30 === 0) {
+                speedBonusCoins += 1;
+            }
+        }
+
         coinVal.textContent = totalCurrentCoins;
         boostBar.style.width = (plane.fuel / plane.maxFuel * 100) + '%';
 
-        // Sky background transition based on height (Scaled to 20k)
-        const skyHeightRatio = Math.min(1, Math.max(0, currentAlt / 20000));
+        // Sky background transition based on height (Scaled to 50k)
+        const skyHeightRatio = Math.min(1, Math.max(0, currentAlt / 50000));
         skyLayers.style.transform = `translateY(${skyHeightRatio * 95}%)`;
 
-        // Spawn Decorative Clouds (Only if low/medium)
-        if (frames % 40 === 0 && currentAlt < 2000) spawnCloud(canvas.width + 100, worldY + (Math.random() * 400 - 200));
+        // Spawn Decorative Clouds (Only if low/medium or HEAVEN 15k-20k)
+        if (currentAlt < 10000 || (currentAlt >= 14000 && currentAlt <= 21000)) {
+            const cloudProb = (currentAlt >= 14000) ? 0.08 : 0.04;
+            if (Math.random() < cloudProb) {
+                clouds.push({
+                    x: canvas.width + 100,
+                    y: Math.random() * canvas.height,
+                    size: 50 + Math.random() * 100,
+                    speed: 0.2 + Math.random() * 0.5
+                });
+            }
+        }
 
         // Spawn Heavenly Clouds (High Altitude > 15k)
         if (frames % 30 === 0 && currentAlt > 15000) {
@@ -1023,13 +1107,17 @@ function update(dt) {
 
             // Spawn Obstacles (Only below heaven)
             if (frames % Math.max(20, Math.floor(80 / (1 + luckBonus * 0.5))) === 0 && currentAlt < 15000) {
-                const isAtLowAlt = currentAlt < 1000;
+                const isAtLowAlt = currentAlt < 2000;
                 let type = 'bird';
                 if (isAtLowAlt) {
                     const balloonProb = 0.3 + (luckLevel * 0.1);
                     type = Math.random() < balloonProb ? 'balloon' : 'bird';
-                } else if (currentAlt >= 10000 && currentAlt <= 16000) {
+                } else if (currentAlt >= 10000 && currentAlt < 40000) {
                     type = Math.random() < 0.6 ? 'meteor' : 'satellite';
+                } else if (currentAlt >= 40000 && currentAlt < 100000) {
+                    type = Math.random() < 0.5 ? 'ufo' : 'alien';
+                } else if (currentAlt >= 100000) {
+                    type = Math.random() < 0.8 ? 'meteor' : 'alien'; // Asteroid belt vibes
                 } else {
                     type = 'satellite';
                 }
@@ -1114,7 +1202,13 @@ function update(dt) {
 
         // Update Obstacles
         for (let i = obstacles.length - 1; i >= 0; i--) {
-            obstacles[i].x -= plane.vx + 2;
+            const o = obstacles[i];
+            o.x -= plane.vx + 2;
+
+            // UFO / Alien movement (Horizontal oscillation)
+            if (o.type === 'ufo' || o.type === 'alien') {
+                o.x += Math.sin(frames * 0.05) * 5;
+            }
 
             // Collision
             const obsScreenY = canvas.height - 100 - (obstacles[i].worldY - cameraY);
@@ -1428,11 +1522,52 @@ function draw() {
             } else if (o.type === 'meteor') {
                 ctx.font = `${o.size * 2.2}px Arial`;
                 ctx.fillText('☄️', o.x, screenY);
+            } else if (o.type === 'ufo') {
+                ctx.font = `${o.size * 2}px Arial`;
+                ctx.fillText('🛸', o.x, screenY);
+                // Add a small neon glow for UFOs
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#4ade80';
+            } else if (o.type === 'alien') {
+                ctx.font = `${o.size * 1.8}px Arial`;
+                ctx.fillText('👾', o.x, screenY);
             } else { // balloon
                 ctx.font = `${o.size * 1.5}px Arial`;
                 ctx.fillText('🎈', o.x, screenY);
             }
+            ctx.shadowBlur = 0; // Reset shadow
         });
+
+        // Draw The Black Hole (At the absolute top of the world)
+        const topY = hasLegendary() ? 2000000 : 500000;
+        const blackHoleScreenY = canvas.height - 100 - (topY - cameraY);
+        if (blackHoleScreenY > -500 && blackHoleScreenY < canvas.height + 500) {
+            ctx.save();
+            ctx.translate(canvas.width / 2, blackHoleScreenY);
+            ctx.rotate(frames * 0.02);
+            
+            // Outer glow
+            const grad = ctx.createRadialGradient(0, 0, 50, 0, 0, 300);
+            grad.addColorStop(0, '#000');
+            grad.addColorStop(0.5, '#4c1d95'); // Purple deep space
+            grad.addColorStop(1, 'transparent');
+            
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(0, 0, 300, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // The Hole
+            ctx.fillStyle = 'black';
+            ctx.shadowBlur = 50;
+            ctx.shadowColor = '#fff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 80, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+            ctx.shadowBlur = 0;
+        }
 
         // Draw Plane (Emoji)
         ctx.save();
@@ -1440,9 +1575,16 @@ function draw() {
         let displayX = plane.x;
         let displayY = plane.y;
 
-        // Shake if perfect or boost
+        // Shake if perfect, boost, or very high speed
         let shake = (plane.boostActive && plane.fuel > 0) ? 2 : 0;
         if (isLaunchingPerfect) shake = 8; // Intense shake for perfect
+        
+        // Add speed-based tremble over 1000 km/h
+        const totalVelPlane = Math.sqrt(plane.vx ** 2 + plane.vy ** 2);
+        const currentSpeedPlane = totalVelPlane * 10;
+        if (currentSpeedPlane > 1000) {
+            shake += Math.min(5, (currentSpeedPlane - 1000) * 0.005);
+        }
 
         if (shake > 0) {
             displayX += (Math.random() - 0.5) * shake;
@@ -1450,6 +1592,27 @@ function draw() {
         }
 
         ctx.translate(displayX, displayY);
+
+        // Fire Aura for high speeds (> 1000 km/h)
+        const drawTotalVel = Math.sqrt(plane.vx ** 2 + plane.vy ** 2);
+        const drawCurrentSpeed = drawTotalVel * 10;
+        if (drawCurrentSpeed > 1000) {
+            const intensity = Math.min(1, (drawCurrentSpeed - 1000) / 1500);
+            ctx.save();
+            ctx.shadowBlur = 20 * intensity;
+            ctx.shadowColor = '#ef4444';
+            ctx.globalAlpha = intensity * 0.6;
+            const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 50 + (intensity * 30));
+            grad.addColorStop(0, '#f97316');
+            grad.addColorStop(0.6, '#ef4444');
+            grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.scale(1.5, 0.8); // Make it more elongated like a trail
+            ctx.arc(0, 0, 40, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
 
         const targetAngle = Math.atan2(plane.vy, plane.vx);
         plane.angle += (targetAngle - plane.angle) * 0.1;
