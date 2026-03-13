@@ -160,7 +160,11 @@ function saveData() {
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    plane.y = canvas.height - 100;
+    // Keep plane grounded on resize
+    if (gameState === 'MENU' || gameState === 'LAUNCHING') {
+        plane.y = canvas.height - 100;
+        plane.x = Math.min(100, canvas.width * 0.1);
+    }
 }
 
 function updateUIStrings() {
@@ -313,8 +317,8 @@ function attachEventListeners() {
 }
 
 function handleInteractionStart(e) {
-    if (e && e.target && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) return;
-    if (e && e.type === 'touchstart') e.preventDefault();
+    if (e && e.target && (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.closest('.menu-content'))) return;
+    if (e && e.type === 'touchstart' && (gameState === 'LAUNCHING' || gameState === 'FLYING')) e.preventDefault();
     if (e && e.type === 'keydown' && e.code !== 'Space') return;
 
     if (gameState === 'LAUNCHING') {
@@ -325,7 +329,7 @@ function handleInteractionStart(e) {
 }
 
 function handleInteractionEnd(e) {
-    if (e && e.type === 'touchstart') e.preventDefault();
+    if (e && e.type === 'touchstart' && (gameState === 'LAUNCHING' || gameState === 'FLYING')) e.preventDefault();
     if (e && e.type === 'keyup' && e.code !== 'Space') return;
 
     if (gameState === 'LAUNCHING' && isHoldingPower) {
@@ -419,12 +423,17 @@ function resetGame() {
     if (statSpeedCont) statSpeedCont.classList.remove('record-broken');
     if (statCoinsCont) statCoinsCont.classList.remove('record-broken');
 
+    const resCoinsBase = document.getElementById('res-coins-base');
+    const resCoinsEl = document.getElementById('res-coins');
+    if (resCoinsBase) resCoinsBase.classList.add('hidden');
+    if (resCoinsEl) resCoinsEl.classList.remove('final-glow');
+
     plane.vx = 0;
     plane.vy = 0;
     plane.angle = 0;
     plane.fuel = 100;
     const legendaryFuelMult = hasLegendary() ? 2 : 1;
-    plane.maxFuel = (100 + (playerData.upgrades.fuel) * 25) * legendaryFuelMult;
+    plane.maxFuel = (100 + (playerData.upgrades.fuel) * 12.5) * legendaryFuelMult;
     plane.fuel = plane.maxFuel;
     coins = [];
     obstacles = [];
@@ -513,6 +522,13 @@ function calculateResults() {
         bonusList.innerHTML = '';
         bonusList.classList.add('hidden');
     }
+    const resCoinsBase = document.getElementById('res-coins-base');
+    if (resCoinsBase) {
+        resCoinsBase.classList.add('hidden');
+        resCoinsBase.textContent = '';
+    }
+    resCoinsEl.classList.remove('final-glow');
+
     resDist.textContent = Math.floor(distance);
     resAlt.textContent = Math.floor(maxAltitude);
     const resTopSpeed = document.getElementById('res-top-speed');
@@ -548,10 +564,17 @@ function calculateResults() {
     if (records.length > 0) {
         if (banner) banner.classList.remove('hidden');
         if (bonusList) bonusList.classList.remove('hidden');
-
+        
+        // Delay strike-through to appear when the first bonus starts
         let delay = 800;
         records.forEach((rec, index) => {
             setTimeout(() => {
+                // On the first record, show the base value being 'struck'
+                if (index === 0 && resCoinsBase) {
+                    resCoinsBase.textContent = `+${baseGained}`;
+                    resCoinsBase.classList.remove('hidden');
+                }
+                
                 // Add bonus item to list
                 const item = document.createElement('div');
                 item.className = 'bonus-item';
@@ -594,6 +617,11 @@ function finalizeResults(finalCoins, brokenRecordsArray) {
     });
 
     playerData.totalCoins += finalCoins;
+    
+    // Add final celebration glow
+    const resCoinsEl = document.getElementById('res-coins');
+    if (resCoinsEl) resCoinsEl.classList.add('final-glow');
+
     saveData();
     updateUIStrings();
 }
@@ -625,7 +653,10 @@ function update(dt) {
         const speedFactor = Math.max(0.5, 4 - (precisionLevel * 0.35)); // Slower speed with higher level
         launchPower += speedFactor * powerDirection;
         if (launchPower >= 100 || launchPower <= 0) powerDirection *= -1;
-        powerBar.style.width = launchPower + '%';
+        
+        // Visual snap for Perfect launch: if > 98, show 100%
+        const displayPower = launchPower > 98 ? 100 : launchPower;
+        powerBar.style.width = displayPower + '%';
     }
 
     if (gameState === 'FLYING') {
@@ -646,9 +677,10 @@ function update(dt) {
         // Gravity helps horizontal speed when diving (vy > 0)
         // Subtler conversion for a gradual, challenging acceleration
         if (plane.vy > 0) {
-            plane.vx += plane.vy * 0.008;
-            // Also apply a bit of extra drag when falling fast to cap it naturally
-            if (plane.vy > 10) plane.vx *= 0.995;
+            plane.vx += plane.vy * 0.003; // Reduced from 0.008 to make it more vertical
+            // Stronger horizontal damping when falling to prevent excessive travel
+            plane.vx *= 0.998; 
+            if (plane.vy > 10) plane.vx *= 0.99;
         }
 
         // Horizontal Speed Logic
@@ -713,7 +745,7 @@ function update(dt) {
         const boostLvl = playerData.upgrades.boost || 0;
 
         if (plane.boostActive && plane.fuel > 0) {
-            const boostPower = 0.2 + (boostLvl * 0.1); // Base boost + level scaling
+            const boostPower = 0.2 + (boostLvl * 0.05); // Halved increment (was 0.1)
             plane.vy -= boostPower;
             plane.vx += boostPower * 0.2;
             plane.fuel -= 1.5;

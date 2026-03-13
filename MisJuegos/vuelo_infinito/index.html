@@ -58,25 +58,27 @@
         <div id="ui-overlay">
             <!-- Main Menu -->
             <div id="main-menu" class="menu-screen">
-                <h1 class="game-title">✈️ VUELO <span class="accent">INFINITO</span> ✈️</h1>
-                <p class="game-subtitle">¡Llega hasta las estrellas y más allá!</p>
+                <div class="menu-content">
+                    <h1 class="game-title">✈️ VUELO <span class="accent">INFINITO</span> ✈️</h1>
+                    <p class="game-subtitle">¡Llega hasta las estrellas y más allá!</p>
 
-                <div class="plane-preview">
-                    <div class="emoji-preview">✈️</div>
-                </div>
+                    <div class="plane-preview">
+                        <div class="emoji-preview">✈️</div>
+                    </div>
 
-                <div class="action-buttons">
-                    <button id="btn-play" class="primary-btn">DESPEGAR</button>
-                    <button id="btn-upgrades" class="secondary-btn">MEJORAS (Taller)</button>
-                    <a href="https://omarsaez.github.io/ArcadeDeJuegos/" class="arcade-btn">🕹️ VOLVER AL ARCADE</a>
-                </div>
+                    <div class="action-buttons">
+                        <button id="btn-play" class="primary-btn">DESPEGAR</button>
+                        <button id="btn-upgrades" class="secondary-btn">MEJORAS (Taller)</button>
+                        <a href="https://omarsaez.github.io/ArcadeDeJuegos/" class="arcade-btn">🕹️ VOLVER AL ARCADE</a>
+                    </div>
 
-                <div class="global-stats">
-                    <div class="stat-pill">🏆 Record: <span id="best-dist">0</span>m</div>
-                    <div class="stat-pill">🏔️ Alt. Máx: <span id="best-alt">0</span>m</div>
-                    <div class="stat-pill">⚡ Vel. Máx: <span id="best-speed">0</span>km/h</div>
-                    <div class="stat-pill">💰 Máx Monedas: <span id="best-coins">0</span></div>
-                    <div class="stat-pill">💵 Total: <span class="total-coins">0</span></div>
+                    <div class="global-stats">
+                        <div class="stat-pill">🏆 Record: <span id="best-dist">0</span>m</div>
+                        <div class="stat-pill">🏔️ Alt. Máx: <span id="best-alt">0</span>m</div>
+                        <div class="stat-pill">⚡ Vel. Máx: <span id="best-speed">0</span>km/h</div>
+                        <div class="stat-pill">💰 Máx Monedas: <span id="best-coins">0</span></div>
+                        <div class="stat-pill">💵 Total: <span class="total-coins">0</span></div>
+                    </div>
                 </div>
             </div>
 
@@ -241,28 +243,32 @@
 
             <!-- Results Screen -->
             <div id="results-screen" class="menu-screen hidden">
-                <div id="game-won-banner" class="hidden">✨ TE HAS PASADO EL JUEGO ✨<br><small>FELICIDADES
-                        LEYENDA</small></div>
-                <div id="new-record-banner" class="hidden">¡NUEVO RECORD!</div>
-                <h2>VUELO FINALIZADO</h2>
-                <div class="results-stats">
-                    <div class="res-item">
-                        <span class="label">Distancia:</span>
-                        <span class="value"><span id="res-dist">0</span>m</span>
+                <div class="menu-content">
+                    <div id="game-won-banner" class="hidden">✨ TE HAS PASADO EL JUEGO ✨<br><small>FELICIDADES LEYENDA</small></div>
+                    <div id="new-record-banner" class="hidden">¡NUEVO RECORD!</div>
+                    <h2>VUELO FINALIZADO</h2>
+                    <div class="results-stats">
+                        <div class="res-item">
+                            <span class="label">Distancia:</span>
+                            <span class="value"><span id="res-dist">0</span>m</span>
+                        </div>
+                        <div class="res-item">
+                            <span class="label">Altura Máxima:</span>
+                            <span class="value"><span id="res-alt">0</span>m</span>
+                        </div>
+                        <div class="res-item">
+                            <span class="label">Velocidad Máxima:</span>
+                            <span class="value"><span id="res-top-speed">0</span>km/h</span>
+                        </div>
+                        <div class="res-item highlight">
+                            <span class="label">Monedas Ganadas:</span>
+                            <div class="coins-total-wrapper">
+                                <span id="res-coins-base" class="res-base-value hidden"></span>
+                                <span class="value" id="res-coins">+0</span>
+                            </div>
+                        </div>
+                        <div id="bonus-list" class="results-bonus-container hidden"></div>
                     </div>
-                    <div class="res-item">
-                        <span class="label">Altura Máxima:</span>
-                        <span class="value"><span id="res-alt">0</span>m</span>
-                    </div>
-                    <div class="res-item">
-                        <span class="label">Velocidad Máxima:</span>
-                        <span class="value"><span id="res-top-speed">0</span>km/h</span>
-                    </div>
-                    <div class="res-item highlight">
-                        <span class="label">Monedas Ganadas:</span>
-                        <span class="value" id="res-coins">+0</span>
-                    </div>
-                    <div id="bonus-list" class="results-bonus-container hidden"></div>
                 </div>
                 <button id="btn-finish" class="primary-btn">CONTINUAR</button>
             </div>
