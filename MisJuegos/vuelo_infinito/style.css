@@ -144,7 +144,8 @@ canvas {
 }
 
 #boost-bar-container {
-    width: 200px;
+    min-width: 35px;
+    width: auto;
     height: 12px;
     background: rgba(0, 0, 0, 0.4);
     border-radius: 6px;

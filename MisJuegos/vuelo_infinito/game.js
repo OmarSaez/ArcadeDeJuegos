@@ -461,13 +461,13 @@ function showScreen(screen) {
     if (screen === 'MENU') {
         gameState = 'MENU';
         mainMenu.classList.remove('hidden');
-        resetGame();
     } else if (screen === 'SHOP') {
         gameState = 'SHOP';
         shopMenu.classList.remove('hidden');
         updateUIStrings();
     } else if (screen === 'LAUNCH') {
         gameState = 'LAUNCHING';
+        resetGame(); // Ensure new stats/width are applied
         launchPhase = 'ANGLE';
         launchScreen.classList.remove('hidden');
         document.getElementById('phase-angle').classList.remove('hidden');
@@ -480,7 +480,7 @@ function showScreen(screen) {
         
         if (powerBar) powerBar.style.width = '0%';
         
-        // Show last angle ghost arrow (pointing right is 0, pointing up is -90)
+        // Show last angle ghost arrow
         const ghost = document.getElementById('angle-arrow-last');
         if (ghost) ghost.style.transform = `rotate(${-playerData.lastAngle}deg)`;
     } else if (screen === 'FLYING') {
@@ -1375,8 +1375,12 @@ function update(dt) {
         // Spawn & Update Trampolines (Ground)
         const trampLevel = playerData.upgrades.trampoline || 0;
         const trampLuckFactor = 1 + (luckLevel * 0.1);
-        if (trampLevel > 0 && frames % Math.max(60, Math.floor(180 / trampLuckFactor)) === 0 && currentAlt < 200) {
-            const legendaryTrampMult = hasLegendary() ? 3 : 1;
+        const isLegendary = hasLegendary();
+        // legendary spawns less frequently to avoid ground coverage
+        const spawnInterval = isLegendary ? 150 : Math.max(60, Math.floor(180 / trampLuckFactor));
+        
+        if (trampLevel > 0 && frames % spawnInterval === 0 && currentAlt < 150) {
+            const legendaryTrampMult = isLegendary ? 1.5 : 1; // Reduced from 3x
             trampolines.push({
                 x: canvas.width + 100,
                 worldY: 0,
