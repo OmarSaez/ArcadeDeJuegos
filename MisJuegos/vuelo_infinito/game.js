@@ -46,6 +46,7 @@ let distance = 0;
 let maxAltitude = 0;
 let sessionCoins = 0;
 let speedBonusCoins = 0;
+let ultraBonusCoins = 0;
 let launchPower = 0;
 let powerDirection = 1;
 let launchPhase = 'ANGLE'; // ANGLE or POWER
@@ -73,6 +74,7 @@ let playerData = {
     bestSpeed: 0,
     bestAltitude: 0,
     bestCoins: 0,
+    hasUnlockedWarp: false,
     lastAngle: 45,
     upgrades: {
         thrust: 0,
@@ -165,6 +167,7 @@ function loadData() {
         playerData.bestAltitude = parsed.bestAltitude || 0;
         playerData.bestCoins = parsed.bestCoins || 0;
         playerData.hasWon = parsed.hasWon || false;
+        playerData.hasUnlockedWarp = parsed.hasUnlockedWarp || false;
         if (parsed.upgrades) {
             playerData.upgrades = { ...playerData.upgrades, ...parsed.upgrades };
         }
@@ -228,20 +231,55 @@ function updateUIStrings() {
         }
     });
 
-    // Check for game completion
+    // Check for game completion and Legendary Card state
     const legendaryCard = document.getElementById('legendary-card');
-    if (isGameMaxed()) {
-        if (legendaryCard) legendaryCard.classList.remove('hidden');
-        const title = document.querySelector('.shop-header h2');
-        if (title) {
+    if (legendaryCard) {
+        const isMaxed = isGameMaxed();
+        const btn = legendaryCard.querySelector('.buy-btn');
+        const icon = legendaryCard.querySelector('.up-icon');
+        const title = legendaryCard.querySelector('h3');
+        const desc = legendaryCard.querySelector('p');
+
+        if (!isMaxed) {
+            legendaryCard.classList.add('locked-legendary');
+            icon.textContent = '❓';
+            title.textContent = 'MISTERIO';
+            desc.textContent = 'Debes comprar todas las mejoras anteriores primero para desbloquear este objeto...';
+            btn.textContent = 'BLOQUEADO';
+            btn.disabled = true;
+            btn.style.background = '#334155';
+        } else {
+            legendaryCard.classList.remove('locked-legendary');
+            icon.textContent = '👑';
+            title.textContent = 'ALAS DE LEYENDA';
+            desc.textContent = UPGRADE_DESCRIPTIONS.legendary;
+            
             if (hasLegendary()) {
-                title.innerHTML = '✨ RECUERDO DEL LEYENDA ✨';
+                btn.textContent = '👑 ADQUIRIDO 👑';
+                btn.disabled = true;
+                btn.style.background = 'linear-gradient(to right, #fbbf24, #f59e0b)';
+                btn.style.color = 'black';
             } else {
-                title.innerHTML = '✨ TALLER DEL LEYENDA ✨';
+                const cost = UPGRADE_COSTS.legendary[0];
+                btn.innerHTML = `${cost} <span class="coin">💰</span>`;
+                btn.disabled = playerData.totalCoins < cost;
+                btn.style.background = ''; // Revert to default
+                btn.style.color = '';
             }
-            title.style.background = 'linear-gradient(to right, #fbbf24, #f59e0b)';
-            title.style.webkitBackgroundClip = 'text';
-            title.style.webkitTextFillColor = 'transparent';
+        }
+    }
+
+    if (isGameMaxed()) {
+        const titleEl = document.querySelector('.shop-header h2');
+        if (titleEl) {
+            if (hasLegendary()) {
+                titleEl.innerHTML = '✨ RECUERDO DEL LEYENDA ✨';
+            } else {
+                titleEl.innerHTML = '✨ TALLER DEL LEYENDA ✨';
+            }
+            titleEl.style.background = 'linear-gradient(to right, #fbbf24, #f59e0b)';
+            titleEl.style.webkitBackgroundClip = 'text';
+            titleEl.style.webkitTextFillColor = 'transparent';
         }
     }
 
@@ -293,6 +331,7 @@ function attachEventListeners() {
                 bestAltitude: 0,
                 bestCoins: 0,
                 hasWon: false,
+                hasUnlockedWarp: false,
                 upgrades: {
                     thrust: 0,
                     aero: 0,
@@ -447,11 +486,23 @@ function showScreen(screen) {
     } else if (screen === 'FLYING') {
         gameState = 'FLYING';
         hud.classList.remove('hidden');
-        if (hasLegendary()) {
+        
+        // Time Warp Visibility
+        const isLegendary = hasLegendary();
+        const isUnlocked = playerData.hasUnlockedWarp;
+        
+        if (isLegendary || isUnlocked) {
             timeWarpControls.classList.remove('hidden');
+            if (isLegendary) {
+                document.querySelectorAll('.legendary-only').forEach(el => el.classList.remove('hidden'));
+            } else {
+                document.querySelectorAll('.legendary-only').forEach(el => el.classList.add('hidden'));
+            }
         } else {
-            timeWarpControls.classList.add('hidden');
+            timeWarpControls.classList.add('hidden'); 
+            document.querySelectorAll('.legendary-only').forEach(el => el.classList.add('hidden'));
         }
+
         timeScale = 1;
         warpBtns.forEach(b => {
             b.classList.remove('active');
@@ -490,6 +541,7 @@ function resetGame() {
     maxAltitude = 0;
     sessionCoins = 0;
     speedBonusCoins = 0;
+    ultraBonusCoins = 0;
     worldY = 0;
     cameraY = 0;
     plane.x = 100;
@@ -519,6 +571,16 @@ function resetGame() {
     const legendaryFuelMult = hasLegendary() ? 2 : 1;
     plane.maxFuel = (100 + (playerData.upgrades.fuel) * 12.5) * legendaryFuelMult;
     plane.fuel = plane.maxFuel;
+    
+    // Dynamic Boost Bar Width based on capacity
+    const boostContainer = document.getElementById('boost-bar-container');
+    if (boostContainer) {
+        // Starts very small (approx 10-15% of original 200px) to show early limitation
+        const baseWidth = 35; 
+        const extraWidth = (plane.maxFuel - 100) * 2.5; // Dramatic expansion
+        boostContainer.style.width = Math.min(1000, (baseWidth + extraWidth)) + 'px';
+    }
+
     coins = [];
     obstacles = [];
     boosters = [];
@@ -602,7 +664,7 @@ function launch() {
 
 function calculateResults() {
     const distanceBonus = Math.floor(distance / 10);
-    const initialBase = sessionCoins + distanceBonus; // Regular coins + distance
+    const initialBase = sessionCoins + distanceBonus; 
 
     const banner = document.getElementById('new-record-banner');
     const winBanner = document.getElementById('game-won-banner');
@@ -662,6 +724,29 @@ function calculateResults() {
 
             const previousTotal = currentTotal;
             currentTotal += speedBonusCoins;
+
+            animateCoinCounter(previousTotal, currentTotal);
+        }, delay);
+        delay += 1200;
+    }
+
+    // STEP 1.5: Ultra Speed Bonus (Additive)
+    if (ultraBonusCoins > 0) {
+        setTimeout(() => {
+            if (resCoinsBase) {
+                resCoinsBase.textContent = `+${currentTotal}`;
+                resCoinsBase.classList.remove('hidden');
+            }
+            if (bonusList) bonusList.classList.remove('hidden');
+
+            const item = document.createElement('div');
+            item.className = 'bonus-item';
+            item.style.color = '#f472b6'; // Fluorescent Pink
+            item.textContent = `¡BONO ULTRAVELOCIDAD: +${ultraBonusCoins}💰!`;
+            bonusList.appendChild(item);
+
+            const previousTotal = currentTotal;
+            currentTotal += ultraBonusCoins;
 
             animateCoinCounter(previousTotal, currentTotal, () => {
                 if (records.length === 0) finalizeResults(currentTotal, []);
@@ -1015,6 +1100,13 @@ function update(dt) {
         }
         if (speedValEl) speedValEl.textContent = currentSpeed;
 
+        // Reveal Warp Controls at 1500 km/h and UNLOCK PERMANENTLY
+        if (currentSpeed >= 1500 && !playerData.hasUnlockedWarp) {
+            playerData.hasUnlockedWarp = true;
+            saveData();
+            timeWarpControls.classList.remove('hidden');
+        }
+
         // High Speed Effects (> 1000 km/h)
         if (currentSpeed > 1000) {
             const speedExcess = currentSpeed - 1000;
@@ -1023,6 +1115,7 @@ function update(dt) {
 
             // Spawn fire particles
             const fireIntensity = Math.min(5, Math.floor(speedExcess / 200) + 1);
+            const isUltra = currentSpeed >= 2000;
             for (let i = 0; i < fireIntensity; i++) {
                 particles.push({
                     x: plane.x - 20 - (Math.random() * 20),
@@ -1031,13 +1124,19 @@ function update(dt) {
                     vy: (Math.random() - 0.5) * 5,
                     size: 10 + Math.random() * 15,
                     life: 0.6 + Math.random() * 0.4,
-                    color: Math.random() > 0.5 ? '#f97316' : '#ef4444' // Orange or Red
+                    color: isUltra 
+                        ? (Math.random() > 0.5 ? '#f472b6' : '#db2777') // Neon Pink or Magenta
+                        : (Math.random() > 0.5 ? '#f97316' : '#ef4444') // Orange or Red
                 });
             }
             
             // Speed Bonus: 2 coins per second (1 every 30 frames)
             if (frames % 30 === 0) {
                 speedBonusCoins += 1;
+                // Parallel Ultra Speed Bonus: additional 2 per second (Stacking)
+                if (currentSpeed >= 2000) {
+                    ultraBonusCoins += 1;
+                }
             }
         }
 
@@ -1112,6 +1211,8 @@ function update(dt) {
                 if (isAtLowAlt) {
                     const balloonProb = 0.3 + (luckLevel * 0.1);
                     type = Math.random() < balloonProb ? 'balloon' : 'bird';
+                } else if (currentAlt >= 15000 && currentAlt < 25000) {
+                    type = 'angel'; // Thematic obstacles for Heaven
                 } else if (currentAlt >= 10000 && currentAlt < 40000) {
                     type = Math.random() < 0.6 ? 'meteor' : 'satellite';
                 } else if (currentAlt >= 40000 && currentAlt < 100000) {
@@ -1208,6 +1309,11 @@ function update(dt) {
             // UFO / Alien movement (Horizontal oscillation)
             if (o.type === 'ufo' || o.type === 'alien') {
                 o.x += Math.sin(frames * 0.05) * 5;
+            }
+            
+            // Angel movement (Gentle vertical floating)
+            if (o.type === 'angel') {
+                o.worldY += Math.sin(frames * 0.04) * 3;
             }
 
             // Collision
@@ -1531,6 +1637,11 @@ function draw() {
             } else if (o.type === 'alien') {
                 ctx.font = `${o.size * 1.8}px Arial`;
                 ctx.fillText('👾', o.x, screenY);
+            } else if (o.type === 'angel') {
+                ctx.font = `${o.size * 2}px Arial`;
+                ctx.fillText('👼', o.x, screenY);
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'white';
             } else { // balloon
                 ctx.font = `${o.size * 1.5}px Arial`;
                 ctx.fillText('🎈', o.x, screenY);
@@ -1585,6 +1696,10 @@ function draw() {
         if (currentSpeedPlane > 1000) {
             shake += Math.min(5, (currentSpeedPlane - 1000) * 0.005);
         }
+        // Extra tremble for Ultra Speed (> 2000)
+        if (currentSpeedPlane > 2000) {
+            shake += Math.min(6, (currentSpeedPlane - 2000) * 0.01);
+        }
 
         if (shake > 0) {
             displayX += (Math.random() - 0.5) * shake;
@@ -1598,17 +1713,21 @@ function draw() {
         const drawCurrentSpeed = drawTotalVel * 10;
         if (drawCurrentSpeed > 1000) {
             const intensity = Math.min(1, (drawCurrentSpeed - 1000) / 1500);
+            const isUltra = drawCurrentSpeed > 2000;
+            const mainColor = isUltra ? '#f472b6' : '#f97316'; // Pink vs Orange
+            const glowColor = isUltra ? '#db2777' : '#ef4444'; // Magenta vs Red
+            
             ctx.save();
-            ctx.shadowBlur = 20 * intensity;
-            ctx.shadowColor = '#ef4444';
-            ctx.globalAlpha = intensity * 0.6;
-            const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 50 + (intensity * 30));
-            grad.addColorStop(0, '#f97316');
-            grad.addColorStop(0.6, '#ef4444');
+            ctx.shadowBlur = (isUltra ? 40 : 20) * intensity;
+            ctx.shadowColor = glowColor;
+            ctx.globalAlpha = intensity * (isUltra ? 0.8 : 0.6);
+            const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 50 + (intensity * (isUltra ? 50 : 30)));
+            grad.addColorStop(0, mainColor);
+            grad.addColorStop(0.6, glowColor);
             grad.addColorStop(1, 'transparent');
             ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.scale(1.5, 0.8); // Make it more elongated like a trail
+            ctx.scale(isUltra ? 2 : 1.5, 0.8); // Even longer trail for ultra
             ctx.arc(0, 0, 40, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();

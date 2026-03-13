@@ -361,6 +361,25 @@ canvas {
     }
 }
 
+/* Locked Legendary State */
+.upgrade-card.locked-legendary {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+    animation: none;
+    opacity: 0.6;
+    filter: grayscale(0.8);
+}
+
+.upgrade-card.locked-legendary h3 {
+    color: #94a3b8;
+}
+
+.upgrade-card.locked-legendary .up-icon {
+    filter: none;
+    opacity: 0.5;
+}
+
 .secondary-btn {
     background: transparent;
     color: white;

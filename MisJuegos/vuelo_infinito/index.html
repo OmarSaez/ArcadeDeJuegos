@@ -45,12 +45,13 @@
             <div id="boost-bar-container">
                 <div id="boost-bar"></div>
             </div>
-            <!-- Time Warp Controls (Legendary Only) -->
+            <!-- Time Warp Controls (Legendary or High Speed Only) -->
             <div id="time-warp-controls" class="hidden">
                 <button class="warp-btn active" data-speed="1">x1</button>
-                <button class="warp-btn" data-speed="2">x2</button>
-                <button class="warp-btn" data-speed="4">x4</button>
-                <button class="warp-btn" data-speed="10">x10</button>
+                <button id="warp-x2" class="warp-btn" data-speed="2">x2</button>
+                <button id="warp-x4" class="warp-btn" data-speed="4">x4</button>
+                <button id="warp-x10" class="warp-btn legendary-only" data-speed="10">x10</button>
+                <button id="warp-x30" class="warp-btn legendary-only" data-speed="30">x30</button>
             </div>
         </div>
 
@@ -201,17 +202,17 @@
                             </div>
                             <button class="buy-btn">350 <span class="coin">💰</span></button>
                         </div>
-                        <div class="upgrade-card hidden" id="legendary-card" data-upgrade="legendary">
+                        <div class="upgrade-card" id="legendary-card" data-upgrade="legendary">
                             <button class="info-btn">?</button>
-                            <div class="up-icon">👑</div>
+                            <div class="up-icon">❓</div>
                             <div class="up-info">
-                                <h3>Alas de Leyenda</h3>
-                                <p>Super empuje, gasolina x2, imán x2, trampolines x3 y altura infinita!</p>
+                                <h3>¿?¿?¿?</h3>
+                                <p>Objeto especial final...</p>
                                 <div class="level-dots">
                                     <span></span>
                                 </div>
                             </div>
-                            <button class="buy-btn">5000 <span class="coin">💰</span></button>
+                            <button class="buy-btn">??? <span class="coin">💰</span></button>
                         </div>
                     </div>
 
