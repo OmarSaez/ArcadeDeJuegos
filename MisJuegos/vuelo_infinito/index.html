@@ -222,7 +222,20 @@
 
             <!-- Launch Screen -->
             <div id="launch-screen" class="menu-screen hidden">
-                <div class="launch-power-container">
+                <!-- Phase 1: Angle -->
+                <div id="phase-angle" class="launch-phase-container">
+                    <div class="angle-gauge">
+                        <div id="angle-arrow-last" class="angle-arrow ghost"></div>
+                        <div id="angle-arrow-current" class="angle-arrow"></div>
+                        <div class="angle-center">✈️</div>
+                    </div>
+                    <div class="angle-value"><span id="display-angle">45</span>°</div>
+                    <p>TAP PARA FIJAR ÁNGULO</p>
+                    <p class="hint">Busca el ángulo ideal para tu motor</p>
+                </div>
+
+                <!-- Phase 2: Power -->
+                <div id="phase-power" class="launch-phase-container hidden">
                     <div id="perfect-text">¡PERFECT!</div>
                     <div id="power-bar-bg">
                         <div id="power-bar"></div>

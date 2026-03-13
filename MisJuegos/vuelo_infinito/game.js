@@ -47,6 +47,9 @@ let maxAltitude = 0;
 let sessionCoins = 0;
 let launchPower = 0;
 let powerDirection = 1;
+let launchPhase = 'ANGLE'; // ANGLE or POWER
+let launchAngle = 0;
+let angleDirection = 1;
 let isHoldingPower = false;
 let frames = 0;
 let cameraY = 0;
@@ -69,6 +72,7 @@ let playerData = {
     bestSpeed: 0,
     bestAltitude: 0,
     bestCoins: 0,
+    lastAngle: 45,
     upgrades: {
         thrust: 0,
         aero: 0,
@@ -369,13 +373,27 @@ function showUpgradeDetail(type) {
     modal.classList.remove('hidden');
 }
 
+function lockLaunchAngle() {
+    launchPhase = 'POWER';
+    document.getElementById('phase-angle').classList.add('hidden');
+    document.getElementById('phase-power').classList.remove('hidden');
+    
+    // Tiny delay to prevent the same tap from starting power charging immediately 
+    // if the user is very fast or on some touch devices
+    isHoldingPower = false; 
+}
+
 function handleInteractionStart(e) {
     if (e && e.target && (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.closest('.menu-content'))) return;
     if (e && e.type === 'touchstart' && (gameState === 'LAUNCHING' || gameState === 'FLYING')) e.preventDefault();
     if (e && e.type === 'keydown' && e.code !== 'Space') return;
 
     if (gameState === 'LAUNCHING') {
-        isHoldingPower = true;
+        if (launchPhase === 'ANGLE') {
+            lockLaunchAngle();
+        } else {
+            isHoldingPower = true;
+        }
     } else if (gameState === 'FLYING' && plane.fuel > 0) {
         plane.boostActive = true;
     }
@@ -410,10 +428,21 @@ function showScreen(screen) {
         updateUIStrings();
     } else if (screen === 'LAUNCH') {
         gameState = 'LAUNCHING';
+        launchPhase = 'ANGLE';
         launchScreen.classList.remove('hidden');
+        document.getElementById('phase-angle').classList.remove('hidden');
+        document.getElementById('phase-power').classList.add('hidden');
+        
         launchPower = 0;
         powerDirection = 1;
+        launchAngle = 0;
+        angleDirection = 1;
+        
         if (powerBar) powerBar.style.width = '0%';
+        
+        // Show last angle ghost arrow (pointing right is 0, pointing up is -90)
+        const ghost = document.getElementById('angle-arrow-last');
+        if (ghost) ghost.style.transform = `rotate(${-playerData.lastAngle}deg)`;
     } else if (screen === 'FLYING') {
         gameState = 'FLYING';
         hud.classList.remove('hidden');
@@ -528,6 +557,14 @@ function launch() {
     const thrustLvl = playerData.upgrades.thrust || 0;
     const powerMult = 5 + (thrustLvl * 3);
     let finalPower = (launchPower / 100) * powerMult;
+    
+    // Save this angle as the last used
+    playerData.lastAngle = launchAngle;
+    saveData();
+
+    // Convert angle to Radian (Invert because 0 is horizontal right, but our gauge 0 is ground)
+    // Gauge: 0 is right (0deg), 90 is up (-90deg in canvas or -PI/2)
+    const rad = -(launchAngle * Math.PI / 180);
 
     // Perfect Launch Check (Above 98%)
     if (launchPower > 98) {
@@ -543,8 +580,9 @@ function launch() {
             finalPower *= 1.5; // Bonus 50% for Perfect (buffed from 40%)
             screenShake = 40; // Massive impact shake
 
-            plane.vx = finalPower;
-            plane.vy = -finalPower * 0.5;
+            plane.vx = Math.cos(rad) * finalPower;
+            plane.vy = Math.sin(rad) * finalPower;
+            plane.angle = rad; // Set initial angle
             perfectParticlesTimer = 180; // 3 seconds at 60fps
 
             showScreen('FLYING');
@@ -553,8 +591,9 @@ function launch() {
 
     } else {
         screenShake = 10;
-        plane.vx = finalPower;
-        plane.vy = -finalPower * 0.5;
+        plane.vx = Math.cos(rad) * finalPower;
+        plane.vy = Math.sin(rad) * finalPower;
+        plane.angle = rad; // Set initial angle
         showScreen('FLYING');
     }
 }
@@ -701,15 +740,26 @@ function gameLoop(timestamp) {
 }
 
 function update(dt) {
-    if (gameState === 'LAUNCHING' && isHoldingPower) {
-        const precisionLevel = playerData.upgrades.precision || 0;
-        const speedFactor = Math.max(0.5, 4 - (precisionLevel * 0.35)); // Slower speed with higher level
-        launchPower += speedFactor * powerDirection;
-        if (launchPower >= 100 || launchPower <= 0) powerDirection *= -1;
+    if (gameState === 'LAUNCHING') {
+        if (launchPhase === 'ANGLE') {
+            // Constant speed for angle selection, no upgrades affect it
+            const speedFactor = 1.2;
+            launchAngle += speedFactor * angleDirection;
+            if (launchAngle >= 90 || launchAngle <= 0) angleDirection *= -1;
+            
+            const arrow = document.getElementById('angle-arrow-current');
+            const display = document.getElementById('display-angle');
+            if (arrow) arrow.style.transform = `rotate(${-launchAngle}deg)`;
+            if (display) display.textContent = Math.floor(launchAngle);
+        } else if (isHoldingPower) {
+            const precisionLevel = playerData.upgrades.precision || 0;
+            const speedFactor = Math.max(0.5, 4 - (precisionLevel * 0.35)); 
+            launchPower += speedFactor * powerDirection;
+            if (launchPower >= 100 || launchPower <= 0) powerDirection *= -1;
 
-        // Visual snap for Perfect launch: if > 98, show 100%
-        const displayPower = launchPower > 98 ? 100 : launchPower;
-        powerBar.style.width = displayPower + '%';
+            const displayPower = launchPower > 98 ? 100 : launchPower;
+            powerBar.style.width = displayPower + '%';
+        }
     }
 
     if (gameState === 'FLYING') {
@@ -753,14 +803,21 @@ function update(dt) {
         plane.vy += plane.gravity;
 
         // Lift based on speed
+        // SMART LIFT: During the initial burst phase (perfectParticlesTimer), 
+        // we use low lift (0.004) to respect the selected launch angle.
+        // Once the burst ends or if you boost manually, we return to normal plane lift (0.015).
+        const currentLiftCoeff = (perfectParticlesTimer > 0) ? 0.004 : plane.lift;
+        
         // If the plane is falling (vy > 0), kill ALL lift to prevent gliding
-        // This makes the fall feel heavy and fast ("caer en picado")
-        const currentLift = (plane.vy > 0) ? 0 : Math.min(0.4, plane.vx * plane.lift * (isGodMode ? 1.5 : 1.0));
+        const currentLift = (plane.vy > 0) ? 0 : Math.min(0.4, plane.vx * currentLiftCoeff * (isGodMode ? 1.5 : 1.0));
         plane.vy -= currentLift;
 
         // Cap downward vertical speed to prevent physics explosion
         // (Upward speed is now unlimited by skill and luck!)
-        const maxVY = isGodMode ? 60 : 30; // Increased downward cap for stability
+        // Cap downward vertical speed based on the historical record
+        // We want it to be 15% less than the record so you don't break speed records just by falling
+        const recordSpeedUnits = (playerData.bestSpeed || 350) / 10;
+        const maxVY = Math.max(30, recordSpeedUnits * 0.85);
         if (plane.vy > maxVY) plane.vy = maxVY;
         // Note: No upward cap (plane.vy < -maxVY) as requested!
 
@@ -800,6 +857,9 @@ function update(dt) {
         if (plane.boostActive && plane.fuel > 0) {
             const boostPower = 0.2 + (boostLvl * 0.05); // Halved increment (was 0.1)
             plane.vy -= boostPower;
+            
+            // If you boost during launch, end the "trajectory lock" phase immediately
+            if (perfectParticlesTimer > 0) perfectParticlesTimer = 0;
             plane.vx += boostPower * 0.2;
             plane.fuel -= 1.5;
 
@@ -968,6 +1028,8 @@ function update(dt) {
                 if (isAtLowAlt) {
                     const balloonProb = 0.3 + (luckLevel * 0.1);
                     type = Math.random() < balloonProb ? 'balloon' : 'bird';
+                } else if (currentAlt >= 10000 && currentAlt <= 16000) {
+                    type = Math.random() < 0.6 ? 'meteor' : 'satellite';
                 } else {
                     type = 'satellite';
                 }
@@ -1127,7 +1189,7 @@ function update(dt) {
             if (Math.abs(plane.x - trampolines[i].x) < (trampolines[i].width / 2) && Math.abs(plane.y - tScreenY) < 40) {
                 plane.vy = -13;
                 plane.vx += 2;
-                createExplosion(trampolines[i].x, tScreenY, '#4ade80', 10);
+                createExplosion(trampolines[i].x, tScreenY, '#22d3ee', 10);
                 trampolines.splice(i, 1);
             } else if (trampolines[i].x < -200) trampolines.splice(i, 1);
         }
@@ -1340,10 +1402,14 @@ function draw() {
             ctx.fillStyle = '#64748b';
             ctx.fillRect(-w / 2, -5, w, 10);
 
-            // Pulse effect
-            ctx.fillStyle = '#4ade80';
-            ctx.globalAlpha = 0.3;
+            // Pulse effect (Neon Cyan for contrast)
+            ctx.fillStyle = '#22d3ee';
+            ctx.globalAlpha = 0.5;
             ctx.fillRect(-w / 2, -12, w, 7);
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.8;
+            ctx.strokeRect(-w / 2, -12, w, 7);
             ctx.restore();
             ctx.globalAlpha = 1;
         });
@@ -1359,6 +1425,9 @@ function draw() {
             } else if (o.type === 'satellite') {
                 ctx.font = `${o.size * 2}px Arial`;
                 ctx.fillText('🛰️', o.x, screenY);
+            } else if (o.type === 'meteor') {
+                ctx.font = `${o.size * 2.2}px Arial`;
+                ctx.fillText('☄️', o.x, screenY);
             } else { // balloon
                 ctx.font = `${o.size * 1.5}px Arial`;
                 ctx.fillText('🎈', o.x, screenY);
@@ -1382,7 +1451,7 @@ function draw() {
 
         ctx.translate(displayX, displayY);
 
-        const targetAngle = isLaunchingPerfect ? 0 : Math.atan2(plane.vy, plane.vx);
+        const targetAngle = Math.atan2(plane.vy, plane.vx);
         plane.angle += (targetAngle - plane.angle) * 0.1;
         ctx.rotate(plane.angle);
 
