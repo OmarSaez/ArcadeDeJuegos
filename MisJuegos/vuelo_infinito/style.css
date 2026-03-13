@@ -447,6 +447,34 @@ canvas {
     flex-direction: column;
     gap: 10px;
     border: 1px solid var(--glass-border);
+    position: relative; /* Base for info button */
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.info-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 5;
+}
+
+.info-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    transform: scale(1.1);
 }
 
 .up-icon {

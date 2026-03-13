@@ -125,6 +125,20 @@ let stars = []; // For space altitude
 
 // --- Initialization ---
 
+const UPGRADE_DESCRIPTIONS = {
+    thrust: "Aumenta la fuerza con la que sales disparado. ¡Imprescindible para empezar con buen pie!",
+    aero: "Reduce la fricción con el viento. Cuanta más aerodinámica tengas, menos velocidad perderás al volar.",
+    fuel: "Aumenta el tamaño total del tanque de combustible. Te permite usar el impulsor durante más tiempo.",
+    boost: "Potencia la fuerza del impulsor. Subirás más rápido y ganarás más inercia con cada ráfaga.",
+    magnet: "Aumenta el radio de atracción de las monedas. ¡No tendrás que pasar justo encima para recogerlas!",
+    coinValue: "Multiplica el valor de cada moneda que recoges. Ideal para acelerar tu progreso económico.",
+    trampoline: "Desbloquea trampolines en el suelo y aumenta su tamaño. Te dan un impulso extra si vas a ras de suelo.",
+    shield: "Te protege de choques accidentales. Cada 2 niveles te otorga un escudo adicional que se regenera en cada vuelo.",
+    luck: "Aumenta la probabilidad de que aparezcan objetos beneficiosos y reduce los obstáculos en tu camino.",
+    precision: "Ralentiza el movimiento de la barra de lanzamiento, permitiéndote acertar el 'PERFECT' con mayor facilidad.",
+    legendary: "El máximo honor. Dobla tu gasolina, imán y trampolines. Además, elimina el límite de altura del mundo. ¡Solo para leyendas!"
+};
+
 function init() {
     loadData();
     resize();
@@ -314,6 +328,45 @@ function attachEventListeners() {
             btn.classList.add('active');
         };
     });
+
+    // Info buttons for upgrades
+    const infoButtons = document.querySelectorAll('.info-btn');
+    infoButtons.forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const type = btn.parentElement.dataset.upgrade;
+            showUpgradeDetail(type);
+        };
+    });
+
+    const closeBtnDetail = document.getElementById('btn-close-detail');
+    if (closeBtnDetail) {
+        closeBtnDetail.onclick = () => {
+            document.getElementById('detail-modal').classList.add('hidden');
+        };
+    }
+}
+
+function showUpgradeDetail(type) {
+    const modal = document.getElementById('detail-modal');
+    const title = document.getElementById('detail-title');
+    const text = document.getElementById('detail-text');
+    const icon = document.getElementById('detail-icon');
+
+    if (!UPGRADE_DESCRIPTIONS[type]) return;
+
+    // Get info from card to match aesthetic
+    const card = document.querySelector(`.upgrade-card[data-upgrade="${type}"]`);
+    if (!card) return;
+
+    const cardTitle = card.querySelector('h3').textContent;
+    const cardIcon = card.querySelector('.up-icon').textContent;
+
+    title.textContent = cardTitle.toUpperCase();
+    text.textContent = UPGRADE_DESCRIPTIONS[type];
+    icon.textContent = cardIcon;
+
+    modal.classList.remove('hidden');
 }
 
 function handleInteractionStart(e) {
@@ -564,7 +617,7 @@ function calculateResults() {
     if (records.length > 0) {
         if (banner) banner.classList.remove('hidden');
         if (bonusList) bonusList.classList.remove('hidden');
-        
+
         // Delay strike-through to appear when the first bonus starts
         let delay = 800;
         records.forEach((rec, index) => {
@@ -574,7 +627,7 @@ function calculateResults() {
                     resCoinsBase.textContent = `+${baseGained}`;
                     resCoinsBase.classList.remove('hidden');
                 }
-                
+
                 // Add bonus item to list
                 const item = document.createElement('div');
                 item.className = 'bonus-item';
@@ -617,7 +670,7 @@ function finalizeResults(finalCoins, brokenRecordsArray) {
     });
 
     playerData.totalCoins += finalCoins;
-    
+
     // Add final celebration glow
     const resCoinsEl = document.getElementById('res-coins');
     if (resCoinsEl) resCoinsEl.classList.add('final-glow');
@@ -653,7 +706,7 @@ function update(dt) {
         const speedFactor = Math.max(0.5, 4 - (precisionLevel * 0.35)); // Slower speed with higher level
         launchPower += speedFactor * powerDirection;
         if (launchPower >= 100 || launchPower <= 0) powerDirection *= -1;
-        
+
         // Visual snap for Perfect launch: if > 98, show 100%
         const displayPower = launchPower > 98 ? 100 : launchPower;
         powerBar.style.width = displayPower + '%';
@@ -679,7 +732,7 @@ function update(dt) {
         if (plane.vy > 0) {
             plane.vx += plane.vy * 0.003; // Reduced from 0.008 to make it more vertical
             // Stronger horizontal damping when falling to prevent excessive travel
-            plane.vx *= 0.998; 
+            plane.vx *= 0.998;
             if (plane.vy > 10) plane.vx *= 0.99;
         }
 
