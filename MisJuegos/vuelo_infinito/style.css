@@ -52,17 +52,39 @@ canvas {
     left: 0;
     z-index: 1;
     background: linear-gradient(to top,
+            /* 0% to 10% is the original 0-50km progression */
             #1a472a 0%,      /* 0m: Ground */
-            #4facfe 5%,      /* 2.5k: Sky Blue */
-            #1e3a8a 15%,     /* 7.5k: Dark Blue */
-            #020617 25%,     /* 12.5k: Deep Space */
-            #020617 30%,     /* 15k: HOLD DARKNESS UNTIL START */
-            #ffffff 40%,     /* 20k: HEAVEN REVEAL PEAK */
-            #ffffff 50%,     /* 25k: START OF Scenario 1 (Gold) */
-            #fbbf24 70%,     /* 35k: GOLDEN ETHER PEAK */
-            #a855f7 80%,     /* 40k: CREPÚSCULO PROFUNDO START */
-            #0f172a 95%,     /* Final Atmosphere Thinning */
-            #000000 100%);   /* 50k+: PURE SPACE BLACK */
+            #4facfe 0.5%,    /* 2.5k: Sky Blue */
+            #1e3a8a 1.5%,    /* 7.5k: Dark Blue */
+            #020617 2.5%,    /* 12.5k: Space */
+            #ffffff 4.0%,    /* 20k: Heaven */
+            #fbbf24 7.0%,    /* 35k: Golden Ether */
+            #a855f7 8.0%,    /* 40k: Purple Twilight */
+            #000000 10.0%,   /* 50k: Space Black */
+            
+            /* Stage 2 (50k - 125k): Deep Void */
+            #0f172a 20.0%,   /* 100k */
+            #000000 25.0%,   /* 125k */
+            
+            /* Stage 3 (125k - 200k): Cyber Dimension (Teal) */
+            #064e3b 30.0%,
+            #022c22 40.0%,   /* 200k */
+            
+            /* Stage 4 (200k - 275k): Crimson Chaos (Red) */
+            #7f1d1d 47.0%,
+            #450a0a 55.0%,   /* 275k */
+            
+            /* Stage 5 (275k - 350k): Astral Sea (Cyan) */
+            #164e63 62.0%,
+            #083344 70.0%,   /* 350k */
+            
+            /* Stage 6 (350k - 425k): Nebula (Pink/Purple) */
+            #831843 78.0%,
+            #4a044e 85.0%,   /* 425k */
+            
+            /* Stage 7 (425k - 500k): The Horizon (Gold/White) */
+            #b45309 95.0%,
+            #ffffff 100%);   /* 500k+: Pure Light */
     transition: transform 0.8s cubic-bezier(0.1, 0, 0.2, 1);
 }
 
@@ -191,6 +213,48 @@ canvas {
     color: #000;
     border-color: #fbbf24;
     box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+}
+
+/* Stage Timed Banners */
+#stage-title-banner {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0;
+}
+
+#stage-title-text {
+    font-size: 3.5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.9), 0 0 10px rgba(255, 255, 255, 0.2);
+    margin-bottom: 5px;
+    white-space: nowrap;
+}
+
+#stage-subtitle-text {
+    font-size: 1.5rem;
+    color: #e2e8f0;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.stage-animate {
+    animation: stageFadeInOut 5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes stageFadeInOut {
+    0% { opacity: 0; transform: translate(-50%, -30%) scale(0.9); }
+    15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -70%) scale(1.1); }
 }
 
 #ui-overlay {

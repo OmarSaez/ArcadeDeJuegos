@@ -7,6 +7,7 @@ const mainMenu = document.getElementById('main-menu');
 const shopMenu = document.getElementById('shop-menu');
 const launchScreen = document.getElementById('launch-screen');
 const resultsScreen = document.getElementById('results-screen');
+const endingScreen = document.getElementById('ending-screen');
 const hud = document.getElementById('hud');
 const shieldDisplay = document.getElementById('shield-display');
 const powerBar = document.getElementById('power-bar');
@@ -32,6 +33,8 @@ const statCoinsCont = document.getElementById('stat-coins');
 const bestCoinsDisplay = document.getElementById('best-coins');
 let timeScale = 1;
 let hasShowedWinBannerThisRun = false;
+let hasShowedEndingThisRun = false;
+let currentStageIndex = -1;
 let sessionMaxSpeed = 0;
 
 // Results Displays
@@ -60,6 +63,7 @@ let boosters = [];
 let trampolines = [];
 let fuelItems = [];
 let planets = [];
+let bgEntities = [];
 let attemptMarker = null;
 let activeShields = 0;
 let shieldCooldown = 0;
@@ -318,6 +322,12 @@ function attachEventListeners() {
     document.getElementById('btn-upgrades').onclick = () => showScreen('SHOP');
     document.getElementById('btn-back').onclick = () => showScreen('MENU');
     document.getElementById('btn-finish').onclick = () => showScreen('MENU');
+    document.getElementById('btn-end-home').onclick = () => showScreen('MENU');
+    document.getElementById('btn-continue-flying').onclick = () => {
+        gameState = 'FLYING';
+        endingScreen.classList.add('hidden');
+        hud.classList.remove('hidden');
+    };
 
     // Reset progress button
     document.getElementById('btn-reset').onclick = () => {
@@ -456,6 +466,7 @@ function showScreen(screen) {
     shopMenu.classList.add('hidden');
     launchScreen.classList.add('hidden');
     resultsScreen.classList.add('hidden');
+    endingScreen.classList.add('hidden');
     hud.classList.add('hidden');
 
     if (screen === 'MENU') {
@@ -513,6 +524,10 @@ function showScreen(screen) {
         resultsScreen.classList.remove('hidden');
         hud.classList.add('hidden');
         calculateResults();
+    } else if (screen === 'ENDING') {
+        gameState = 'RESULTS'; // Stop world logic but use a special overlay
+        endingScreen.classList.remove('hidden');
+        hud.classList.add('hidden');
     }
 }
 
@@ -542,6 +557,8 @@ function resetGame() {
     sessionCoins = 0;
     speedBonusCoins = 0;
     ultraBonusCoins = 0;
+    hasShowedEndingThisRun = false;
+    currentStageIndex = -1;
     worldY = 0;
     cameraY = 0;
     plane.x = 100;
@@ -590,6 +607,7 @@ function resetGame() {
     particles = [];
     clouds = [];
     stars = [];
+    bgEntities = [];
     activeShields = Math.ceil((playerData.upgrades.shield || 0) / 2);
     updateShieldHUD();
     shieldCooldown = 0;
@@ -879,9 +897,14 @@ function update(dt) {
         // Base drag reduction from Aero
         let dragAmount = plane.drag * Math.max(0.1, (1 - aeroLvl * 0.075));
         // Legendary Bonus reduces drag significantly and extends top speed
-        // Only active for the first 100k of flight to allow ending the run
         const isGodMode = isLegendaryPowerActive();
-        const legendaryDragMult = isGodMode ? 0.3 : 1.0;
+        // Slightly higher drag (0.45 instead of 0.3) so speed isn't 'forever' without boost
+        let legendaryDragMult = isGodMode ? 0.45 : 1.0;
+        
+        // As we reach extreme altitudes, drag increases slightly to fight the infinite rise
+        const tempAlt = Math.max(0, worldY / 10);
+        if (tempAlt > 100000) legendaryDragMult += (tempAlt - 100000) / 400000;
+        
         // Natural air resistance
         plane.vx *= (1 - dragAmount * legendaryDragMult);
 
@@ -991,17 +1014,21 @@ function update(dt) {
         worldY -= plane.vy; // Update world height
 
         // Camera Logic: Keep plane in view even at extreme speeds
-        const targetCameraY = worldY - (canvas.height * 0.6); // Adjusted offset
+        // Target lower framing: we want relativeY around 0.2 so plane stays near the bottom half
+        const targetCameraY = worldY - (canvas.height * 0.2);
 
-        // Dynamic Lerp: The faster we move vertically, the faster the camera snaps
+        // Dynamic Lerp: Aggressive snapping at high speeds to prevent camera lag
         const vertSpeed = Math.abs(plane.vy);
-        const lerpFactor = Math.min(0.5, 0.1 + (vertSpeed * 0.02));
+        const lerpFactor = Math.min(0.8, 0.1 + (vertSpeed * 0.05));
         cameraY += (targetCameraY - cameraY) * lerpFactor;
 
         // Safety: Hard snap camera if plane is about to leave screen
         const relativeY = worldY - cameraY;
-        if (relativeY > canvas.height * 0.8) cameraY = worldY - canvas.height * 0.8;
-        if (relativeY < canvas.height * 0.2) cameraY = worldY - canvas.height * 0.2;
+        
+        // If relativeY is large, plane is HIGH. Cap it to 0.4 to keep plane below the HUD.
+        if (relativeY > canvas.height * 0.4) cameraY = worldY - canvas.height * 0.4; 
+        // If relativeY is small, plane is LOW. Cap it to 0.0 to prevent falling off the bottom.
+        if (relativeY < 0) cameraY = worldY;
 
         // Screen Shake Apply
         if (screenShake > 0) {
@@ -1037,12 +1064,33 @@ function update(dt) {
             }
         }
 
-        // Tops out? 50k if base, 200k if legendary
-        const worldTop = hasLegendary() ? 2000000 : 500000;
+        // Tops out? 50k if base, 500k if legendary (True Final)
+        const worldTop = hasLegendary() ? 5000000 : 500000;
         if (worldY > worldTop) worldY = worldTop;
 
         // Max altitude tracker
         const currentAlt = worldY / 10;
+        
+        // Stage Title Trigger Logic
+        let newStageIndex = 0;
+        if (currentAlt >= 425000) newStageIndex = 6;
+        else if (currentAlt >= 350000) newStageIndex = 5;
+        else if (currentAlt >= 275000) newStageIndex = 4;
+        else if (currentAlt >= 200000) newStageIndex = 3;
+        else if (currentAlt >= 125000) newStageIndex = 2;
+        else if (currentAlt >= 50000) newStageIndex = 1;
+
+        // Trigger when moving to a new tier, or right after leaving the ground (vy < -1 prevents showing it on the ground)
+        if (newStageIndex > currentStageIndex && (currentAlt > 10 || plane.vy < -2)) {
+            currentStageIndex = newStageIndex;
+            showStageTitle(newStageIndex);
+        }
+
+        // TRIGGER ULTIMATE ENDING
+        if (hasLegendary() && currentAlt >= 499900 && gameState === 'FLYING' && !hasShowedEndingThisRun) {
+            hasShowedEndingThisRun = true;
+            showScreen('ENDING');
+        }
         if (currentAlt > maxAltitude) maxAltitude = currentAlt;
 
         // Feedback when reaching Space Thresholds
@@ -1079,8 +1127,9 @@ function update(dt) {
         // Feedback when Legendary Power ends
 
         // Updates Displays
-        distVal.textContent = Math.floor(distance);
-        altVal.textContent = Math.max(0, Math.floor(maxAltitude));
+        const isTrueHero = hasLegendary() && currentAlt >= 499900;
+        distVal.textContent = isTrueHero ? "∞" : Math.floor(distance);
+        altVal.textContent = isTrueHero ? "∞" : Math.max(0, Math.floor(maxAltitude));
 
         const distanceBonus = Math.floor(distance / 10);
         const totalCurrentCoins = sessionCoins + distanceBonus;
@@ -1096,9 +1145,9 @@ function update(dt) {
         const currentSpeed = Math.floor(totalVel * 10);
         if (currentSpeed > sessionMaxSpeed) {
             sessionMaxSpeed = currentSpeed;
-            if (hudBestSpeed) hudBestSpeed.textContent = sessionMaxSpeed;
+            if (hudBestSpeed) hudBestSpeed.textContent = isTrueHero ? "∞" : sessionMaxSpeed;
         }
-        if (speedValEl) speedValEl.textContent = currentSpeed;
+        if (speedValEl) speedValEl.textContent = isTrueHero ? "∞" : currentSpeed;
 
         // Reveal Warp Controls at 1500 km/h and UNLOCK PERMANENTLY
         if (currentSpeed >= 1500 && !playerData.hasUnlockedWarp) {
@@ -1143,8 +1192,8 @@ function update(dt) {
         coinVal.textContent = totalCurrentCoins;
         boostBar.style.width = (plane.fuel / plane.maxFuel * 100) + '%';
 
-        // Sky background transition based on height (Scaled to 50k)
-        const skyHeightRatio = Math.min(1, Math.max(0, currentAlt / 50000));
+        // Sky background transition based on height (Scaled to 500k for full legendary journey)
+        const skyHeightRatio = Math.min(1, Math.max(0, currentAlt / 500000));
         skyLayers.style.transform = `translateY(${skyHeightRatio * 95}%)`;
 
         // Spawn Decorative Clouds (Only if low/medium or HEAVEN 15k-20k)
@@ -1176,14 +1225,44 @@ function update(dt) {
         const luckLevel = playerData.upgrades.luck || 0;
         const luckBonus = luckLevel * 0.1; // 10% increase in frequency per level
 
-        // Spawn Planets (Space only: 5k to 15k)
-        if (frames % 300 === 0 && currentAlt > 5000 && currentAlt < 15000) {
+        // Spawn Planets (Space: 5k to 50k)
+        if (frames % 300 === 0 && currentAlt > 5000 && currentAlt < 50000) {
             planets.push({
                 x: plane.x + (canvas.width + 500 + Math.random() * 1000),
                 worldY: worldY - (Math.random() * 2000 - 1000) - (plane.vy * 80),
                 size: 80 + Math.random() * 150,
                 type: Math.floor(Math.random() * 3) // 0: Mars-like, 1: Ringed, 2: Blue
             });
+        }
+
+        // --- STAGE BACKGROUND ENTITIES (50k - 500k) ---
+        if (frames % 120 === 0 && currentAlt >= 50000) {
+            let typeOptions = ['✨'];
+            if (currentAlt >= 50000 && currentAlt < 125000) typeOptions = ['🛸', '👽', '☄️', '🛰️', '🐄']; // Added cow abduction
+            else if (currentAlt >= 125000 && currentAlt < 200000) typeOptions = ['⏰', '💾', '🔋', '💻', '⏳'];
+            else if (currentAlt >= 200000 && currentAlt < 275000) typeOptions = ['🔥', '💀', '💢', '🩸', '👹'];
+            else if (currentAlt >= 275000 && currentAlt < 350000) typeOptions = ['🐑', '💤', '🌙', '☁️', '🦄'];
+            else if (currentAlt >= 350000 && currentAlt < 425000) typeOptions = ['🕹️', '👻', '🍒', '👾'];
+            else if (currentAlt >= 425000) typeOptions = ['💎', '👁️', '💠', '🌀', '🌌', '✨'];
+
+            bgEntities.push({
+                x: canvas.width + 100 + Math.random() * 200,
+                y: Math.random() * canvas.height,
+                emoji: typeOptions[Math.floor(Math.random() * typeOptions.length)],
+                size: 80 + Math.random() * 120, // Bigger for aesthetic impact
+                speedX: 1 + Math.random() * 2,  // Drift independently of plane speed
+                speedY: (Math.random() - 0.5) * 1,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.02
+            });
+        }
+        
+        // Update bgEntities (Decoupled from extreme plane speeds)
+        for (let i = bgEntities.length - 1; i >= 0; i--) {
+            bgEntities[i].x -= bgEntities[i].speedX;
+            bgEntities[i].y += bgEntities[i].speedY;
+            bgEntities[i].rotation += bgEntities[i].rotSpeed;
+            if (bgEntities[i].x < -300) bgEntities.splice(i, 1);
         }
 
         // --- RADIAL SPAWNING LOGIC (180 degrees ahead/up/down) ---
@@ -1473,9 +1552,10 @@ function draw() {
         if (altitude > 1000) {
             ctx.fillStyle = 'white';
             stars.forEach(s => {
-                // Stars fade in from 1k to 3k, then fade out as we reach heaven (15k+)
+                // Stars fade in from 1k to 3k, visible until 50k, hide in heaven (15k-25k) roughly, but simplified: 
                 let starAlpha = Math.min(1, (altitude - 1000) / 2000);
-                if (altitude > 15000) starAlpha *= Math.max(0, 1 - (altitude - 15000) / 3000);
+                if (altitude > 15000 && altitude < 30000) starAlpha *= Math.max(0, 1 - (altitude - 15000) / 3000); // Hide during daylight heaven
+                if (altitude >= 30000) starAlpha = 1; // Bring stars back in ultra-space
 
                 const opacity = (Math.sin(s.twinkle) + 1) * 0.5 * starAlpha;
                 ctx.globalAlpha = opacity;
@@ -1486,7 +1566,21 @@ function draw() {
             ctx.globalAlpha = 1;
         }
 
-        // Draw Clouds
+        // Draw Background Entities (50k - 500k stages)
+        bgEntities.forEach(e => {
+            ctx.save();
+            ctx.translate(e.x, e.y);
+            ctx.rotate(e.rotation);
+            ctx.font = `${e.size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.globalAlpha = 0.25; // Gentle transparency as a visual backdrop
+            ctx.fillText(e.emoji, 0, 0);
+            ctx.restore();
+        });
+        ctx.globalAlpha = 1;
+
+        // Draw Planets
         clouds.forEach(c => {
             const screenY = canvas.height - 100 - (c.worldY - cameraY);
             if (c.isHeavenly) {
@@ -1811,6 +1905,38 @@ function draw() {
     }
 
     ctx.restore(); // Restore global shake
+}
+
+// --- STAGE TITLES ---
+function showStageTitle(index) {
+    const banner = document.getElementById('stage-title-banner');
+    const title = document.getElementById('stage-title-text');
+    const subtitle = document.getElementById('stage-subtitle-text');
+    
+    if (!banner || !title || !subtitle) return;
+
+    const stages = [
+        { name: "El Ascenso Clásico", bg: "linear-gradient(to right, #60a5fa, #fff)", sub: "Inicio de la travesía" },
+        { name: "El Vacío Profundo", bg: "linear-gradient(to right, #94a3b8, #fff)", sub: "50.000m Alcanzados" },
+        { name: "La Dimensión Cyber", bg: "linear-gradient(to right, #4ade80, #22d3ee)", sub: "125.000m Alcanzados" },
+        { name: "El Caos Carmesí", bg: "linear-gradient(to right, #f87171, #ef4444)", sub: "200.000m Alcanzados" },
+        { name: "El Mar Astral", bg: "linear-gradient(to right, #60a5fa, #818cf8)", sub: "275.000m Alcanzados" },
+        { name: "La Nebulosa Arcade", bg: "linear-gradient(to right, #f472b6, #d946ef)", sub: "350.000m Alcanzados" },
+        { name: "El Horizonte de Luz", bg: "linear-gradient(to right, #fbbf24, #fff, #fbbf24)", sub: "425.000m Alcanzados" }
+    ];
+
+    title.textContent = stages[index].name;
+    subtitle.textContent = stages[index].sub;
+    
+    title.style.background = stages[index].bg;
+    title.style.webkitBackgroundClip = "text";
+    title.style.backgroundClip = "text";
+    title.style.webkitTextFillColor = "transparent";
+
+    banner.classList.remove('hidden');
+    banner.classList.remove('stage-animate');
+    void banner.offsetWidth; // Trigger reflow
+    banner.classList.add('stage-animate');
 }
 
 init();
