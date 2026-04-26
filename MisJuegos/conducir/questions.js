@@ -2409,7 +2409,8 @@ const questions = [
         "options": {
             "a": "images/pregunta_156_a.png",
             "b": "images/pregunta_156_b.png",
-            "c": "images/pregunta_156_c.png"
+            "c": "images/pregunta_156_c.png",
+            "d": "images/pregunta_156_d.png"
         },
         "answer": [
             "a",
@@ -2425,7 +2426,8 @@ const questions = [
         "options": {
             "a": "images/pregunta_157_a.png",
             "b": "images/pregunta_157_b.png",
-            "c": "images/pregunta_157_c.png"
+            "c": "images/pregunta_157_c.png",
+            "d": "images/pregunta_157_d.png"
         },
         "answer": [
             "b",
@@ -3805,16 +3807,16 @@ const questions = [
         "id": 247,
         "question": "¿Qué significa esta señal de tránsito?",
         "options": {
-            "a": "images/pregunta_247_a.png",
-            "b": "images/pregunta_247_b.png",
-            "c": "images/pregunta_247_c.png"
+            "a": "Gravilla suelta.",
+            "b": "Peligro de que se pinchen los neumáticos.",
+            "c": "Pavimento resbaladizo.",
+            "d": "Curvas en el camino."
         },
         "answer": [
             "c"
         ],
         "priority": 1,
-        "image": "images/pregunta_247.png",
-        "type": "image_options"
+        "image": "images/pregunta_247.png"
     },
     {
         "id": 248,
@@ -3837,7 +3839,8 @@ const questions = [
         "options": {
             "a": "images/pregunta_249_a.png",
             "b": "images/pregunta_249_b.png",
-            "c": "images/pregunta_249_c.png"
+            "c": "images/pregunta_249_c.png",
+            "d": "images/pregunta_249_d.png"
         },
         "answer": [
             "c"
@@ -3954,12 +3957,18 @@ const questions = [
     {
         "id": 257,
         "question": "¿Cuál de estas señales le previene que más adelante hay una serie de curvas?",
-        "options": {},
+        "options": {
+            "a": "images/pregunta_257_a.png",
+            "b": "images/pregunta_257_b.png",
+            "c": "images/pregunta_257_c.png",
+            "d": "images/pregunta_257_d.png"
+        },
         "answer": [
             "b"
         ],
         "priority": 1,
-        "image": null
+        "image": null,
+        "type": "image_options"
     },
     {
         "id": 258,
@@ -3979,12 +3988,18 @@ const questions = [
     {
         "id": 259,
         "question": "¿Cuál de estas señales le advierte la proximidad de un cruce de peatones?",
-        "options": {},
+        "options": {
+            "a": "images/pregunta_259_a.png",
+            "b": "images/pregunta_259_b.png",
+            "c": "images/pregunta_259_c.png",
+            "d": "images/pregunta_259_d.png"
+        },
         "answer": [
             "a"
         ],
         "priority": 1,
-        "image": null
+        "image": null,
+        "type": "image_options"
     },
     {
         "id": 260,

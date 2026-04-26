@@ -84,6 +84,28 @@ window.changeStudyPage = function(delta) {
     window.scrollTo(0, 0);
 };
 
+window.goToStudyPage = function(index) {
+    state.studyPage = index;
+    renderStudyMode();
+    window.scrollTo(0, 0);
+};
+
+window.jumpToQuestion = function() {
+    const qId = parseInt(document.getElementById('jump-q-input').value);
+    if (!qId || qId < 1 || qId > questions.length) {
+        alert("Ingresa un número válido entre 1 y " + questions.length);
+        return;
+    }
+    // Find page: index / perPage
+    state.studyPage = Math.floor((qId - 1) / state.questionsPerPage);
+    renderStudyMode();
+    // Small delay to allow render, then scroll to the question
+    setTimeout(() => {
+        const el = document.getElementById(`study-q-${qId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+};
+
 window.backToDashboard = function() {
     if (confirm('¿Estás seguro de que quieres salir? Perderás el progreso actual.')) {
         state.view = 'dashboard';
@@ -100,7 +122,10 @@ function renderQuestion() {
 
     const progress = ((state.currentIndex + 1) / state.questions.length) * 100;
     progressFill.style.width = `${progress}%`;
-    progressText.innerText = `Pregunta ${state.currentIndex + 1} de ${state.questions.length}`;
+    progressText.innerHTML = `
+        Pregunta ${state.currentIndex + 1} de ${state.questions.length} 
+        <br><span style="font-size: 0.7rem; color: var(--accent); opacity: 0.8;">(ID Global: #${q.id})</span>
+    `;
 
     container.innerHTML = `
         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 16px;">
@@ -297,28 +322,42 @@ function renderResults() {
         const correctAns = q.answer;
         
         let userText = 'Ninguna';
+        const userColor = isCorrect ? '#10b981' : '#ef4444';
         if (q.type === 'matching') {
-            userText = userAns ? Object.entries(userAns).map(([l, n]) => `${l.toUpperCase()}➔${n}`).join(', ') : 'Ninguna';
+            userText = userAns ? Object.entries(userAns).map(([l, n]) => `<div style="margin-top:2px; color: ${userColor}">${l.toUpperCase()} ➔ Señal ${n}</div>`).join('') : 'Ninguna';
         } else if (Array.isArray(userAns) && userAns.length > 0) {
-            userText = userAns.map(key => `${key.toUpperCase()}) ${q.options[key]}`).join(' | ');
+            userText = userAns.map(key => `<div style="margin-top:2px; color: ${userColor}">${key.toUpperCase()}) ${q.options[key]}</div>`).join('');
         }
 
         let correctText = '';
         if (q.type === 'matching') {
-            correctText = Object.entries(correctAns).map(([l, n]) => `${l.toUpperCase()}➔${n}`).join(', ');
+            correctText = Object.entries(correctAns).map(([l, n]) => `<div style="margin-top:2px; color: #10b981">${l.toUpperCase()} ➔ Señal ${n}</div>`).join('');
         } else {
-            correctText = correctAns.map(key => `${key.toUpperCase()}) ${q.options[key]}`).join(' | ');
+            correctText = correctAns.map(key => {
+                const isImgOpt = q.type === 'image_options';
+                const content = isImgOpt ? `<img src="${q.options[key]}" style="max-height: 80px; margin-top: 5px; border: 2px solid #10b981; border-radius: 4px;">` : q.options[key];
+                return `<div style="margin-top:2px; color: #10b981">${key.toUpperCase()}) ${content}</div>`;
+            }).join('');
         }
 
         return `
             <div class="review-item ${isCorrect ? 'correct' : 'wrong'}" style="text-align: left; margin-bottom: 24px; padding: 16px; border-radius: 12px; background: rgba(255,255,255,0.02); border-left: 4px solid ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
+                <div style="margin-bottom: 10px;">
+                    <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">#${q.id}</span>
+                    ${q.priority === 2 ? '<span class="badge badge-double">Puntaje Doble</span>' : ''}
+                    ${q.answer.length > 1 ? '<span class="badge badge-multi">Selección Múltiple</span>' : ''}
+                </div>
+                
                 <p style="font-weight: 600; margin-bottom: 8px;">${i + 1}. ${q.question}</p>
-                <p style="font-size: 0.85rem; color: ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
-                    <strong>Tu respuesta:</strong> ${userText}
+                
+                ${q.image ? `<img src="${q.image}" style="max-height: 120px; display: block; margin: 10px 0; border-radius: 8px; border: 1px solid var(--border);">` : ''}
+
+                <p style="font-size: 0.85rem; color: ${isCorrect ? '#10b981' : '#ef4444'}; background: ${isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; padding: 10px; border-radius: 8px; border: 1px solid ${isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}">
+                    <strong style="color: ${isCorrect ? '#10b981' : '#ef4444'}">Tu respuesta:</strong><br>${userText}
                 </p>
                 ${!isCorrect ? `
-                    <p style="font-size: 0.85rem; color: var(--success); margin-top: 6px; padding: 8px; background: rgba(16, 185, 129, 0.05); border-radius: 8px;">
-                        <strong>Correcta:</strong> ${correctText}
+                    <p style="font-size: 0.85rem; color: #10b981; margin-top: 8px; padding: 10px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                        <strong style="color: #10b981">Correcta:</strong><br>${correctText}
                     </p>
                 ` : ''}
             </div>
@@ -334,20 +373,41 @@ window.renderStudyMode = function() {
     const pageQuestions = questions.slice(start, end);
     const totalPages = Math.ceil(questions.length / state.questionsPerPage);
 
+    let paginationUI = '<div class="pagination-bar">';
+    paginationUI += `<button class="page-num" onclick="changeStudyPage(-1)" ${state.studyPage === 0 ? 'disabled' : ''}>«</button>`;
+    
+    for (let i = 0; i < totalPages; i++) {
+        paginationUI += `
+            <button class="page-num ${state.studyPage === i ? 'active' : ''}" onclick="goToStudyPage(${i})">
+                ${i + 1}
+            </button>
+        `;
+    }
+    
+    paginationUI += `<button class="page-num" onclick="changeStudyPage(1)" ${end >= questions.length ? 'disabled' : ''}>»</button>`;
+    paginationUI += '</div>';
+
     studyList.innerHTML = `
-        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <button class="btn btn-secondary" onclick="state.view = 'dashboard'; renderView();">Volver</button>
-            <div style="font-size: 0.9rem; color: var(--text-muted);">
-                Página ${state.studyPage + 1} de ${totalPages} (${questions.length} total)
+        <div class="sticky-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
+                <button class="btn btn-secondary" onclick="state.view = 'dashboard'; renderView();">Volver</button>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <input type="number" id="jump-q-input" class="jump-input" placeholder="Q#">
+                    <button class="jump-btn" onclick="jumpToQuestion()">Ir</button>
+                </div>
             </div>
+            ${paginationUI}
         </div>
 
         <div class="study-grid" style="display: flex; flex-direction: column; gap: 20px;">
             ${pageQuestions.map(q => `
-                <div class="glass-card" style="padding: 24px; text-align: left; margin-bottom: 10px;">
+                <div id="study-q-${q.id}" class="glass-card" style="padding: 24px; text-align: left; margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <h3 style="font-size: 1.15rem; flex: 1;">${q.id}. ${q.question}</h3>
-                        ${q.priority === 2 ? '<span style="background: var(--danger); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 800;">DOBLE PUNTAJE</span>' : ''}
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); display: block; margin-bottom: 4px;">PREGUNTA #${q.id}</span>
+                            <h3 style="font-size: 1.15rem;">${q.question}</h3>
+                        </div>
+                        ${q.priority === 2 ? '<span class="badge badge-double">DOBLE PUNTAJE</span>' : ''}
                     </div>
 
                     ${q.image ? `<img src="${q.image}" style="max-height: 200px; margin-bottom: 15px; border-radius: 8px; border: 1px solid var(--border);">` : ''}
@@ -376,9 +436,8 @@ window.renderStudyMode = function() {
             `).join('')}
         </div>
 
-        <div style="margin-top: 30px; display: flex; justify-content: center; gap: 20px; padding-bottom: 40px;">
-            <button class="btn btn-secondary" onclick="changeStudyPage(-1)" ${state.studyPage === 0 ? 'disabled' : ''}>Anterior</button>
-            <button class="btn btn-primary" onclick="changeStudyPage(1)" ${end >= questions.length ? 'disabled' : ''}>Siguiente</button>
+        <div style="margin-top: 30px; padding-bottom: 40px;">
+            ${paginationUI}
         </div>
     `;
 };
