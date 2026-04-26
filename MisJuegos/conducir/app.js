@@ -10,7 +10,9 @@ const state = {
     answers: [],
     timer: null,
     timeRemaining: 0,
-    startTime: null
+    startTime: null,
+    studyPage: 0,
+    questionsPerPage: 20
 };
 
 // Initialize App
@@ -72,7 +74,14 @@ window.startFullExam = function() {
 window.startStudyMode = function() {
     state.mode = 'study';
     state.view = 'study';
+    state.studyPage = 0;
     renderView();
+};
+
+window.changeStudyPage = function(delta) {
+    state.studyPage += delta;
+    renderStudyMode();
+    window.scrollTo(0, 0);
 };
 
 window.backToDashboard = function() {
@@ -287,29 +296,55 @@ function renderResults() {
         const isCorrect = checkAnswerCorrectness(q, userAns);
         const correctAns = q.answer;
         
+        let userText = 'Ninguna';
+        if (q.type === 'matching') {
+            userText = userAns ? Object.entries(userAns).map(([l, n]) => `${l.toUpperCase()}➔${n}`).join(', ') : 'Ninguna';
+        } else if (Array.isArray(userAns) && userAns.length > 0) {
+            userText = userAns.map(key => `${key.toUpperCase()}) ${q.options[key]}`).join(' | ');
+        }
+
+        let correctText = '';
+        if (q.type === 'matching') {
+            correctText = Object.entries(correctAns).map(([l, n]) => `${l.toUpperCase()}➔${n}`).join(', ');
+        } else {
+            correctText = correctAns.map(key => `${key.toUpperCase()}) ${q.options[key]}`).join(' | ');
+        }
+
         return `
             <div class="review-item ${isCorrect ? 'correct' : 'wrong'}" style="text-align: left; margin-bottom: 24px; padding: 16px; border-radius: 12px; background: rgba(255,255,255,0.02); border-left: 4px solid ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
                 <p style="font-weight: 600; margin-bottom: 8px;">${i + 1}. ${q.question}</p>
-                <p style="font-size: 0.9rem; color: ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
-                    Tu respuesta: ${q.type === 'matching' ? JSON.stringify(userAns) : userAns.join(', ').toUpperCase() || 'Ninguna'}
+                <p style="font-size: 0.85rem; color: ${isCorrect ? 'var(--success)' : 'var(--danger)'}">
+                    <strong>Tu respuesta:</strong> ${userText}
                 </p>
-                ${!isCorrect ? `<p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 4px;">Correcta: ${q.type === 'matching' ? JSON.stringify(correctAns) : correctAns.join(', ').toUpperCase()}</p>` : ''}
+                ${!isCorrect ? `
+                    <p style="font-size: 0.85rem; color: var(--success); margin-top: 6px; padding: 8px; background: rgba(16, 185, 129, 0.05); border-radius: 8px;">
+                        <strong>Correcta:</strong> ${correctText}
+                    </p>
+                ` : ''}
             </div>
         `;
     }).join('');
 }
 
 // Study Mode Logic
-function renderStudyMode() {
+window.renderStudyMode = function() {
     const studyList = document.getElementById('study-list');
+    const start = state.studyPage * state.questionsPerPage;
+    const end = start + state.questionsPerPage;
+    const pageQuestions = questions.slice(start, end);
+    const totalPages = Math.ceil(questions.length / state.questionsPerPage);
+
     studyList.innerHTML = `
-        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <button class="btn btn-secondary" onclick="state.view = 'dashboard'; renderView();">Volver</button>
-            <span>Total: ${questions.length} preguntas</span>
+            <div style="font-size: 0.9rem; color: var(--text-muted);">
+                Página ${state.studyPage + 1} de ${totalPages} (${questions.length} total)
+            </div>
         </div>
+
         <div class="study-grid" style="display: flex; flex-direction: column; gap: 20px;">
-            ${questions.map(q => `
-                <div class="glass-card" style="padding: 24px; text-align: left; margin-bottom: 20px;">
+            ${pageQuestions.map(q => `
+                <div class="glass-card" style="padding: 24px; text-align: left; margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
                         <h3 style="font-size: 1.15rem; flex: 1;">${q.id}. ${q.question}</h3>
                         ${q.priority === 2 ? '<span style="background: var(--danger); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 800;">DOBLE PUNTAJE</span>' : ''}
@@ -320,7 +355,7 @@ function renderStudyMode() {
                     <div style="display: grid; gap: 10px;">
                         ${q.type === 'matching' ? `
                             <div style="background: rgba(16, 185, 129, 0.05); padding: 15px; border-radius: 12px; border: 1px solid var(--success);">
-                                <p style="font-weight: bold; margin-bottom: 8px; color: var(--success);">Solución de Emparejamiento:</p>
+                                <p style="font-weight: bold; margin-bottom: 8px; color: var(--success);">Solución:</p>
                                 ${Object.entries(q.answer).map(([letra, num]) => `
                                     <div style="font-size: 0.9rem;">${letra.toUpperCase()}) ${q.options[letra]} <span style="color: var(--accent)">➔ Señal ${num}</span></div>
                                 `).join('')}
@@ -340,8 +375,13 @@ function renderStudyMode() {
                 </div>
             `).join('')}
         </div>
+
+        <div style="margin-top: 30px; display: flex; justify-content: center; gap: 20px; padding-bottom: 40px;">
+            <button class="btn btn-secondary" onclick="changeStudyPage(-1)" ${state.studyPage === 0 ? 'disabled' : ''}>Anterior</button>
+            <button class="btn btn-primary" onclick="changeStudyPage(1)" ${end >= questions.length ? 'disabled' : ''}>Siguiente</button>
+        </div>
     `;
-}
+};
 
 // Persistence
 function saveStats() {
