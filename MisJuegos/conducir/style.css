@@ -137,6 +137,15 @@ body::after {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
+    color: inherit;
+    font-size: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mode-card:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .mode-card:hover {
@@ -208,6 +217,14 @@ body::after {
     display: flex;
     align-items: center;
     gap: 16px;
+    width: 100%;
+    color: inherit;
+    font-size: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.option:active {
+    transform: scale(0.98);
 }
 
 .option:hover {
@@ -455,7 +472,11 @@ body::after {
 }
 
 @media (max-width: 600px) {
-    .hero h1 { font-size: 2rem; }
-    .glass-card { padding: 20px; }
-    .modes-grid { grid-template-columns: 1fr; }
+    .app-container { padding: 12px; }
+    .hero h1 { font-size: 2.2rem; }
+    .glass-card { padding: 20px 16px; }
+    .modes-grid { grid-template-columns: 1fr; gap: 12px; }
+    .option { padding: 14px 18px; }
+    .matching-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .matching-select { width: 100%; }
 }

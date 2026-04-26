@@ -120,8 +120,7 @@ function renderOptions(q) {
         
         return `
             <button class="option ${isSelected ? 'selected' : ''} ${isImage ? 'image-option' : ''}" 
-                 onclick="selectOption('${key}')"
-                 style="border: none; text-align: left; width: 100%; background: transparent; padding: 0;">
+                 onclick="selectOption('${key}')">
                 <div class="option-letter">${key.toUpperCase()}</div>
                 <div class="option-text">
                     ${isImage ? `<img src="${value}" alt="Opción ${key}">` : value}
