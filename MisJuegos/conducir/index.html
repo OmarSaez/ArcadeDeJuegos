@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conducir Pro | Examen Clase B Chile</title>
+    <meta name="description" content="Prepárate para el examen de conducir Clase B con el mejor simulador. 280 preguntas oficiales, estadísticas y modo estudio.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onclick="">
+
+<div class="app-container">
+    <!-- Dashboard View -->
+    <section id="dashboard-view" class="fade-in">
+        <div class="hero">
+            <h1>Conducir Pro</h1>
+            <p>La plataforma definitiva para tu licencia Clase B</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span id="stat-total-tests" class="stat-value">0</span>
+                <span class="stat-name">Tests Realizados</span>
+            </div>
+            <div class="stat-item">
+                <span id="stat-high-score" class="stat-value">0%</span>
+                <span class="stat-name">Mejor Puntaje</span>
+            </div>
+        </div>
+
+        <div class="modes-grid">
+            <button class="mode-card" onclick="startQuickTest()" style="border: none; text-align: left; width: 100%; background: transparent; padding: 0;">
+                <div class="mode-icon">⚡</div>
+                <h3>Práctica Rápida</h3>
+                <p>10 preguntas aleatorias para estudiar en cualquier momento.</p>
+            </button>
+            <button class="mode-card" onclick="startFullExam()" style="border: none; text-align: left; width: 100%; background: transparent; padding: 0;">
+                <div class="mode-icon">📋</div>
+                <h3>Simulacro Real</h3>
+                <p>35 preguntas, tiempo real. Como el examen oficial.</p>
+            </button>
+            <button class="mode-card" onclick="startStudyMode()" style="border: none; text-align: left; width: 100%; background: transparent; padding: 0;">
+                <div class="mode-icon">📖</div>
+                <h3>Modo Estudio</h3>
+                <p>Revisa las 280 preguntas con sus respuestas correctas.</p>
+            </button>
+        </div>
+    </section>
+
+    <!-- Quiz View -->
+    <section id="quiz-view" class="glass-card hidden">
+        <div class="quiz-header">
+            <button class="btn btn-secondary" onclick="backToDashboard()">Salir</button>
+            <div class="progress-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+            <span id="progress-text" style="white-space: nowrap; font-size: 0.9rem; color: var(--text-muted);">Pregunta 1 de 10</span>
+        </div>
+
+        <div id="question-area" class="question-area">
+            <!-- Questions injected by JS -->
+        </div>
+
+        <div class="controls">
+            <button id="prev-btn" class="btn btn-secondary" onclick="prevQuestion()">Anterior</button>
+            <button id="next-btn" class="btn btn-primary" onclick="nextQuestion()">Siguiente</button>
+        </div>
+    </section>
+
+    <!-- Results View -->
+    <section id="results-view" class="glass-card hidden">
+        <div class="results-container">
+            <h2 style="font-size: 2rem; margin-bottom: 20px;">Resultados</h2>
+            
+            <div class="score-display">
+                <div class="score-circle">
+                    <span id="score-value" class="score-value">0/35</span>
+                    <span class="score-label">Correctas</span>
+                </div>
+            </div>
+
+            <h3 id="results-message" style="margin-bottom: 30px;"></h3>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span id="results-percent" class="stat-value">0%</span>
+                    <span class="stat-name">Precisión</span>
+                </div>
+                <div class="stat-item">
+                    <span id="results-time" class="stat-value">0m 0s</span>
+                    <span class="stat-name">Tiempo</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 40px;">
+                <button class="btn btn-primary" onclick="startQuickTest()">Nuevo Test</button>
+                <button class="btn btn-secondary" onclick="state.view = 'dashboard'; renderView();">Inicio</button>
+            </div>
+
+            <div id="review-list">
+                <!-- Review injected by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Study View -->
+    <section id="study-view" class="hidden">
+        <div id="study-list">
+            <!-- Study items injected by JS -->
+        </div>
+    </section>
+</div>
+
+<!-- Scripts -->
+<script src="questions.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
