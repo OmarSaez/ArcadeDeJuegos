@@ -322,17 +322,114 @@ function renderResults() {
     document.getElementById('results-percent').innerText = `${percent}%`;
     document.getElementById('results-time').innerText = `${Math.floor(timeTaken / 60)}m ${timeTaken % 60}s`;
 
-    const message = document.getElementById('results-message');
-    if (percent >= 90) {
-        message.innerText = '¡Excelente! Estás listo para el examen real.';
-        message.style.color = 'var(--success)';
-    } else if (percent >= 75) {
-        message.innerText = '¡Buen trabajo! Un poco más de práctica y estarás listo.';
-        message.style.color = 'var(--primary-light)';
-    } else {
-        message.innerText = 'Sigue estudiando. ¡Tú puedes lograrlo!';
-        message.style.color = 'var(--danger)';
+    const feedbackOptions = {
+        red: [
+            "¡No te rindas! Dale otra vuelta al libro del nuevo conductor.",
+            "Ánimo, las primeras veces son las más difíciles. ¡Sigue practicando!",
+            "Roma no se construyó en un día. ¡Vuelve a intentarlo!",
+            "Necesitas un poco más de estudio, pero vas por buen camino.",
+            "¡Tú puedes! Repasa las de doble puntaje, son clave.",
+            "No bajes los brazos, cada error es un aprendizaje.",
+            "El examen real es exigente, ¡prepárate un poco más!",
+            "Concéntrate en las señales de tránsito, ¡te irá mejor!",
+            "Dale un vistazo al modo estudio, te ayudará mucho.",
+            "Sigue estudiando. ¡Tú puedes lograrlo!",
+            "¡No te desanimes! Los mejores conductores también fallaron al principio.",
+            "La constancia es la clave del éxito. ¡Sigue dándole!",
+            "Aprovecha el modo estudio para reforzar los temas difíciles.",
+            "Cada intento te acerca más a la licencia. ¡Vamos!",
+            "¡Tú puedes con esto y más! Repasa un poco más hoy.",
+            "No es un fracaso, es práctica adicional. ¡Dale otra vez!",
+            "El manual tiene mucha info, ¡tómalo con calma y sigue!",
+            "¡Ánimo! Con un par de tests más estarás en otro nivel.",
+            "Ponle ojo a las señales reglamentarias, ¡ahí están los puntos!",
+            "¡Sigue adelante! Tu esfuerzo dará frutos muy pronto."
+        ],
+        orange: [
+            "¡Estuviste muy cerca! Un par de repasos más y lo tienes.",
+            "¡Casi, casi! Te faltó muy poco para aprobar.",
+            "Vas por excelente camino, ¡no te detengas ahora!",
+            "Un último esfuerzo y la licencia será tuya.",
+            "¡Buen intento! Repasa los errores y estarás listo.",
+            "Tienes buen conocimiento, solo falta pulir detalles.",
+            "¡Faltó un pelito! La próxima será la vencida.",
+            "Sigue así, estás a nada de lograr el puntaje de aprobación.",
+            "Refuerza las preguntas de seguridad vial y estarás listo.",
+            "¡Ánimo! El progreso se nota, ¡sigue practicando!",
+            "¡Ya casi lo tienes! Estás a un par de respuestas del éxito.",
+            "¡Gran avance! Has mejorado mucho desde el inicio.",
+            "Concéntrate un poquito más en las de doble puntaje.",
+            "¡Qué cerca estuviste! La próxima vez lo logras seguro.",
+            "¡Buen ritmo! No aflojes que ya estás en la recta final.",
+            "Tienes la base lista, solo falta el último empujón.",
+            "¡A un paso de la gloria! Dale un último repaso al manual.",
+            "¡Muy buen desempeño! Un par de detalles y apruebas.",
+            "¡Eso es! Estás rozando el puntaje de aprobación.",
+            "¡Mantén la calma! En el próximo intento lo consigues."
+        ],
+        green: [
+            "¡Felicidades! Aprobarías el examen real.",
+            "¡Excelente trabajo! Tienes los conocimientos necesarios.",
+            "¡Aprobado! Sigue practicando para mantenerte afilado.",
+            "¡Muy bien! Estás listo para ir a la municipalidad.",
+            "¡Genial! Has demostrado un gran dominio del manual.",
+            "¡Eso es! Sigue con esa confianza, ¡vas por buen camino!",
+            "¡Aprobaste con honores! Tienes muy claro lo que haces.",
+            "¡Buenísimo! Ya casi puedes oler el plástico de la licencia.",
+            "¡Excelente nivel! Se nota que has estudiado a conciencia.",
+            "¡Misión cumplida! Sigue repasando para no olvidar nada.",
+            "¡Excelente! Con este nivel la licencia es tuya.",
+            "¡Muy sólido! Tienes un gran dominio de las reglas.",
+            "¡Aprobado con seguridad! Sigue así para el examen real.",
+            "¡Qué buen puntaje! Se nota la dedicación.",
+            "¡Impecable! Estás listo para enfrentar cualquier ruta.",
+            "¡Genial! Has superado el desafío con creces.",
+            "¡Felicidades! Eres un ejemplo de buen estudio.",
+            "¡Directo a la municipalidad! No esperes más.",
+            "¡Muy bien jugado! Tienes los conceptos clarísimos.",
+            "¡Aprobado! Ahora solo falta el examen práctico."
+        ],
+        gold: [
+            "¡PERFECTO! Eres un maestro del volante y las reglas.",
+            "¡Puntaje Ideal! CONASET estaría orgulloso de ti.",
+            "¡Impresionante! 100% de efectividad. ¡Eres un crack!",
+            "¡Insuperable! No fallaste ni una sola pregunta.",
+            "¡Legendario! Tienes el manual grabado en la mente.",
+            "¡Simplemente perfecto! Estás más que listo.",
+            "¡Wow! Un examen impecable de principio a fin.",
+            "¡Nivel Experto! Ya podrías ser examinador municipal.",
+            "¡Felicidades por la perfección! Sigue así siempre.",
+            "¡Brillante! Has alcanzado la excelencia máxima.",
+            "¡MAESTRÍA TOTAL! Has alcanzado la perfección absoluta.",
+            "¡Increíble! No dejas nada al azar. ¡Felicidades!",
+            "¡Ese es el espíritu! Un 100% que impone respeto.",
+            "¡Perfecto! Podrías dar clases de conducción ahora mismo.",
+            "¡Nivel Dios! Has dominado el simulador por completo.",
+            "¡Qué precisión! Ni una sola duda en todo el examen.",
+            "¡Eres un genio del volante! Examen impecable.",
+            "¡Puntaje perfecto! Tu preparación es de otro nivel.",
+            "¡Simplemente brillante! Has arrasado con el test.",
+            "¡Felicidades por este 100%! Eres un crack de la seguridad vial."
+        ]
+    };
+
+    let fColor = '#ef4444'; // Red
+    let fList = feedbackOptions.red;
+
+    if (percent >= 100) {
+        fColor = '#fbbf24'; // Gold
+        fList = feedbackOptions.gold;
+    } else if (percent >= 85) {
+        fColor = '#10b981'; // Green
+        fList = feedbackOptions.green;
+    } else if (percent >= 70) {
+        fColor = '#f59e0b'; // Orange
+        fList = feedbackOptions.orange;
     }
+
+    const message = document.getElementById('results-message');
+    message.innerText = fList[Math.floor(Math.random() * fList.length)];
+    message.style.color = fColor;
 
     // Render Review
     const reviewList = document.getElementById('review-list');
@@ -346,7 +443,11 @@ function renderResults() {
         if (q.type === 'matching') {
             userText = userAns ? Object.entries(userAns).map(([l, n]) => `<div style="margin-top:2px; color: ${userColor}">${l.toUpperCase()} ➔ Señal ${n}</div>`).join('') : 'Ninguna';
         } else if (Array.isArray(userAns) && userAns.length > 0) {
-            userText = userAns.map(key => `<div style="margin-top:2px; color: ${userColor}">${key.toUpperCase()}) ${q.options[key]}</div>`).join('');
+            userText = userAns.map(key => {
+                const isImgOpt = q.type === 'image_options';
+                const content = isImgOpt ? `<img src="${q.options[key]}" style="max-height: 80px; margin-top: 5px; border: 2px solid ${userColor}; border-radius: 4px;">` : q.options[key];
+                return `<div style="margin-top:2px; color: ${userColor}">${key.toUpperCase()}) ${content}</div>`;
+            }).join('');
         }
 
         let correctText = '';
