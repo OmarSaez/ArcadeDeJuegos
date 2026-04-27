@@ -201,26 +201,29 @@ function renderMatchingUI(q) {
 
 window.selectMatch = (letter, value) => {
     if (!state.answers[state.currentIndex]) state.answers[state.currentIndex] = {};
-    state.answers[state.currentIndex][letter] = value;
-    // We don't need to re-render everything, just update the state
+    if (value === "") {
+        delete state.answers[state.currentIndex][letter];
+    } else {
+        state.answers[state.currentIndex][letter] = value;
+    }
+    updateControls();
 };
 
 window.selectOption = function(key) {
     const q = state.questions[state.currentIndex];
     
-    if (!state.answers[state.currentIndex]) {
+    if (!state.answers[state.currentIndex] || !Array.isArray(state.answers[state.currentIndex])) {
         state.answers[state.currentIndex] = [];
     }
+    
+    const currentAns = state.answers[state.currentIndex];
+    const index = currentAns.indexOf(key);
+    const isMultiple = q.answer.length > 1;
 
-    if (q.answer.length > 1) {
-        // Multi-answer
-        if (state.answers[state.currentIndex].includes(key)) {
-            state.answers[state.currentIndex] = state.answers[state.currentIndex].filter(a => a !== key);
-        } else {
-            state.answers[state.currentIndex].push(key);
-        }
+    if (isMultiple) {
+        if (index > -1) currentAns.splice(index, 1);
+        else currentAns.push(key);
     } else {
-        // Single answer
         state.answers[state.currentIndex] = [key];
     }
 
@@ -238,7 +241,6 @@ function updateControls() {
     const q = state.questions[state.currentIndex];
     
     if (q.type === 'matching') {
-        // For matching, ensure all fields are filled
         const filledCount = Object.keys(currentAnswer || {}).filter(k => currentAnswer[k]).length;
         nextBtn.disabled = filledCount < Object.keys(q.options).length;
     } else {
@@ -247,6 +249,24 @@ function updateControls() {
 }
 
 window.nextQuestion = function() {
+    const q = state.questions[state.currentIndex];
+    const userAns = state.answers[state.currentIndex];
+
+    // Basic validation before moving forward
+    if (q.type === 'matching') {
+        const totalKeys = Object.keys(q.options).length;
+        const filledCount = Object.keys(userAns || {}).filter(k => userAns[k]).length;
+        if (filledCount < totalKeys) {
+            alert('Por favor, asocia todas las imágenes antes de continuar.');
+            return;
+        }
+    } else {
+        if (!userAns || userAns.length === 0) {
+            alert('Por favor selecciona al menos una respuesta.');
+            return;
+        }
+    }
+
     if (state.currentIndex < state.questions.length - 1) {
         state.currentIndex++;
         renderQuestion();
