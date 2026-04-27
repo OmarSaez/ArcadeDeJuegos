@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cartas Contra la Humanidad</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style>
@@ -46,19 +46,24 @@
             background: var(--bg-color);
             transition: opacity 0.3s ease;
             z-index: 10;
+            overflow-y: auto;
+            box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
         }
 
         .hidden {
             display: none !important;
         }
 
-        h1 {
+        h1, h2 {
             font-weight: 900;
-            font-size: 2.5rem;
-            margin-bottom: 30px;
             text-align: center;
             letter-spacing: -2px;
+            margin-bottom: 30px;
         }
+
+        h1 { font-size: 2.5rem; }
+        h2 { font-size: 2rem; }
 
         /* --- UI ELEMENTS --- */
         .btn {
@@ -408,6 +413,12 @@
 
         /* --- MOBILE --- */
         @media (max-width: 600px) {
+            .screen {
+                justify-content: flex-start;
+                padding-top: 40px;
+                padding-bottom: 40px;
+            }
+
             .card {
                 width: 140px;
                 height: 200px;
@@ -420,6 +431,10 @@
 
             h1 {
                 font-size: 1.8rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
             }
 
             #ingame-player-list {
