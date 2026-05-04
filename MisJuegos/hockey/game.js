@@ -1,1092 +1,543 @@
-// CONFIGURACIÓN
-const CANVAS_W = 1280;
-const CANVAS_H = 720;
-const PUCK_R = 25;
-const PADDLE_R = 40;
-const GOAL_SIZE = 250;
-const FRICTION = 0.99; // Hielo
-const WALL_BOUNCE = 0.9;
+// --- CONSTANTES LÓGICAS (Mundo interno siempre es VERTICAL) ---
+// Así no importa si juegas en PC (Horizontal) o Móvil (Vertical), 
+// las matemáticas son exactamente iguales para todos.
+const LOGICAL_W = 800;
+const LOGICAL_H = 1200;
 
-// ESTADO GLOBAL
-let gameState = 'MENU'; // MENU, LOBBY, PLAYING
-let myNick = localStorage.getItem('hockey_nick') || `Jugador${Math.floor(Math.random() * 1000)}`;
-let myTeam = 'A'; // 'A' (Left/Red) or 'B' (Right/Blue)
-let myColor = '#ff4757';
-let myReady = false;
-let isHost = false;
-let myId = null;
-let peer = null;
-let hostConn = null;
-
-// CONFIGURACIÓN PARTIDA
-let config = {
-    maxScore: 5,
-    maxRounds: 0,
-    collisionTeam: false,
-    collisionEnemy: false
-};
-
-// EQUIPOS (Estado Global Explicito)
-let teams = {
-    A: { name: 'EQUIPO A', color: '#ff4757' },
-    B: { name: 'EQUIPO B', color: '#3742fa' }
-};
-
-// ESTADO JUEGO
-let scores = { A: 0, B: 0 };
-let roundWins = { A: 0, B: 0 };
-let currentRound = 1;
-let isGameOver = false;
-let clientConns = []; // Si soy host (lista de {conn, id, nick, team, color, x, y})
-// Nota: Si soy Host, mi propio jugador también está en lógica, pero no en clientConns.
-
-// OBJETOS JUEGO
-const puck = { x: CANVAS_W / 2, y: CANVAS_H / 2, vx: 0, vy: 0, color: 'white' };
-const players = {}; // Diccionario id -> { x, y, rawX, rawY, kx, ky, nick, team, color, vx: 0, vy: 0 }
-
-// INPUT
-const mouse = { x: CANVAS_W / 2, y: CANVAS_H / 2 };
+// Elementos HTML
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
-// --- INICIALIZACIÓN ---
-window.onload = () => {
-    resize();
-    window.addEventListener('resize', resize);
-    document.getElementById('input-nick').value = myNick;
+// --- ESTADO GLOBAL ---
+let myNick = localStorage.getItem('hockey_nick') || "Jugador" + Math.floor(Math.random()*100);
+let myId = null;
+let isHost = false;
+let peer = null;
+let hostConn = null;
+let clientConns = {}; // Solo Host
 
-    // Mouse Move
-    window.addEventListener('mousemove', e => {
-        if (gameState !== 'PLAYING') return;
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = CANVAS_W / rect.width;
-        const scaleY = CANVAS_H / rect.height;
-        mouse.x = (e.clientX - rect.left) * scaleX;
-        mouse.y = (e.clientY - rect.top) * scaleY;
-    });
+// Estado del juego sincronizado
+let myTeam = 'A';
+let teamColors = { A: '#ff4757', B: '#3742fa' };
+let myColor = teamColors.A;
+let scores = { A: 0, B: 0 };
+let players = {}; // id -> { nick, team, color, x, y }
+let puckState = { x: LOGICAL_W/2, y: LOGICAL_H/2 };
 
-    // Touch support basic
-    window.addEventListener('touchmove', e => {
-        if (gameState !== 'PLAYING') return;
-        e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = CANVAS_W / rect.width;
-        const scaleY = CANVAS_H / rect.height;
-        mouse.x = (e.touches[0].clientX - rect.left) * scaleX;
-        mouse.y = (e.touches[0].clientY - rect.top) * scaleY;
-    }, { passive: false });
+// --- FÍSICAS (Solo Host) ---
+let engine, world;
+let puckBody;
 
-    requestAnimationFrame(gameLoop);
-};
-
-function resize() {
-    // Mantener aspect ratio 16:9
-    // Ajustar visualmente el canvas al tamaño de ventana
-    // Pero la lógica interna usa CANVAS_W/H constantes.
-    let w = window.innerWidth;
-    let h = window.innerHeight;
-    if (w / h > CANVAS_W / CANVAS_H) w = h * (CANVAS_W / CANVAS_H);
-    else h = w * (CANVAS_H / CANVAS_W);
-
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    // Internal resolution
-    canvas.width = CANVAS_W;
-    canvas.height = CANVAS_H;
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
 }
 
-// --- RED (PEERJS FAST-DUAL) ---
-function screenCreate() {
-    myNick = document.getElementById('input-nick').value || 'Anónimo';
-    localStorage.setItem('hockey_nick', myNick);
+// Inicializar UI
+document.getElementById('input-nick').value = myNick;
 
-    // Init Host
-    const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    peer = new Peer(shortId);
-
-    peer.on('open', (id) => {
-        isHost = true;
-        myId = id;
-        // Add self to players
-        players[myId] = {
-            x: 150, y: CANVAS_H / 2,
-            rawX: 150, rawY: CANVAS_H / 2,
-            kx: 0, ky: 0,
-            nick: myNick, team: 'A', color: '#ff4757', ready: false,
-            vx: 0, vy: 0
-        };
-        myTeam = 'A'; myColor = '#ff4757'; myReady = false;
-        myTeam = 'A'; myColor = '#ff4757'; myReady = false;
-
-        setupLobby();
-        // Init UI
-        updateConfigUIDisp();
-    });
-
-    peer.on('connection', (conn) => {
-        setupHostConnection(conn);
-    });
-
-    peer.on('error', err => {
-        if (err.type === 'unavailable-id') screenCreate(); // Retry
-        else alert(err);
-    });
-}
-
-function screenJoin() {
-    myNick = document.getElementById('input-nick').value || 'Anónimo';
-    localStorage.setItem('hockey_nick', myNick);
-
-    const code = document.getElementById('input-code').value.toUpperCase();
-    if (!code) return;
-
-    peer = new Peer();
-    peer.on('open', (id) => {
-        myId = id;
-        isHost = false;
-        const conn = peer.connect(code);
-        setupClientConnection(conn);
-    });
-    peer.on('error', err => alert(err));
-}
-
-// HOST LOGIC
-function setupHostConnection(conn) {
-    conn.on('open', () => {
-        // Nuevo cliente
-        const pId = conn.peer;
-        // Asignar equipo por defecto (balanceo simple)
-        const countA = Object.values(players).filter(p => p.team === 'A').length;
-        const countB = Object.values(players).filter(p => p.team === 'B').length;
-        const newTeam = countA > countB ? 'B' : 'A';
-        const newColor = newTeam === 'A' ? '#ff4757' : '#3742fa';
-
-        clientConns.push({ conn, id: pId });
-
-        // Pide info inicial
-        conn.send({ type: 'WELCOME', team: newTeam, color: newColor, config: config, teams: teams });
-    });
-
-    conn.on('data', data => {
-        const pId = conn.peer;
-
-        if (data.type === 'JOIN_INFO') {
-            // Registrar jugador oficialmente
-            players[pId] = {
-                x: CANVAS_W / 2, y: CANVAS_H / 2,
-                rawX: CANVAS_W / 2, rawY: CANVAS_H / 2,
-                kx: 0, ky: 0,
-                vx: 0, vy: 0,
-                nick: data.nick,
-                team: data.team,
-                color: data.color,
-                ready: false
-            };
-            broadcastLobby();
-        }
-
-        if (data.type === 'LOBBY_UPDATE') {
-            // Jugador cambió equipo/color/listo
-            if (players[pId]) {
-                if (data.team) players[pId].team = data.team;
-                if (data.color) {
-                    players[pId].color = data.color;
-                    // Host: Update Team Color Global if a user changed it
-                    // This enforces "Last One Wins" color logic
-                    if (teams[players[pId].team]) {
-                        teams[players[pId].team].color = data.color;
-                    }
-                }
-                if (data.ready !== undefined) players[pId].ready = data.ready;
-                broadcastLobby();
-            }
-        }
-
-        if (data.type === 'INPUT') {
-            if (players[pId]) {
-                // Initial init of raw vars if missing (legacy safety)
-                if (players[pId].rawX === undefined) {
-                    players[pId].rawX = players[pId].x;
-                    players[pId].rawY = players[pId].y;
-                    players[pId].kx = 0; players[pId].ky = 0;
-                }
-
-                // Calculate velocity based on Input Difference
-                const dx = data.x - players[pId].rawX;
-                const dy = data.y - players[pId].rawY;
-
-                players[pId].vx = dx;
-                players[pId].vy = dy;
-
-                // Update Raw Input Target
-                players[pId].rawX = data.x;
-                players[pId].rawY = data.y;
-            }
-        }
-    });
-
-    conn.on('close', () => {
-        delete players[conn.peer];
-        clientConns = clientConns.filter(c => c.conn !== conn);
-        broadcastLobby();
-    });
-}
-
-function broadcastLobby() {
-    // Check if ALL ready to enable Start Button
-    const all = Object.values(players);
-    const allReady = all.every(p => p.ready);
-    const btnStart = document.getElementById('btn-start-game');
-
-    // Config Display Update
-    const rConfig = { maxScore: config.maxScore, maxRounds: config.maxRounds };
-
-    if (allReady) {
-        btnStart.disabled = false;
-        btnStart.innerText = "EMPEZAR PARTIDA";
-        btnStart.style.opacity = "1";
-        btnStart.style.cursor = "pointer";
-    } else {
-        btnStart.disabled = true;
-        btnStart.innerText = `ESPERANDO (${all.filter(p => p.ready).length}/${all.length})`;
-        btnStart.style.opacity = "0.5";
-        btnStart.style.cursor = "not-allowed";
-    }
-
-    const listToSend = Object.keys(players).map(k => ({ id: k, nick: players[k].nick, team: players[k].team, color: players[k].color, ready: players[k].ready, x: players[k].x, y: players[k].y }));
-    clientConns.forEach(c => c.conn.send({ type: "LOBBY_STATE", list: listToSend, config: rConfig, teams: teams }));
-    renderLobbyUI(listToSend);
-    updateConfigUIDisp();
-}
-
-// CLIENT LOGIC
-function setupClientConnection(conn) {
-    hostConn = conn;
-    hostConn.on('open', () => {
-        setupLobby(); // Mostrar pantalla lobby
-    });
-
-    hostConn.on('data', data => {
-        if (data.type === 'WELCOME') {
-            myTeam = data.team;
-            myColor = data.color;
-            config = data.config || config;
-            if (data.teams) teams = data.teams;
-
-            // Send back my info
-            hostConn.send({ type: 'JOIN_INFO', nick: myNick, team: myTeam, color: myColor });
-
-            // INIT LOCAL PLAYER
-            // Ensure I exist in my own dictionary
-            players[myId] = {
-                // FLIPPED LOGIC requested by User
-                x: myTeam === 'A' ? CANVAS_W - 150 : 150,
-                y: CANVAS_H / 2,
-                nick: myNick,
-                team: myTeam,
-                color: myColor,
-                ready: false
-            };
-
-            // Update UI
-            updateMyControls();
-        }
-
-        if (data.type === 'LOBBY_STATE') {
-            config = data.config;
-            if (data.teams) teams = data.teams; // CRITICAL: Update local teams state from Host
-
-            renderLobbyUI(data.list);
-            updateConfigUIDisp();
-
-            // SYNC PLAYERS for Lobby Visuals
-            // We rebuild players dict to match lobby list, ensuring we don't clobber our local prediction 'myId' if possible,
-            // or just overwrite everything since Lobby isn't twitch-sensitive yet.
-            data.list.forEach(pData => {
-                if (pData.id === myId) return; // Don't overwrite self (maintain local mouse pos)
-                players[pData.id] = {
-                    x: pData.x || CANVAS_W / 2,
-                    y: pData.y || CANVAS_H / 2,
-                    nick: pData.nick,
-                    team: pData.team,
-                    color: pData.color,
-                    ready: pData.ready
-                };
-            });
-        }
-
-        if (data.type === 'START') {
-            startGame();
-        }
-
-        if (data.type === 'GAME_UPDATE') {
-            // Updated Protocol: data.list is [Puck, P1, P2...]
-            if (data.list && data.list.length > 0) {
-                // 1. Puck (Index 0)
-                const pData = data.list[0];
-                puck.x = pData.x;
-                puck.y = pData.y;
-
-                // 2. Players (Index 1..N)
-                for (let i = 1; i < data.list.length; i++) {
-                    const pInfo = data.list[i];
-                    if (pInfo.id === myId) continue; // Don't override self input
-
-                    // Update or Init player
-                    if (players[pInfo.id]) {
-                        players[pInfo.id].x = pInfo.x;
-                        players[pInfo.id].y = pInfo.y;
-                    } else {
-                        // If player appeared mid-game?
-                        players[pInfo.id] = {
-                            x: pInfo.x, y: pInfo.y,
-                            nick: pInfo.nick,
-                            color: '#fff', team: 'A' // Defaults until Lobby Sync
-                        };
-                    }
-                }
-            }
-
-            if (data.teams) teams = data.teams;
-            if (data.scores) updateScores(data.scores);
-            if (data.roundWins) roundWins = data.roundWins;
-            if (data.round) currentRound = data.round;
-            if (data.gameOver) showGameOver(data.winner);
-            updateHUDOverlay();
-        }
-    });
-}
-
-// --- LOBBY UI ---
-function setupLobby() {
-    gameState = 'LOBBY';
-    document.getElementById('screen-title').classList.add('hidden');
-    document.getElementById('screen-lobby').classList.remove('hidden');
-    document.getElementById('lobby-room-code').innerText = 'SALA: ' + (isHost ? peer.id : 'CONECTADO');
-
-    if (isHost) {
-        document.getElementById('btn-start-game').classList.remove('hidden');
-        document.getElementById('lobby-config').classList.remove('hidden');
-    } else {
-        document.getElementById('msg-wait').classList.remove('hidden');
-        document.getElementById('lobby-config-display').classList.remove('hidden');
-    }
-
-    updateMyControls();
-}
-
-function updateMyControls() {
+// ==========================================
+// SELECCIÓN DE EQUIPO Y COLOR (LOBBY)
+// ==========================================
+function setTeam(team) {
+    myTeam = team;
+    myColor = teamColors[team];
     document.getElementById('input-color').value = myColor;
-}
-
-function setTeam(t) {
-    myTeam = t;
-    // Update local preference, but Team Color dictates my paddle initially?
-    // Or if I join, I adopt Team Color?
-    // User wants: "Si alguien se une, se le asigna directo el color".
-    // So:
-    myColor = teams[t].color;
-
-    // Reset Position to Correct Side
-    if (players[myId]) {
-        players[myId].x = t === 'A' ? 150 : CANVAS_W - 150;
-    }
-
-    updateMyControls();
     sendLobbyUpdate();
 }
 
-function setColor(c) {
-    myColor = c;
-    // Host Logic: If I change color, I change TEAM color (because I am authoritative source of truth for now)
-    // Client Logic: If I change color, I send to Host, Host updates Team, Host sends back LOBBY_STATE with new Team Color.
-    // So for immediate feedback, we update local 'teams' tentatively?
-    // No, better to wait for echo for consistency, BUT User complained "no se aplico".
-    // Let's update local 'teams' immediately for responsiveness.
-    if (teams[myTeam]) teams[myTeam].color = c;
+function setColor(color) {
+    myColor = color;
+    teamColors[myTeam] = color;
     sendLobbyUpdate();
-}
-
-function toggleReady() {
-    myReady = !myReady;
-    const btn = document.getElementById('btn-ready');
-    if (myReady) {
-        btn.innerText = "ESPERANDO...";
-        btn.style.background = "#aaa";
-    } else {
-        btn.innerText = "¡ESTOY LISTO!";
-        btn.style.background = "#4ade80";
-    }
-    sendLobbyUpdate();
-}
-
-function updateConfig() {
-    if (!isHost) return;
-    config.maxScore = parseInt(document.getElementById('input-max-score').value);
-    config.maxRounds = parseInt(document.getElementById('input-max-rounds').value);
-    broadcastLobby();
-}
-
-function toggleConfig(type) {
-    if (!isHost) return;
-    if (type === 'team') config.collisionTeam = !config.collisionTeam;
-    if (type === 'enemy') config.collisionEnemy = !config.collisionEnemy;
-    broadcastLobby();
-}
-
-function updateConfigUIDisp() {
-    let roundsTxt = config.maxRounds === 0 ? "Única" : `Mejor de ${config.maxRounds}`;
-    document.getElementById('config-text').innerText = `Meta: ${config.maxScore} pts | Rondas: ${roundsTxt}`;
-    document.getElementById('goal-val').innerText = config.maxScore;
-
-    if (config.maxRounds > 0) document.getElementById('hud-rounds').classList.remove('hidden');
-    else document.getElementById('hud-rounds').classList.add('hidden');
-
-    if (config.collisionTeam || config.collisionEnemy) {
-        document.getElementById('config-text').innerText += ` | Choques: ${config.collisionTeam ? 'Ali' : ''}${config.collisionTeam && config.collisionEnemy ? '+' : ''}${config.collisionEnemy ? 'Riv' : ''}`;
-    }
-
-    // Update Buttons Visuals
-    const btnTeam = document.getElementById('btn-col-team');
-    const btnEnemy = document.getElementById('btn-col-enemy');
-    if (btnTeam) {
-        btnTeam.innerText = `Compañeros: ${config.collisionTeam ? 'SI' : 'NO'}`;
-        btnTeam.style.opacity = config.collisionTeam ? "1" : "0.5";
-        btnTeam.style.background = config.collisionTeam ? "#4ade80" : "#555";
-        btnTeam.style.color = config.collisionTeam ? "#1e1e2e" : "#fff";
-    }
-    if (btnEnemy) {
-        btnEnemy.innerText = `Rivales: ${config.collisionEnemy ? 'SI' : 'NO'}`;
-        btnEnemy.style.opacity = config.collisionEnemy ? "1" : "0.5";
-        btnEnemy.style.background = config.collisionEnemy ? "#4ade80" : "#555";
-        btnEnemy.style.color = config.collisionEnemy ? "#1e1e2e" : "#fff";
-    }
 }
 
 function sendLobbyUpdate() {
-    // ALWAYS update local player state immediately for responsiveness
     if (players[myId]) {
         players[myId].team = myTeam;
         players[myId].color = myColor;
-        players[myId].ready = myReady;
     }
-
     if (isHost) {
-        broadcastLobby(); // Host self-update
+        broadcastLobby();
     } else if (hostConn) {
-        hostConn.send({ type: 'LOBBY_UPDATE', team: myTeam, color: myColor, ready: myReady });
+        hostConn.send({ type: 'LOBBY_UPDATE', team: myTeam, color: myColor });
     }
 }
 
-function renderLobbyUI(list) {
-    const el = document.getElementById('lobby-players-list');
-    el.innerHTML = '';
-    list.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'player-item';
-        const readyIcon = p.ready ? '✅' : '⏳';
-        div.innerHTML = `
-            <span>
-                <span class="team-badge badge-${p.team.toLowerCase()}">${p.team}</span> 
-                ${p.nick} 
-                <span style="margin-left:5px">${readyIcon}</span>
-            </span>
-            <div style="width:20px; height:20px; background:${p.color}; border-radius:50%"></div>
-        `;
-        el.appendChild(div);
+// ==========================================
+// RED: INICIALIZACIÓN
+// ==========================================
+function createRoom() {
+    myNick = document.getElementById('input-nick').value || myNick;
+    localStorage.setItem('hockey_nick', myNick);
+    
+    // Generar un ID de 4 caracteres
+    const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+    peer = new Peer(shortId);
+    
+    peer.on('open', id => {
+        isHost = true;
+        myId = id;
+        document.getElementById('lobby-code').innerText = id;
+        document.getElementById('host-controls').classList.remove('hidden');
+        showScreen('screen-lobby');
+        
+        initHostPhysics();
+        addPlayer(myId, myNick);
+        sendLobbyUpdate(); // Registra localmente
+    });
+    
+    peer.on('connection', conn => {
+        conn.on('open', () => {
+            clientConns[conn.peer] = conn;
+            conn.on('data', data => handleHostData(conn.peer, data));
+        });
+        conn.on('close', () => {
+            if (players[conn.peer] && players[conn.peer].body) {
+                Matter.World.remove(world, players[conn.peer].body);
+            }
+            delete players[conn.peer];
+            delete clientConns[conn.peer];
+            broadcastLobby();
+        });
+    });
+
+    peer.on('error', err => {
+        if (err.type === 'unavailable-id') {
+            createRoom(); // Reintentar con otro código
+        } else {
+            alert("Error de red: " + err);
+        }
     });
 }
 
-function startGameRequest() {
-    if (!isHost) return;
-    // Broadcast start
-    clientConns.forEach(c => c.conn.send({ type: 'START' }));
-    startGame();
-}
-
-function startGame() {
-    gameState = 'PLAYING';
-    document.getElementById('screen-lobby').classList.add('hidden');
-    document.getElementById('screen-game').classList.remove('hidden');
-    // Reset puck
-    if (isHost) resetPuck();
-}
-
-// --- GAME LOGIC ---
-function updatePhysics() {
-    if (!isHost) return;
-
-    // 0. Update Player Positions (Input + Knockback)
-    for (const pid in players) {
-        const p = players[pid];
-        if (p.rawX === undefined) continue;
-
-        // Friction on Knockback
-        p.kx *= 0.85; // Fast decay for snappy feel
-        p.ky *= 0.85;
-        if (Math.abs(p.kx) < 0.1) p.kx = 0;
-        if (Math.abs(p.ky) < 0.1) p.ky = 0;
-
-        // Apply
-        p.x = p.rawX + p.kx;
-        p.y = p.rawY + p.ky;
-
-        // Bound to Canvas
-        if (p.x < PADDLE_R) p.x = PADDLE_R;
-        if (p.x > CANVAS_W - PADDLE_R) p.x = CANVAS_W - PADDLE_R;
-        if (p.y < PADDLE_R) p.y = PADDLE_R;
-        if (p.y > CANVAS_H - PADDLE_R) p.y = CANVAS_H - PADDLE_R;
-    }
-
-    // 1. Mover Puck
-    puck.x += puck.vx;
-    puck.y += puck.vy;
-
-    // Fricción
-    puck.vx *= FRICTION;
-    puck.vy *= FRICTION;
-
-    // Paredes (Rebote)
-    if (puck.y < PUCK_R) { puck.y = PUCK_R; puck.vy *= -WALL_BOUNCE; }
-    if (puck.y > CANVAS_H - PUCK_R) { puck.y = CANVAS_H - PUCK_R; puck.vy *= -WALL_BOUNCE; }
-
-    // Goles (Izquierda / Derecha)
-    // Goal range: Center Y +/- GOAL_SIZE/2
-    const goalTop = CANVAS_H / 2 - GOAL_SIZE / 2;
-    const goalBot = CANVAS_H / 2 + GOAL_SIZE / 2;
-
-    // Left Wall
-    if (puck.x < PUCK_R) {
-        if (puck.y > goalTop && puck.y < goalBot) {
-            // GOAL B! (Puck entró a la izq)
-            score('B');
-        } else {
-            puck.x = PUCK_R;
-            puck.vx *= -WALL_BOUNCE;
-        }
-    }
-
-    // Right Wall
-    if (puck.x > CANVAS_W - PUCK_R) {
-        if (puck.y > goalTop && puck.y < goalBot) {
-            // GOAL A! (Puck entró a la der)
-            score('A');
-        } else {
-            puck.x = CANVAS_W - PUCK_R;
-            puck.vx *= -WALL_BOUNCE;
-        }
-    }
-
-    // Colisiones con Jugadores
-    // Colisiones con Jugadores (Fisica Elastic Choque)
-    for (const pid in players) {
-        const p = players[pid];
-        const dx = puck.x - p.x;
-        const dy = puck.y - p.y;
-        const dist = Math.hypot(dx, dy);
-        const minDist = PUCK_R + PADDLE_R;
-
-        if (dist < minDist) {
-            // 1. Position Correction (Evitar Sticking)
-            const angle = Math.atan2(dy, dx);
-            const overlap = minDist - dist;
-
-            // Mover Puck fuera del jugador inmediatamente
-            puck.x += Math.cos(angle) * overlap;
-            puck.y += Math.sin(angle) * overlap;
-
-            // 2. Velocidad Relativa
-            // Vector Normal (n)
-            const nx = Math.cos(angle);
-            const ny = Math.sin(angle);
-
-            // Vector Tangente (t)
-            const tx = -ny;
-            const ty = nx;
-
-            // Proyectar velocidades en Normal y Tangente
-            // Puck
-            const v1n = puck.vx * nx + puck.vy * ny;
-            const v1t = puck.vx * tx + puck.vy * ty;
-
-            // Player (Tiene masa infinita efectivamente, pero le transferimos su momento)
-            const v2n = p.vx * nx + p.vy * ny;
-            // Player tangent velocity doesn't matter for 1D collision along normal
-
-            // 3. Choque Elástico 1D (Masa Player >> Masa Puck)
-            // Si el jugador fuera estático: v1n_new = -v1n
-            // Con jugador moviéndose: v1n_new = 2*v2n - v1n
-            // Agregamos coeficiente de restitución (bounciness) + Extra Power
-
-            // Si el brazo se mueve HACIA el puck (v2n < 0 relativo a n?), n apunta de Player a Puck.
-            // Asi que si v2n > 0, el player empuja al puck. 
-
-            const restitution = 1.0; // Perfectamente elástico
-            const boost = 1.2; // Extra arcade speed
-
-            // Formula simplificada para "Pared Móvil con Masa Infinita":
-            let v1n_final = (2 * v2n - v1n) * restitution;
-
-            // Limitar la velocidad transferida del mouse para que no rompa la fisica
-            // A veces el mouse se mueve MUY rapido (teletransportación)
-            if (v1n_final > 40) v1n_final = 40;
-            if (v1n_final < -40) v1n_final = -40;
-
-            // Forzar rebote minimo REMOVED per user request
-            // if (Math.abs(v1n_final) < 2) {
-            //      v1n_final += 5; 
-            // }
-
-            // Convertir escalar normal/tangente de vuelta a vectores x/y
-            // La tangente se mantiene igual (sin fricción de superficie)
-            puck.vx = (v1n_final * nx + v1t * tx) * boost;
-            puck.vy = (v1n_final * ny + v1t * ty) * boost;
-
-            // Cap final de velocidad absoluta
-            const speed = Math.hypot(puck.vx, puck.vy);
-            if (speed > 35) {
-                puck.vx = (puck.vx / speed) * 35;
-                puck.vy = (puck.vy / speed) * 35;
-            }
-        }
-    }
-
-
-    // Colisiones Jugador vs Jugador
-    if (config.collisionTeam || config.collisionEnemy) {
-        const pKeys = Object.keys(players);
-        for (let i = 0; i < pKeys.length; i++) {
-            for (let j = i + 1; j < pKeys.length; j++) {
-                const p1 = players[pKeys[i]];
-                const p2 = players[pKeys[j]];
-
-                // Check Filter
-                const isTeam = p1.team === p2.team;
-                // Config logic:
-                // collisionTeam: Players of SAME team collide? (Yes if true)
-                // collisionEnemy: Players of DIFFERENT team collide? (Yes if true)
-
-                // Your logic was:
-                // if (isTeam && !config.collisionTeam) continue; -> If same team AND team collision OFF -> NO COLLIDE. Correct.
-                // if (!isTeam && !config.collisionEnemy) continue; -> If diff team AND enemy collision OFF -> NO COLLIDE. Correct.
-
-                // Wait, user says: 
-                // "Si activas choque entre compañeros la idea es que yo choco con mis compañeros pero el rival lo traspaso"
-                // -> This means SAME TEAM collide (collisionTeam=true), DIFF TEAM pass through (collisionEnemy=false). My code does this.
-
-                // "luego si solo activas el choque rivales... entre nosotros nos chocamos y aliados no"
-                // -> This means DIFF TEAM collide (collisionEnemy=true), SAME TEAM pass through (collisionTeam=false). My code does this.
-
-                // The user explanation matches my implementation exactly, but maybe they tested and it felt wrong?
-                // "choque entre compañeros... pero el rival lo traspaso" => isTeam=T -> OK, isTeam=F -> Skip.
-                // My code: if (!isTeam && !config.collisionEnemy) continue; -> Skip diff team if enemy collision off. Correct.
-
-                // Let's re-verify logic carefully.
-                // Case 1: collisionTeam=TRUE, collisionEnemy=FALSE.
-                // pair (A, A): isTeam=TRUE. !config.collisionTeam is FALSE. Continue? NO. -> Collide. CORRECT.
-                // pair (A, B): isTeam=FALSE. !config.collisionEnemy is TRUE. Continue? YES. -> No collide. CORRECT.
-
-                // Case 2: collisionTeam=FALSE, collisionEnemy=TRUE.
-                // pair (A, A): isTeam=TRUE. !config.collisionTeam is TRUE. Continue? YES. -> No collide. CORRECT.
-                // pair (A, B): isTeam=FALSE. !config.collisionEnemy is FALSE. Continue? NO. -> Collide. CORRECT.
-
-                // Maybe the issue is the wording in UI or confused testing?
-                // "el equipo rival entre ellos... a nosotros que somos sus rivales nos traspasan"
-                // This implies (B, B) collide, (A, B) pass through. This is Case 1.
-
-                // I will keep the logic as is because it seems mathematically correct based on description.
-                // Perhaps I should just relabel or ensure the config variable names match the user's mental model?
-                // User requested: "choque entre compañeros" -> collisionTeam.
-                // "choque rivales" -> collisionEnemy.
-
-                // I'll rewrite it to be super explicit to avoid any hidden bugs.
-                let shouldCollide = false;
-                if (isTeam) {
-                    // Same Team
-                    if (config.collisionTeam) shouldCollide = true;
-                } else {
-                    // Different Team
-                    if (config.collisionEnemy) shouldCollide = true;
-                }
-
-                if (!shouldCollide) continue;
-
-                // Check Distance
-                const dx = p1.x - p2.x;
-                const dy = p1.y - p2.y;
-                const dist = Math.hypot(dx, dy);
-                const minDist = PADDLE_R * 2; // Radio + Radio
-
-                if (dist < minDist) {
-                    // COLISIÓN JUGUETONA!
-                    const angle = Math.atan2(dy, dx);
-
-                    // 1. Minimum Push to fix overlap
-                    const overlap = minDist - dist;
-                    const minPush = overlap * 0.5; // Shared adjustment
-
-                    // 2. Playful Bounce Force
-                    // More velocity difference = More bounce
-                    // We exaggerate the effect to make it feel like "sumo"
-                    const vRelX = p1.vx - p2.vx;
-                    const vRelY = p1.vy - p2.vy;
-                    const impactSpeed = Math.hypot(vRelX, vRelY);
-
-                    // Base bounce + Speed scaler
-                    const bounceForce = 15 + (impactSpeed * 1.5);
-
-                    const fx = Math.cos(angle);
-                    const fy = Math.sin(angle);
-
-                    // Apply to Knockback (kx, ky)
-                    // We mix explicit overlap fix + dynamic bounce
-                    const totalPush = minPush + bounceForce;
-
-                    // Apply impulse
-                    p1.kx += fx * totalPush * 0.5;
-                    p1.ky += fy * totalPush * 0.5;
-
-                    p2.kx -= fx * totalPush * 0.5;
-                    p2.ky -= fy * totalPush * 0.5;
-
-                    // Cap Knockback
-                    const MAX_KB = 150;
-                    p1.kx = Math.max(-MAX_KB, Math.min(MAX_KB, p1.kx));
-                    p1.ky = Math.max(-MAX_KB, Math.min(MAX_KB, p1.ky));
-                    p2.kx = Math.max(-MAX_KB, Math.min(MAX_KB, p2.kx));
-                    p2.ky = Math.max(-MAX_KB, Math.min(MAX_KB, p2.ky));
-                }
-            }
-        }
-    }
-
-    // Listado optimizado para transmisión (Solicitud User Step 3166)
-    // [0] = Puck, [1..N] = Jugadores
-    const gameList = [];
-
-    // 1. Disco (Siempre primero)
-    gameList.push({ id: 'PUCK', x: Math.round(puck.x), y: Math.round(puck.y) });
-
-    // 2. Jugadores
-    // Envio ID para mapping rápido, y Nick por si acaso visual
-    for (const pid in players) {
-        gameList.push({
-            id: pid,
-            x: Math.round(players[pid].x),
-            y: Math.round(players[pid].y),
-            nick: players[pid].nick
+function joinRoom() {
+    myNick = document.getElementById('input-nick').value || myNick;
+    localStorage.setItem('hockey_nick', myNick);
+    const code = document.getElementById('input-code').value.trim().toUpperCase();
+    if (!code) return;
+    
+    peer = new Peer();
+    peer.on('open', id => {
+        myId = id;
+        isHost = false;
+        hostConn = peer.connect(code);
+        hostConn.on('open', () => {
+            document.getElementById('lobby-code').innerText = code;
+            document.getElementById('wait-msg').classList.remove('hidden');
+            showScreen('screen-lobby');
+            
+            hostConn.send({ type: 'JOIN', nick: myNick, team: myTeam, color: myColor });
+            hostConn.on('data', handleClientData);
         });
-    }
+    });
+}
 
-    // Enviar estado a clientes
+// ==========================================
+// RED: HOST
+// ==========================================
+function handleHostData(peerId, data) {
+    if (data.type === 'JOIN') {
+        addPlayer(peerId, data.nick);
+        players[peerId].team = data.team;
+        players[peerId].color = data.color;
+        broadcastLobby();
+    } else if (data.type === 'INPUT') {
+        if (players[peerId]) {
+            players[peerId].targetX = data.x;
+            players[peerId].targetY = data.y;
+        }
+    } else if (data.type === 'LOBBY_UPDATE') {
+        if (players[peerId]) {
+            players[peerId].team = data.team;
+            players[peerId].color = data.color;
+            teamColors[data.team] = data.color;
+            
+            // Forzar actualización de color a todos los miembros del equipo
+            for (let id in players) {
+                if (players[id].team === data.team) {
+                    players[id].color = data.color;
+                }
+            }
+            broadcastLobby();
+        }
+    }
+}
+
+function broadcastLobby() {
+    const list = Object.keys(players).map(k => ({ 
+        id: k, 
+        nick: players[k].nick, 
+        color: players[k].color, 
+        team: players[k].team 
+    }));
+    updateLobbyUI(list);
+    Object.values(clientConns).forEach(c => c.send({ type: 'LOBBY_SYNC', list, teamColors }));
+}
+
+function broadcastGameState() {
+    const pData = {};
+    for (let id in players) {
+        if (players[id].body) {
+            pData[id] = { 
+                x: players[id].body.position.x, 
+                y: players[id].body.position.y 
+            };
+        }
+    }
     const state = {
-        list: gameList,
+        puck: { x: puckBody.position.x, y: puckBody.position.y },
+        players: pData,
         scores: scores,
-        roundWins: roundWins,
-        round: currentRound,
-        gameOver: isGameOver,
-        winner: isGameOver ? (roundWins.A > roundWins.B ? 'A' : 'B') : null,
-        teams: teams
+        teamColors: teamColors
     };
-    clientConns.forEach(c => c.conn.send({ type: 'GAME_UPDATE', ...state }));
+    Object.values(clientConns).forEach(c => c.send({ type: 'SYNC', state }));
 }
 
-function score(team) {
-    scores[team]++;
-    updateScores(scores);
-    resetPuck();
+// ==========================================
+// RED: CLIENTE
+// ==========================================
+function handleClientData(data) {
+    if (data.type === 'LOBBY_SYNC') {
+        if (data.teamColors) teamColors = data.teamColors;
+        
+        myColor = teamColors[myTeam];
+        document.getElementById('input-color').value = myColor;
+        
+        updateLobbyUI(data.list);
+        
+        // Actualizar datos locales
+        data.list.forEach(p => {
+            if (!players[p.id]) players[p.id] = {};
+            players[p.id].nick = p.nick;
+            players[p.id].color = p.color;
+            players[p.id].team = p.team;
+        });
+        
+    } else if (data.type === 'START') {
+        showScreen('screen-game');
+        document.getElementById('score-display').classList.remove('hidden');
+        startGameLoop();
+    } else if (data.type === 'SYNC') {
+        puckState = data.state.puck;
+        scores = data.state.scores;
+        if (data.state.teamColors) teamColors = data.state.teamColors;
+        
+        document.getElementById('score-a').innerText = scores.A;
+        document.getElementById('score-b').innerText = scores.B;
 
-    // Check Round/Game Win
-    if (scores[team] >= config.maxScore) {
-        // Round WIN
-        roundWins[team]++;
-
-        // Check Match WIN
-        let won = false;
-        if (config.maxRounds === 0) {
-            won = true; // Single round match
-        } else {
-            // "5 puntos y 2 rondas" -> First to win 2 rounds?
-            // User requested "selecionar rondas". Usually "Best of 3" or "First to 2".
-            // Let's implement "First to X wins".
-            if (roundWins[team] >= config.maxRounds) won = true;
-        }
-
-        if (won) {
-            isGameOver = true;
-            gameState = 'GAMEOVER';
-            showGameOver(team);
-        } else {
-            // Next Round
-            currentRound++;
-            scores = { A: 0, B: 0 };
-            updateScores(scores);
-            // Maybe small pause?
+        for (let id in data.state.players) {
+            if (players[id]) {
+                players[id].x = data.state.players[id].x;
+                players[id].y = data.state.players[id].y;
+            }
         }
     }
 }
 
-function updateHUDOverlay() {
-    const elA = document.querySelector('#hud-rounds .score-a');
-    elA.innerText = roundWins.A;
-    elA.style.color = teams.A.color;
+function shadeColor(color, percent) {
+    let R = parseInt(color.substring(1,3),16);
+    let G = parseInt(color.substring(3,5),16);
+    let B = parseInt(color.substring(5,7),16);
 
-    const elB = document.querySelector('#hud-rounds .score-b');
-    elB.innerText = roundWins.B;
-    elB.style.color = teams.B.color;
+    R = parseInt(R * (100 + percent) / 100);
+    G = parseInt(G * (100 + percent) / 100);
+    B = parseInt(B * (100 + percent) / 100);
+
+    R = (R<255)?R:(R>0?R:0);
+    G = (G<255)?G:(G>0?G:0);
+    B = (B<255)?B:(B>0?B:0);
+
+    let RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16));
+    let GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16));
+    let BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16));
+
+    return "#"+RR+GG+BB;
 }
 
-function showGameOver(winner) {
-    alert(`¡JUEGO TERMINADO! GANADOR: EQUIPO ${winner}`);
-    location.reload();
+function updateLobbyUI(list) {
+    // Actualizar colores de UI
+    document.getElementById('btn-team-a').style.background = teamColors.A;
+    document.getElementById('btn-team-a').style.boxShadow = `0 4px 0 ${shadeColor(teamColors.A, -20)}`;
+    document.getElementById('title-team-a').style.color = teamColors.A;
+    document.getElementById('score-a').style.color = teamColors.A;
+
+    document.getElementById('btn-team-b').style.background = teamColors.B;
+    document.getElementById('btn-team-b').style.boxShadow = `0 4px 0 ${shadeColor(teamColors.B, -20)}`;
+    document.getElementById('title-team-b').style.color = teamColors.B;
+    document.getElementById('score-b').style.color = teamColors.B;
+
+    const listA = document.getElementById('list-team-a');
+    const listB = document.getElementById('list-team-b');
+    
+    listA.innerHTML = list.filter(p => p.team === 'A')
+        .map(p => `<div class="player-item" style="border-left: 5px solid ${p.color || '#fff'}; margin-bottom: 5px;">${p.nick}</div>`).join('');
+        
+    listB.innerHTML = list.filter(p => p.team === 'B')
+        .map(p => `<div class="player-item" style="border-left: 5px solid ${p.color || '#fff'}; margin-bottom: 5px;">${p.nick}</div>`).join('');
 }
 
-function updateScores(s) {
-    scores = s;
-    const elA = document.querySelector('#hud-score .score-a');
-    elA.innerText = s.A;
-    elA.style.color = teams.A.color;
+// ==========================================
+// FÍSICAS MATER.JS (Solo Host)
+// ==========================================
+function initHostPhysics() {
+    engine = Matter.Engine.create();
+    world = engine.world;
+    engine.gravity.y = 0; // Vista desde arriba
 
-    const elB = document.querySelector('#hud-score .score-b');
-    elB.innerText = s.B;
-    elB.style.color = teams.B.color;
+    const wallOptions = { isStatic: true, restitution: 1.0, friction: 0 };
+    
+    // Paredes con hueco de 300px en el centro para las porterías
+    // 800 ancho total -> Centro es 400 -> Hueco va de 250 a 550.
+    // Pared Izq Superior (0 a 250): Centro 125, ancho 250
+    // Pared Der Superior (550 a 800): Centro 675, ancho 250
+    const walls = [
+        // Arriba (Equipo A defiende)
+        Matter.Bodies.rectangle(125, -25, 250, 50, wallOptions),
+        Matter.Bodies.rectangle(675, -25, 250, 50, wallOptions),
+        // Abajo (Equipo B defiende)
+        Matter.Bodies.rectangle(125, LOGICAL_H+25, 250, 50, wallOptions),
+        Matter.Bodies.rectangle(675, LOGICAL_H+25, 250, 50, wallOptions),
+        // Laterales
+        Matter.Bodies.rectangle(-25, LOGICAL_H/2, 50, LOGICAL_H, wallOptions), // Izquierda
+        Matter.Bodies.rectangle(LOGICAL_W+25, LOGICAL_H/2, 50, LOGICAL_H, wallOptions) // Derecha
+    ];
+    
+    // Sensores de Portería (invisibles)
+    const goalA = Matter.Bodies.rectangle(LOGICAL_W/2, -50, 300, 50, { isStatic: true, isSensor: true, label: 'goalA' });
+    const goalB = Matter.Bodies.rectangle(LOGICAL_W/2, LOGICAL_H+50, 300, 50, { isStatic: true, isSensor: true, label: 'goalB' });
+
+    // Disco
+    puckBody = Matter.Bodies.circle(LOGICAL_W/2, LOGICAL_H/2, 30, {
+        restitution: 0.9, 
+        friction: 0.001,
+        frictionAir: 0.015,
+        density: 0.001
+    });
+
+    Matter.World.add(world, [...walls, goalA, goalB, puckBody]);
+
+    // Detección de Goles
+    Matter.Events.on(engine, 'collisionStart', (event) => {
+        event.pairs.forEach(pair => {
+            if (pair.bodyA === puckBody || pair.bodyB === puckBody) {
+                const other = pair.bodyA === puckBody ? pair.bodyB : pair.bodyA;
+                
+                if (other.label === 'goalA') {
+                    scores.B++;
+                    resetPuck();
+                } else if (other.label === 'goalB') {
+                    scores.A++;
+                    resetPuck();
+                }
+            }
+        });
+    });
+
+    // Bucle de Físicas
+    setInterval(() => {
+        // Mover jugadores hacia donde apuntan
+        for (let id in players) {
+            const p = players[id];
+            if (p.body && p.targetX !== undefined) {
+                // Fuerzas elásticas suaves
+                let dx = p.targetX - p.body.position.x;
+                let dy = p.targetY - p.body.position.y;
+                
+                Matter.Body.setVelocity(p.body, { 
+                    x: dx * 0.15, 
+                    y: dy * 0.15 
+                });
+            }
+        }
+
+        Matter.Engine.update(engine, 1000 / 60);
+        broadcastGameState();
+    }, 1000 / 60);
 }
 
 function resetPuck() {
-    puck.x = CANVAS_W / 2;
-    puck.y = CANVAS_H / 2;
-    puck.vx = (Math.random() > 0.5 ? 5 : -5);
-    puck.vy = (Math.random() - 0.5) * 5;
+    Matter.Body.setPosition(puckBody, { x: LOGICAL_W/2, y: LOGICAL_H/2 });
+    Matter.Body.setVelocity(puckBody, { x: 0, y: 0 });
+    
+    // Alguien anotó, actualizamos el UI en el Host inmediatamente
+    document.getElementById('score-a').innerText = scores.A;
+    document.getElementById('score-b').innerText = scores.B;
 }
 
-// --- CLIENT INPUT LOOP ---
-function clientInput() {
-    // Enviar mi posición al host
+function addPlayer(id, nick) {
+    players[id] = { 
+        nick: nick, 
+        team: 'A', // Default, se actualizará
+        color: '#fff', 
+        x: LOGICAL_W/2, 
+        y: LOGICAL_H/2, 
+        targetX: LOGICAL_W/2, 
+        targetY: LOGICAL_H/2, 
+        body: null 
+    };
+}
+
+function startGame() {
     if (isHost) {
-        if (!players[myId]) return;
-
-        // Init safety
-        if (players[myId].rawX === undefined) {
-            players[myId].rawX = players[myId].x;
-            players[myId].rawY = players[myId].y;
-            players[myId].kx = 0; players[myId].ky = 0;
+        // Instanciar los cuerpos físicos de todos los jugadores que están en el Lobby
+        for (let id in players) {
+            let p = players[id];
+            // Equipo A defiende Arriba (y=0 a 600), Equipo B defiende Abajo (y=600 a 1200)
+            let startY = p.team === 'A' ? 200 : LOGICAL_H - 200;
+            
+            p.body = Matter.Bodies.circle(LOGICAL_W/2, startY, 45, {
+                restitution: 0.5,
+                frictionAir: 0.1,
+                density: 0.05 // Más pesado que el disco
+            });
+            Matter.World.add(world, p.body);
+            p.targetY = startY; // Evitar que salgan volando al centro inicialmente
         }
 
-        // Calculate velocity for self (Host)
-        const dx = mouse.x - players[myId].rawX;
-        const dy = mouse.y - players[myId].rawY;
-        players[myId].vx = dx;
-        players[myId].vy = dy;
+        Object.values(clientConns).forEach(c => c.send({ type: 'START' }));
+        showScreen('screen-game');
+        document.getElementById('score-display').classList.remove('hidden');
+        startGameLoop();
+    }
+}
 
-        // Update RAW input
-        players[myId].rawX = mouse.x;
-        players[myId].rawY = mouse.y;
+// ==========================================
+// INPUT Y CÁMARA (CUALQUIER CLIENTE)
+// ==========================================
 
-        // Actual x/y updated in physics loop now!
+function sendInput(e) {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    let scale = isLandscape ? 
+        Math.min(canvas.width / LOGICAL_H, canvas.height / LOGICAL_W) :
+        Math.min(canvas.width / LOGICAL_W, canvas.height / LOGICAL_H);
 
-        // Broadcast movement in Lobby
-        if (gameState === 'LOBBY') {
-            // Send light visual update (positions)
-            // Clean players object to minimal needing sending? No, send all for now.
-            const state = { players: players };
-            clientConns.forEach(c => c.conn.send({ type: 'GAME_UPDATE', ...state }));
-        }
+    let rect = canvas.getBoundingClientRect();
+    let sx = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    let sy = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
 
-    } else if (hostConn && (gameState === 'PLAYING' || gameState === 'LOBBY')) {
-        // Send to host
-        hostConn.send({ type: 'INPUT', x: mouse.x, y: mouse.y });
-        // Predicción local (visual)
+    let cx = sx - canvas.width / 2;
+    let cy = sy - canvas.height / 2;
+
+    let lx, ly;
+    if (isLandscape) {
+        let rx = -cy;
+        let ry = cx;
+        lx = (rx / scale) + LOGICAL_W / 2;
+        ly = (ry / scale) + LOGICAL_H / 2;
+    } else {
+        lx = (cx / scale) + LOGICAL_W / 2;
+        ly = (cy / scale) + LOGICAL_H / 2;
+    }
+
+    if (isHost) {
         if (players[myId]) {
-            players[myId].x = mouse.x;
-            players[myId].y = mouse.y;
+            players[myId].targetX = lx;
+            players[myId].targetY = ly;
+        }
+    } else {
+        if (hostConn) {
+            hostConn.send({ type: 'INPUT', x: lx, y: ly });
         }
     }
 }
 
-// --- RENDER ---
-function hexToRgb(hex) {
-    // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
-    var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-    hex = hex.replace(shorthandRegex, function (m, r, g, b) {
-        return r + r + g + g + b + b;
-    });
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : { r: 255, g: 0, b: 0 };
+canvas.addEventListener('pointermove', sendInput);
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); sendInput(e); }, { passive: false });
+
+// ==========================================
+// RENDER LOOP
+// ==========================================
+function startGameLoop() {
+    requestAnimationFrame(render);
 }
 
-// Helper to get ephemeral team colors
-function getTeamColors() { return { A: teams.A ? teams.A.color : "#ff4757", B: teams.B ? teams.B.color : "#3742fa" }; }
+function render() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-function updateTeamColorsDOM() {
-    const colors = getTeamColors();
-    const btnA = document.querySelector('.btn-team.team-a');
-    const btnB = document.querySelector('.btn-team.team-b');
+    const isLandscape = window.innerWidth > window.innerHeight;
+    let scale = isLandscape ? 
+        Math.min(canvas.width / LOGICAL_H, canvas.height / LOGICAL_W) :
+        Math.min(canvas.width / LOGICAL_W, canvas.height / LOGICAL_H);
 
-    if (btnA) {
-        btnA.style.background = colors.A;
-        btnA.innerText = `EQUIPO A (Izquierda)`;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    if (isLandscape) {
+        ctx.rotate(-Math.PI / 2);
     }
-    if (btnB) {
-        btnB.style.background = colors.B;
-        btnB.innerText = `EQUIPO B (Derecha)`;
-    }
+    ctx.scale(scale, scale);
+    ctx.translate(-LOGICAL_W / 2, -LOGICAL_H / 2);
 
-    // Also update badges in list
-    document.querySelectorAll('.badge-a').forEach(el => el.style.background = colors.A);
-    document.querySelectorAll('.badge-b').forEach(el => el.style.background = colors.B);
+    // 1. DIBUJAR PISTA LOGICA
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    
+    // Borde iluminado
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(0, 0, LOGICAL_W, LOGICAL_H);
 
-    // Update Score colors
-    const sA = document.querySelector('.score-a');
-    const sB = document.querySelector('.score-b');
-    if (sA) sA.style.color = colors.A;
-    if (sB) sB.style.color = colors.B;
-}
-
-function draw() {
-    // Determine Team Colors based on players
-    const colors = getTeamColors();
-    const colorAStr = colors.A;
-    const colorBStr = colors.B;
-
-    const rgbA = hexToRgb(colorAStr);
-    const rgbB = hexToRgb(colorBStr);
-
-    // Sync UI occasionally? Doing it every frame is heavy but ensures instant feedback.
-    // Let's do it every frame for now, DOM diffing is fast enough for 2 buttons.
-    updateTeamColorsDOM();
-
-    // 1. Fondo "Mesa de Aire" (Negro Azulado Profundo + Grid sutil)
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    // Grid (Patrón de agujeros de aire)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-    for (let i = 0; i < CANVAS_W; i += 40) {
-        for (let j = 0; j < CANVAS_H; j += 40) {
-            ctx.beginPath();
-            ctx.arc(i, j, 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    // 2. Líneas del Campo (Neon)
-    ctx.lineWidth = 4;
-    ctx.shadowBlur = 10;
-
-    // Línea Central
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.shadowColor = 'white';
+    // Línea central
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(CANVAS_W / 2, 0); ctx.lineTo(CANVAS_W / 2, CANVAS_H);
+    ctx.moveTo(0, LOGICAL_H/2);
+    ctx.lineTo(LOGICAL_W, LOGICAL_H/2);
     ctx.stroke();
 
-    // Círculo Central
+    // Circulo central
     ctx.beginPath();
-    ctx.arc(CANVAS_W / 2, CANVAS_H / 2, 120, 0, Math.PI * 2);
+    ctx.arc(LOGICAL_W/2, LOGICAL_H/2, 100, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Zonas de Equipo (Dynamic Colors)
+    // 2. DIBUJAR PORTERÍAS (Ancho: 300px)
+    ctx.fillStyle = teamColors.A; // Arriba Equipo A
+    ctx.fillRect(250, -20, 300, 40);
+    
+    ctx.fillStyle = teamColors.B; // Abajo Equipo B
+    ctx.fillRect(250, LOGICAL_H - 20, 300, 40);
 
-    // -- LADO A (Izquierda) --
-    // Línea de Falta
-    ctx.strokeStyle = colorAStr;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = colorAStr;
+    // 3. DIBUJAR DISCO
+    ctx.fillStyle = '#f8fafc';
     ctx.beginPath();
-    ctx.moveTo(300, 0); ctx.lineTo(300, CANVAS_H);
-    // ctx.stroke(); 
-
-    // Portería A (Resplandor Gradient)
-    const gradA = ctx.createLinearGradient(0, 0, 400, 0);
-    gradA.addColorStop(0, `rgba(${rgbA.r}, ${rgbA.g}, ${rgbA.b}, 0.3)`);
-    gradA.addColorStop(1, `rgba(${rgbA.r}, ${rgbA.g}, ${rgbA.b}, 0)`);
-    ctx.fillStyle = gradA;
-    ctx.fillRect(0, 0, 400, CANVAS_H);
-
-    // Arco A
-    ctx.strokeStyle = colorAStr;
-    ctx.lineWidth = 8;
+    let px = isHost && puckBody ? puckBody.position.x : puckState.x;
+    let py = isHost && puckBody ? puckBody.position.y : puckState.y;
+    ctx.arc(px, py, 30, 0, Math.PI * 2);
+    ctx.fill();
     ctx.shadowBlur = 15;
-    ctx.shadowColor = colorAStr;
-    ctx.beginPath();
-    ctx.arc(0, CANVAS_H / 2, 150, -Math.PI / 2, Math.PI / 2);
-    ctx.stroke();
-
-    // -- LADO B (Derecha) --
-    // Portería B (Resplandor Gradient)
-    const gradB = ctx.createLinearGradient(CANVAS_W - 400, 0, CANVAS_W, 0);
-    gradB.addColorStop(0, `rgba(${rgbB.r}, ${rgbB.g}, ${rgbB.b}, 0)`);
-    gradB.addColorStop(1, `rgba(${rgbB.r}, ${rgbB.g}, ${rgbB.b}, 0.3)`);
-    ctx.fillStyle = gradB;
-    ctx.fillRect(CANVAS_W - 400, 0, 400, CANVAS_H);
-
-    // Arco B
-    ctx.strokeStyle = colorBStr;
-    ctx.shadowColor = colorBStr;
-    ctx.beginPath();
-    ctx.arc(CANVAS_W, CANVAS_H / 2, 150, Math.PI / 2, -Math.PI / 2);
-    ctx.stroke();
-
-    ctx.shadowBlur = 0;
-
-    // 3. Puck (Disco)
-    ctx.shadowBlur = 20;
     ctx.shadowColor = 'white';
-    ctx.fillStyle = '#f1f2f6';
-    ctx.beginPath();
-    ctx.arc(puck.x, puck.y, PUCK_R, 0, Math.PI * 2);
-    ctx.fill();
-    // Detalle Puck
-    ctx.fillStyle = '#ced6e0';
-    ctx.beginPath();
-    ctx.arc(puck.x, puck.y, PUCK_R * 0.7, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // 4. Jugadores (Paddles)
-    for (const pid in players) {
-        const p = players[pid];
+    // 4. DIBUJAR JUGADORES
+    for (let id in players) {
+        let p = players[id];
+        let ppx, ppy;
+        
+        if (isHost && p.body) {
+            ppx = p.body.position.x;
+            ppy = p.body.position.y;
+        } else {
+            ppx = p.x || -100;
+            ppy = p.y || -100;
+        }
 
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = p.color;
-
-        // Base Paddle
-        ctx.fillStyle = p.color;
+        // Ficha Base
+        ctx.fillStyle = p.color || '#fff';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, PADDLE_R, 0, Math.PI * 2);
+        ctx.arc(ppx, ppy, 45, 0, Math.PI * 2);
         ctx.fill();
-
-        // Handle (Mango 3D effect)
+        
+        // Anillo Interno Decorativo
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, PADDLE_R * 0.6, 0, Math.PI * 2);
+        ctx.arc(ppx, ppy, 20, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.beginPath();
-        ctx.arc(p.x - 5, p.y - 5, PADDLE_R * 0.3, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.shadowBlur = 0;
-
-        // Nickname Tag
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 14px Outfit';
-        ctx.textAlign = 'center';
-        ctx.fillText(p.nick, p.x, p.y - PADDLE_R - 15);
-        // Team Indicator triangle if needed
     }
-}
 
-function gameLoop() {
-    clientInput(); // Run input always (Menu/Lobby/Game) for responsiveness
-    if (gameState === 'PLAYING') {
-        if (isHost) updatePhysics();
-    }
-    draw();
-    requestAnimationFrame(gameLoop);
+    ctx.restore();
+    requestAnimationFrame(render);
 }

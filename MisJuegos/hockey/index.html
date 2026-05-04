@@ -4,107 +4,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hockey de Aire</title>
-    <!-- Fuente Arcade -->
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;800&display=swap"
-        rel="stylesheet">
-    <!-- PeerJS -->
+    <title>Hockey de Aire Arcade V2</title>
+    <!-- Librerías -->
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-
-    <div id="game-ui">
-        <!-- PANTALLA TÍTULO -->
-        <div id="screen-title" class="screen">
-            <h1>HOCKEY DE AIRE</h1>
-            <p>Multijugador Caótico</p>
-            <input type="text" id="input-nick" placeholder="Tu Nickname" maxlength="10">
-            <div class="menu-buttons">
-                <button onclick="screenCreate()">CREAR PARTIDA</button>
-                <div class="join-row">
-                    <input type="text" id="input-code" placeholder="CÓDIGO" maxlength="4"
-                        style="text-transform:uppercase; width: 100px;">
-                    <button onclick="screenJoin()">UNIRSE</button>
-                </div>
-                <a href="../../index.html" class="btn-sec">VOLVER AL ARCADE</a>
-            </div>
+    <!-- Pantalla Menú Principal -->
+    <div id="screen-menu" class="screen">
+        <h1 class="title">HOCKEY ARCADE<br><span style="font-size: 1rem; color: white;">NUEVA BASE (FÍSICAS REALES)</span></h1>
+        
+        <input type="text" id="input-nick" placeholder="TU NOMBRE (Ej: Omar)">
+        <button onclick="createRoom()">CREAR SALA (HOST)</button>
+        
+        <div class="row">
+            <input type="text" id="input-code" placeholder="CÓDIGO" style="width: 120px; text-transform: uppercase;">
+            <button onclick="joinRoom()" class="secondary">UNIRSE</button>
         </div>
-
-        <!-- LOBBY (Sala de espera) -->
-        <div id="screen-lobby" class="screen hidden">
-            <h2 id="lobby-room-code">SALA: ----</h2>
-            <div id="lobby-players-list">
-                <!-- Lista de jugadores se renderiza aquí -->
-                <!-- Ejemplo: Juan (Equipo A) [Color] -->
-            </div>
-
-            <div class="lobby-controls">
-                <div class="team-selector">
-                    <h3>Elige Equipo</h3>
-                    <button onclick="setTeam('A')" class="btn-team team-a">EQUIPO A (Izquierda)</button>
-                    <button onclick="setTeam('B')" class="btn-team team-b">EQUIPO B (Derecha)</button>
-                </div>
-                <div class="color-selector">
-                    <h3>Color de Ficha</h3>
-                    <input type="color" id="input-color" value="#ff0000" onchange="setColor(this.value)">
-                </div>
-            </div>
-
-            <!-- Configuración Host -->
-            <div id="lobby-config" class="hidden">
-                <h3>Configuración de Partida</h3>
-                <div class="config-row">
-                    <label>Puntos para ganar ronda:</label>
-                    <input type="number" id="input-max-score" value="5" min="1" max="50" onchange="updateConfig()">
-                </div>
-                <div class="config-row">
-                    <label>Rondas para ganar partida (0 = 1 sola):</label>
-                    <input type="number" id="input-max-rounds" value="0" min="0" max="10" onchange="updateConfig()">
-                </div>
-                <!-- Colisiones Config -->
-                <div class="config-row"
-                    style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-                    <label>Física de Jugadores:</label>
-                    <div style="display:flex; justify-content:space-between; gap:10px;">
-                        <button id="btn-col-team" onclick="toggleConfig('team')"
-                            style="font-size:0.8rem; padding:8px; opacity:0.5; background:#555;">Compañeros: NO</button>
-                        <button id="btn-col-enemy" onclick="toggleConfig('enemy')"
-                            style="font-size:0.8rem; padding:8px; opacity:0.5; background:#555;">Rivales: NO</button>
-                    </div>
-                </div>
-            </div>
-            <div id="lobby-config-display" class="hidden">
-                <p id="config-text">Puntos: 5 | Rondas: Única</p>
-            </div>
-
-            <div id="lobby-ready-area">
-                <button id="btn-ready" onclick="toggleReady()" class="btn-ready">¡ESTOY LISTO!</button>
-            </div>
-
-            <button id="btn-start-game" onclick="startGameRequest()" class="hidden" disabled
-                style="opacity:0.5; cursor:not-allowed">ESPERANDO JUGADORES...</button>
-            <p id="msg-wait" class="hidden">Esperando al anfitrión...</p>
-        </div>
-
-        <!-- JUEGO (HUD Overlay) -->
-        <div id="screen-game" class="hidden">
-            <div id="hud-top">
-                <div id="hud-rounds" class="hidden">RONDAS: <span class="score-a">0</span> - <span
-                        class="score-b">0</span></div>
-                <div id="hud-score">
-                    <span class="score-a">0</span> - <span class="score-b">0</span>
-                </div>
-                <div id="hud-goal">meta: <span id="goal-val">5</span></div>
-            </div>
-            <div id="hud-timer">go!</div>
-            <button id="btn-menu-back" onclick="location.reload()">SALIR</button>
-        </div>
+        
+        <button class="secondary" onclick="window.location.href='../../index.html'" style="margin-top: 30px;">VOLVER AL ARCADE</button>
     </div>
 
-    <!-- CANVAS JUEGO -->
-    <canvas id="game-canvas"></canvas>
+    <!-- Pantalla Lobby -->
+    <div id="screen-lobby" class="screen hidden">
+        <h2>SALA: <span id="lobby-code" style="color: var(--accent);">----</span></h2>
+        
+        <div class="panel" style="margin-bottom: 20px;">
+            <h3>PERSONALIZAR</h3>
+            <div class="row" style="justify-content: center;">
+                <button id="btn-team-a" onclick="setTeam('A')" style="background: #ff4757; color: white; box-shadow: 0 4px 0 #c0392b;">EQUIPO A</button>
+                <button id="btn-team-b" onclick="setTeam('B')" style="background: #3742fa; color: white; box-shadow: 0 4px 0 #2e34c0;" class="secondary">EQUIPO B</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <label style="color: #94a3b8; font-weight: bold; margin-right: 10px;">COLOR:</label>
+                <input type="color" id="input-color" value="#ff4757" onchange="setColor(this.value)" style="height: 40px; cursor: pointer; padding: 0; width: 60px;">
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>JUGADORES</h3>
+            <div id="player-list" style="display: flex; gap: 20px; justify-content: center; min-width: 250px;">
+                <div style="flex: 1;">
+                    <h4 id="title-team-a" style="color: #ff4757; margin-bottom: 10px;">EQUIPO A</h4>
+                    <div id="list-team-a"></div>
+                </div>
+                <div style="flex: 1;">
+                    <h4 id="title-team-b" style="color: #3742fa; margin-bottom: 10px;">EQUIPO B</h4>
+                    <div id="list-team-b"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="host-controls" class="hidden" style="margin-top: 20px;">
+            <button onclick="startGame()">INICIAR PARTIDA</button>
+        </div>
+        <p id="wait-msg" class="hidden" style="color: #aaa; margin-top: 20px;">Esperando a que el anfitrión inicie...</p>
+    </div>
+
+    <!-- Puntaje Flotante -->
+    <div id="score-display" class="hidden" style="position: absolute; top: 5%; width: 100%; text-align: center; font-size: 3rem; font-family: 'Press Start 2P', cursive; z-index: 20; color: white; text-shadow: 0 0 10px black, 4px 4px 0px rgba(0,0,0,0.5); pointer-events: none;">
+        <span id="score-a" style="color: #ff4757;">0</span> - <span id="score-b" style="color: #3742fa;">0</span>
+    </div>
+
+    <!-- Pantalla Juego -->
+    <div id="screen-game" class="screen hidden">
+        <canvas id="game-canvas"></canvas>
+    </div>
 
     <script src="game.js"></script>
 </body>
