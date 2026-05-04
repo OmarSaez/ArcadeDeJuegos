@@ -25,6 +25,12 @@ let players = {}; // id -> { nick, team, color, x, y }
 let puckState = { x: LOGICAL_W/2, y: LOGICAL_H/2 };
 let drawnPaths = []; // Trazos de obstáculos dibujados por el Host
 
+let gameState = 'LOBBY'; // LOBBY, PLAYING, GAMEOVER
+let maxScore = 5;
+let matchStartTime = 0;
+let lastPuckTouch = null;
+let matchStats = { durationStr: "00:00", playerStats: {}, timeline: [] };
+
 // --- FÍSICAS (Solo Host) ---
 let engine, world;
 let puckBody;
@@ -36,6 +42,12 @@ function showScreen(id) {
 
 // Inicializar UI
 document.getElementById('input-nick').value = myNick;
+
+function updateMaxScore(val) {
+    maxScore = parseInt(val);
+    document.getElementById('disp-max-score').innerText = maxScore;
+    if (isHost) broadcastLobby();
+}
 
 // ==========================================
 // SELECCIÓN DE EQUIPO Y COLOR (LOBBY)
@@ -145,8 +157,8 @@ function handleHostData(peerId, data) {
         broadcastLobby();
     } else if (data.type === 'INPUT') {
         if (players[peerId]) {
-            players[peerId].targetX = data.x;
-            players[peerId].targetY = data.y;
+            players[peerId].targetX = Math.max(45, Math.min(LOGICAL_W - 45, data.x));
+            players[peerId].targetY = Math.max(45, Math.min(LOGICAL_H - 45, data.y));
         }
     } else if (data.type === 'LOBBY_UPDATE') {
         if (players[peerId]) {
@@ -173,7 +185,7 @@ function broadcastLobby() {
         team: players[k].team 
     }));
     updateLobbyUI(list);
-    Object.values(clientConns).forEach(c => c.send({ type: 'LOBBY_SYNC', list, teamColors }));
+    Object.values(clientConns).forEach(c => c.send({ type: 'LOBBY_SYNC', list, teamColors, maxScore }));
 }
 
 function broadcastGameState() {
@@ -201,6 +213,10 @@ function broadcastGameState() {
 function handleClientData(data) {
     if (data.type === 'LOBBY_SYNC') {
         if (data.teamColors) teamColors = data.teamColors;
+        if (data.maxScore) {
+            maxScore = data.maxScore;
+            document.getElementById('disp-max-score').innerText = maxScore;
+        }
         
         myColor = teamColors[myTeam];
         document.getElementById('input-color').value = myColor;
@@ -234,6 +250,11 @@ function handleClientData(data) {
                 players[id].y = data.state.players[id].y;
             }
         }
+    } else if (data.type === 'GAME_OVER') {
+        showGameOverScreen(data.winner, data.stats);
+    } else if (data.type === 'RETURN_LOBBY') {
+        resetMatchState();
+        showScreen('screen-lobby');
     }
 }
 
@@ -325,12 +346,18 @@ function initHostPhysics() {
             if (pair.bodyA === puckBody || pair.bodyB === puckBody) {
                 const other = pair.bodyA === puckBody ? pair.bodyB : pair.bodyA;
                 
+                // Rastrear último toque
+                for (let id in players) {
+                    if (players[id].body === other) {
+                        lastPuckTouch = id;
+                        break;
+                    }
+                }
+                
                 if (other.label === 'goalA') {
-                    scores.B++;
-                    resetPuck();
+                    handleGoal('B');
                 } else if (other.label === 'goalB') {
-                    scores.A++;
-                    resetPuck();
+                    handleGoal('A');
                 }
             }
         });
@@ -338,6 +365,8 @@ function initHostPhysics() {
 
     // Bucle de Físicas
     setInterval(() => {
+        if (gameState !== 'PLAYING') return;
+
         // Mover jugadores hacia donde apuntan
         for (let id in players) {
             const p = players[id];
@@ -350,7 +379,22 @@ function initHostPhysics() {
                     x: dx * 0.15, 
                     y: dy * 0.15 
                 });
+
+                // Anti-Bug: Si por lag el cuerpo atraviesa la pared exterior, forzarlo adentro
+                if (p.body.position.x < 0 || p.body.position.x > LOGICAL_W || 
+                    p.body.position.y < 0 || p.body.position.y > LOGICAL_H) {
+                    Matter.Body.setPosition(p.body, {
+                        x: Math.max(45, Math.min(LOGICAL_W - 45, p.body.position.x)),
+                        y: Math.max(45, Math.min(LOGICAL_H - 45, p.body.position.y))
+                    });
+                }
             }
+        }
+
+        // Anti-Bug: Si el disco sale disparado a hipervelocidad y sale del mapa
+        if (puckBody.position.x < -300 || puckBody.position.x > LOGICAL_W + 300 ||
+            puckBody.position.y < -300 || puckBody.position.y > LOGICAL_H + 300) {
+            resetPuck();
         }
 
         Matter.Engine.update(engine, 1000 / 60);
@@ -359,12 +403,163 @@ function initHostPhysics() {
 }
 
 function resetPuck() {
-    Matter.Body.setPosition(puckBody, { x: LOGICAL_W/2, y: LOGICAL_H/2 });
+    let spawnX = LOGICAL_W / 2;
+    let spawnY = LOGICAL_H / 2;
+    
+    // Evitar aparecer dentro de un obstáculo dibujado
+    let maxAttempts = 50;
+    while (maxAttempts > 0) {
+        // Verificar colisión en el punto de spawn
+        let bodies = Matter.Composite.allBodies(world).filter(b => b !== puckBody && !b.isSensor);
+        let collisions = Matter.Query.point(bodies, { x: spawnX, y: spawnY });
+        
+        if (collisions.length === 0) break; // Lugar libre!
+        
+        // Mover el punto de spawn buscando espacio
+        spawnY += 40;
+        if (spawnY > LOGICAL_H - 100) {
+            spawnY = 100;
+            spawnX += 40; // Cambiar de columna
+            if (spawnX > LOGICAL_W - 100) spawnX = 100;
+        }
+        maxAttempts--;
+    }
+
+    Matter.Body.setPosition(puckBody, { x: spawnX, y: spawnY });
     Matter.Body.setVelocity(puckBody, { x: 0, y: 0 });
     
     // Alguien anotó, actualizamos el UI en el Host inmediatamente
     document.getElementById('score-a').innerText = scores.A;
     document.getElementById('score-b').innerText = scores.B;
+}
+
+function handleGoal(scoringTeam) {
+    if (gameState !== 'PLAYING') return;
+    scores[scoringTeam]++;
+    
+    let elapsedSecs = Math.floor((Date.now() - matchStartTime) / 1000);
+    let mins = String(Math.floor(elapsedSecs / 60)).padStart(2, '0');
+    let secs = String(elapsedSecs % 60).padStart(2, '0');
+    let timeStr = `${mins}:${secs}`;
+    
+    let isAuto = false;
+    let scorerId = lastPuckTouch;
+    
+    if (scorerId && players[scorerId] && matchStats.playerStats[scorerId]) {
+        if (players[scorerId].team !== scoringTeam) {
+            isAuto = true;
+            matchStats.playerStats[scorerId].autogoals++;
+        } else {
+            matchStats.playerStats[scorerId].goals++;
+        }
+    }
+    
+    matchStats.timeline.push({
+        team: scoringTeam,
+        time: timeStr,
+        scorerId: scorerId,
+        isAuto: isAuto
+    });
+    
+    lastPuckTouch = null;
+    resetPuck();
+    
+    if (scores[scoringTeam] >= maxScore) {
+        endGame(scoringTeam);
+    }
+}
+
+function endGame(winningTeam) {
+    gameState = 'GAMEOVER';
+    
+    let elapsedSecs = Math.floor((Date.now() - matchStartTime) / 1000);
+    let mins = String(Math.floor(elapsedSecs / 60)).padStart(2, '0');
+    let secs = String(elapsedSecs % 60).padStart(2, '0');
+    matchStats.durationStr = `${mins}:${secs}`;
+    
+    // Limpiar cuerpos fisicos de los jugadores para que no interfieran
+    for (let id in players) {
+        if (players[id].body) {
+            Matter.World.remove(world, players[id].body);
+            players[id].body = null;
+        }
+    }
+    
+    Object.values(clientConns).forEach(c => c.send({ 
+        type: 'GAME_OVER', 
+        winner: winningTeam, 
+        stats: matchStats 
+    }));
+    
+    showGameOverScreen(winningTeam, matchStats);
+}
+
+function showGameOverScreen(winner, stats) {
+    document.getElementById('score-display').classList.add('hidden');
+    showScreen('screen-gameover');
+    
+    let titleColor = winner === 'A' ? teamColors.A : teamColors.B;
+    document.getElementById('winner-title').innerText = `¡EQUIPO ${winner} GANA!`;
+    document.getElementById('winner-title').style.color = titleColor;
+    document.getElementById('stat-duration').innerText = stats.durationStr;
+    
+    let bestPlayer = null;
+    let maxG = -1;
+    let htmlPlayers = "";
+    
+    for (let id in stats.playerStats) {
+        if (!players[id]) continue;
+        let g = stats.playerStats[id].goals;
+        let ag = stats.playerStats[id].autogoals;
+        
+        if (g > maxG) { maxG = g; bestPlayer = players[id]; }
+        
+        let color = players[id].color || '#fff';
+        htmlPlayers += `<div style="margin-bottom: 5px;"><span style="color:${color}">${players[id].nick}</span>: ${g} Goles${ag > 0 ? ` <span style="color:#ef4444; font-size:0.8rem;">(${ag} autogoles)</span>` : ''}</div>`;
+    }
+    
+    if (bestPlayer && maxG > 0) {
+        htmlPlayers = `<div style="margin-bottom:15px; font-weight:bold; font-size:1.1rem; color:var(--accent);">👑 MVP: <span style="color:${bestPlayer.color}">${bestPlayer.nick}</span> (${maxG} Goles)</div>` + htmlPlayers;
+    } else {
+        htmlPlayers = `<div style="margin-bottom:15px; color:#aaa;">Nadie anotó activamente.</div>` + htmlPlayers;
+    }
+    document.getElementById('stats-players').innerHTML = htmlPlayers;
+    
+    let htmlTime = "";
+    if (stats.timeline.length === 0) {
+        htmlTime = "Sin goles registrados.";
+    } else {
+        stats.timeline.forEach(ev => {
+            let pNick = ev.scorerId && players[ev.scorerId] ? players[ev.scorerId].nick : "Desconocido/Rebote";
+            let tColor = ev.team === 'A' ? teamColors.A : teamColors.B;
+            let autoTxt = ev.isAuto ? " <span style='color:#ef4444'>(Autogol)</span>" : "";
+            htmlTime += `<div style="margin-bottom: 5px;">[${ev.time}] <span style="color:${tColor}">Gol de ${ev.team}</span> - ${pNick}${autoTxt}</div>`;
+        });
+    }
+    document.getElementById('stats-timeline').innerHTML = htmlTime;
+    
+    if (isHost) {
+        document.getElementById('gameover-host-controls').classList.remove('hidden');
+        document.getElementById('gameover-wait-msg').classList.add('hidden');
+    } else {
+        document.getElementById('gameover-host-controls').classList.add('hidden');
+        document.getElementById('gameover-wait-msg').classList.remove('hidden');
+    }
+}
+
+function returnToLobby() {
+    if (isHost) {
+        Object.values(clientConns).forEach(c => c.send({ type: 'RETURN_LOBBY' }));
+        resetMatchState();
+        showScreen('screen-lobby');
+    }
+}
+
+function resetMatchState() {
+    gameState = 'LOBBY';
+    scores = { A: 0, B: 0 };
+    document.getElementById('score-a').innerText = '0';
+    document.getElementById('score-b').innerText = '0';
 }
 
 function addPlayer(id, nick) {
@@ -382,22 +577,31 @@ function addPlayer(id, nick) {
 
 function startGame() {
     if (isHost) {
-        // Instanciar los cuerpos físicos de todos los jugadores que están en el Lobby
+        gameState = 'PLAYING';
+        scores = { A: 0, B: 0 };
+        matchStartTime = Date.now();
+        lastPuckTouch = null;
+        matchStats = { durationStr: "00:00", playerStats: {}, timeline: [] };
+        
+        // Instanciar cuerpos y resetear stats
         for (let id in players) {
+            matchStats.playerStats[id] = { goals: 0, autogoals: 0 };
+            
             let p = players[id];
-            // Equipo A defiende Arriba (y=0 a 600), Equipo B defiende Abajo (y=600 a 1200)
             let startY = p.team === 'A' ? 200 : LOGICAL_H - 200;
             
             p.body = Matter.Bodies.circle(LOGICAL_W/2, startY, 45, {
                 restitution: 0.5,
                 frictionAir: 0.1,
-                density: 0.05 // Más pesado que el disco
+                density: 0.05
             });
             Matter.World.add(world, p.body);
-            p.targetY = startY; // Evitar que salgan volando al centro inicialmente
+            p.targetY = startY;
         }
 
-        // Instanciar los obstáculos dibujados
+        // Remover viejos obstáculos si ya había
+        // No es estrictamente necesario ya que limpiamos todo, wait! 
+        // drawnPaths se acumulan. Deberíamos dejar que se acumulen o borrarlos en clearDraw.
         const obstacleOptions = { isStatic: true, restitution: 0.8, friction: 0 };
         drawnPaths.forEach(path => {
             for (let i = 0; i < path.length - 1; i++) {
@@ -454,6 +658,10 @@ function sendInput(e) {
         lx = (cx / scale) + LOGICAL_W / 2;
         ly = (cy / scale) + LOGICAL_H / 2;
     }
+
+    // Limitar entrada a los bordes de la cancha (impide salir con el mouse/dedo)
+    lx = Math.max(45, Math.min(LOGICAL_W - 45, lx));
+    ly = Math.max(45, Math.min(LOGICAL_H - 45, ly));
 
     if (isHost) {
         if (players[myId]) {

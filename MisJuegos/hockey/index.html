@@ -46,7 +46,7 @@
         </div>
 
         <div class="panel">
-            <h3>JUGADORES</h3>
+            <h3>JUGADORES (A <span id="disp-max-score">5</span> PTS)</h3>
             <div id="player-list" style="display: flex; gap: 20px; justify-content: center; min-width: 250px;">
                 <div style="flex: 1;">
                     <h4 id="title-team-a" style="color: #ff4757; margin-bottom: 10px;">EQUIPO A</h4>
@@ -60,6 +60,10 @@
         </div>
 
         <div id="host-controls" class="hidden" style="margin-top: 20px;">
+            <div class="row" style="justify-content: center; align-items: center; margin-bottom: 15px;">
+                <label style="color: #94a3b8; font-weight: bold;">PUNTOS PARA GANAR:</label>
+                <input type="number" id="input-max-score" value="5" min="1" max="20" onchange="updateMaxScore(this.value)" style="width: 80px; margin: 0 0 0 10px; padding: 5px; height: 35px;">
+            </div>
             <div class="row" style="justify-content: center;">
                 <button onclick="openDrawScreen()" style="background: #eab308; box-shadow: 0 4px 0 #ca8a04;">✏️ DIBUJAR PISTA</button>
                 <button onclick="startGame()">INICIAR PARTIDA</button>
@@ -87,6 +91,32 @@
     <!-- Puntaje Flotante -->
     <div id="score-display" class="hidden" style="position: absolute; top: 5%; width: 100%; text-align: center; font-size: 3rem; font-family: 'Press Start 2P', cursive; z-index: 20; color: white; text-shadow: 0 0 10px black, 4px 4px 0px rgba(0,0,0,0.5); pointer-events: none;">
         <span id="score-a" style="color: #ff4757;">0</span> - <span id="score-b" style="color: #3742fa;">0</span>
+    </div>
+
+    <!-- Pantalla Fin de Partida -->
+    <div id="screen-gameover" class="screen hidden" style="z-index: 30; background: rgba(15, 23, 42, 0.95);">
+        <h1 id="winner-title" style="font-family: 'Press Start 2P', cursive; font-size: 3rem; margin-bottom: 20px; text-shadow: 0 0 20px rgba(255,255,255,0.5);">¡GANA!</h1>
+        
+        <div class="panel" style="max-width: 650px; width: 90%;">
+            <h3 style="color: var(--accent);">DURACIÓN DE PARTIDA: <span id="stat-duration" style="color: white;">00:00</span></h3>
+            
+            <div style="display: flex; gap: 20px; margin-top: 20px; text-align: left; background: #0f172a; padding: 15px; border-radius: 8px;">
+                <div style="flex: 1;">
+                    <h4 style="color: #94a3b8; border-bottom: 2px solid #334155; padding-bottom: 5px; margin-bottom: 10px;">🏆 JUGADOR DEL PARTIDO</h4>
+                    <div id="stats-players" style="font-size: 0.95rem; line-height: 1.6; color: #cbd5e1;"></div>
+                </div>
+                <div style="flex: 1;">
+                    <h4 style="color: #94a3b8; border-bottom: 2px solid #334155; padding-bottom: 5px; margin-bottom: 10px;">⏱️ LÍNEA DE TIEMPO</h4>
+                    <div id="stats-timeline" style="font-size: 0.85rem; line-height: 1.6; color: #cbd5e1; max-height: 150px; overflow-y: auto;"></div>
+                </div>
+            </div>
+            
+            <div id="gameover-host-controls" class="hidden" style="margin-top: 30px;">
+                <button onclick="returnToLobby()">VOLVER AL LOBBY</button>
+                <button onclick="window.location.href='../../index.html'" class="secondary" style="margin-left: 10px;">CERRAR SALA</button>
+            </div>
+            <p id="gameover-wait-msg" class="hidden" style="color: #aaa; margin-top: 20px;">Esperando al Host...</p>
+        </div>
     </div>
 
     <!-- Pantalla Juego -->
