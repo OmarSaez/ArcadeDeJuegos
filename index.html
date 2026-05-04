@@ -115,10 +115,12 @@
                 transform: scale(0.1);
                 opacity: 0;
             }
+
             15% {
                 transform: scale(1.2);
                 opacity: 1;
             }
+
             100% {
                 transform: scale(80);
                 opacity: 1;
@@ -232,8 +234,8 @@
             right: 20px;
             width: 50px;
             height: 50px;
-            background: #2f3542;
-            color: white;
+            background: #fcd146;
+            color: rgb(0, 0, 0);
             border-radius: 50%;
             display: flex;
             justify-content: center;
@@ -298,21 +300,21 @@
 
     <script>
         document.querySelectorAll('.card').forEach(card => {
-            card.addEventListener('click', function(e) {
+            card.addEventListener('click', function (e) {
                 e.preventDefault(); // Evitamos que cambie de página inmediatamente
-                
+
                 const href = this.getAttribute('href');
                 const icon = this.querySelector('.icon').innerText;
-                
+
                 const overlay = document.getElementById('transition-overlay');
                 const emojiEl = document.getElementById('transition-emoji');
-                
+
                 // Ponemos el emoji del juego seleccionado en la pantalla de carga
                 emojiEl.innerText = icon;
-                
+
                 // Activamos la animación
                 overlay.classList.add('active');
-                
+
                 // Esperamos que termine la animación para cambiar de página
                 setTimeout(() => {
                     window.location.href = href;
