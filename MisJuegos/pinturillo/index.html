@@ -362,7 +362,7 @@
         #input-layer {
             width: 100%;
             height: 100%;
-            touch-action: none;
+            /* touch-action: none; Lo controlamos desde JS ahora */
         }
 
         @media (max-width: 768px) {
@@ -954,6 +954,14 @@
                 case 'TURN_PREP':
                     amIDrawing = (data.drawerId === myId);
                     currentDrawerId = data.drawerId;
+                    
+                    // Permitir scroll al tocar el lienzo solo si NO estamos dibujando
+                    if (amIDrawing) {
+                        inputLayer.style.touchAction = 'none';
+                    } else {
+                        inputLayer.style.touchAction = 'auto';
+                    }
+
                     gameState.round = data.round;
                     resetRound();
                     document.getElementById('round-info').innerText = `${gameState.round}/${gameState.maxRounds}`;
@@ -1232,10 +1240,16 @@
 
         // UNIFIED EVENT HANDLERS
         inputLayer.onmousedown = startDraw;
-        inputLayer.ontouchstart = (e) => { e.preventDefault(); startDraw(e); };
+        inputLayer.ontouchstart = (e) => { 
+            if (amIDrawing) e.preventDefault(); 
+            startDraw(e); 
+        };
 
         inputLayer.onmousemove = moveDraw;
-        inputLayer.ontouchmove = (e) => { e.preventDefault(); moveDraw(e); };
+        inputLayer.ontouchmove = (e) => { 
+            if (amIDrawing) e.preventDefault(); 
+            moveDraw(e); 
+        };
 
         inputLayer.onmouseup = endDraw;
         inputLayer.onmouseleave = endDraw;
