@@ -254,13 +254,78 @@
 
         /* Notificaciones */
         @keyframes popIn {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            80% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
         }
         @keyframes fadeOut {
             0% { opacity: 1; }
             100% { opacity: 0; }
+        }
+
+        /* Chat UI */
+        .chat-fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: #22c55e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+
+        .chat-fab:active { transform: scale(0.9); }
+
+        .chat-menu {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transform-origin: bottom right;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.5);
+        }
+
+        .chat-menu.open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .chat-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 10px 15px;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .chat-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
         }
 
         /* Stats & Toggles */
@@ -391,6 +456,19 @@
             <button class="help-toggle" id="help-toggle" onclick="toggleHelp()">AYUDA: OFF</button>
             <span>Bajas Negras: <span id="lost-b">0</span></span>
         </div>
+
+        <!-- Chat Rápido UI -->
+        <div class="chat-menu" id="chat-menu">
+            <button class="chat-btn" onclick="sendChat('¡Buena Jugada! 😎')">¡Buena Jugada! 😎</button>
+            <button class="chat-btn" onclick="sendChat('¡Buena Partida! 🤝')">¡Buena Partida! 🤝</button>
+            <button class="chat-btn" onclick="sendChat('¡Qué suerte! 🍀')">¡Qué suerte! 🍀</button>
+            <button class="chat-btn" onclick="sendChat('¡Jaja! 😂')">¡Jaja! 😂</button>
+            <button class="chat-btn" onclick="sendChat('¿Viste esa jugada? 🔥')">¿Viste esa jugada? 🔥</button>
+            <button class="chat-btn" onclick="sendChat('¡Mira y aprende! 🎓')">¡Mira y aprende! 🎓</button>
+            <button class="chat-btn" onclick="sendChat('¡No la viste venir! 👻')">¡No la viste venir! 👻</button>
+            <button class="chat-btn" onclick="sendChat('💀💀💀')">💀💀💀</button>
+        </div>
+        <div class="chat-fab" onclick="toggleChat()">💬</div>
     </div>
 
     <div id="modal">
@@ -488,6 +566,8 @@
                     checkGameOver();
                 } else if (data.type === 'REMATCH_REQ' && isHost) {
                     handleRematch();
+                } else if (data.type === 'CHAT') {
+                    showChatToast(`Rival: ${data.msg}`, 'rival');
                 }
             });
             conn.on('close', () => location.reload());
@@ -628,7 +708,7 @@
             div.style.position = 'fixed';
             div.style.top = '30%';
             div.style.left = '50%';
-            div.style.transform = 'translate(-50%, -50%)';
+            div.style.transform = 'translate(-50%, -50%)'; // Necesario para centrar
             div.style.background = 'var(--danger)';
             div.style.color = 'white';
             div.style.padding = '1rem 2rem';
@@ -640,6 +720,45 @@
             div.style.animation = 'popIn 0.3s forwards, fadeOut 0.5s ease 1.5s forwards';
             document.body.appendChild(div);
             setTimeout(() => div.remove(), 2000);
+        }
+
+        function showChatToast(msg, sender) {
+            const div = document.createElement('div');
+            div.innerText = msg;
+            div.style.position = 'fixed';
+            div.style.top = '100px';
+            
+            if (sender === 'me') {
+                div.style.right = '20px';
+                div.style.background = 'var(--accent)';
+                div.style.color = '#000';
+            } else {
+                div.style.left = '20px';
+                div.style.background = '#3b82f6';
+                div.style.color = '#fff';
+            }
+            
+            div.style.padding = '10px 20px';
+            div.style.borderRadius = '1rem';
+            div.style.fontSize = '1rem';
+            div.style.fontWeight = 'bold';
+            div.style.zIndex = '9999';
+            div.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+            div.style.animation = 'popIn 0.3s forwards, fadeOut 0.5s ease 2.5s forwards';
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        function toggleChat() {
+            document.getElementById('chat-menu').classList.toggle('open');
+        }
+
+        function sendChat(msg) {
+            toggleChat();
+            showChatToast(`Tú: ${msg}`, 'me');
+            if (conn) {
+                conn.send({ type: 'CHAT', msg: msg });
+            }
         }
 
         function executeMove(nr, nc) {
@@ -673,7 +792,6 @@
             try {
                 if (isInCheck(turn)) {
                     stats[role].checks++;
-                    showNotification("¡JAQUE!");
                 }
             } catch (e) { console.error("Error en isInCheck:", e); }
 
@@ -735,6 +853,8 @@
                 } else {
                     endGame('draw', 'AHOGADO (SIN MOVIMIENTOS)');
                 }
+            } else if (isInCheck(turn)) {
+                showNotification("¡JAQUE!");
             }
         }
 
