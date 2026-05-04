@@ -73,6 +73,57 @@
             font-size: 0.9rem;
             color: #aaa;
         }
+
+        /* --- Estilos para la transición arcade --- */
+        .transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(15, 20, 35, 0.95);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            overflow: hidden;
+        }
+
+        .transition-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .transition-emoji {
+            font-size: 5rem;
+            transform: scale(0.1);
+            opacity: 0;
+            text-shadow: 0 0 30px rgba(74, 222, 128, 0.8);
+            user-select: none;
+        }
+
+        .transition-overlay.active .transition-emoji {
+            /* Inicia rápido y luego acelera a fondo para cubrir la pantalla */
+            animation: zoomInArcade 0.9s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+
+        @keyframes zoomInArcade {
+            0% {
+                transform: scale(0.1);
+                opacity: 0;
+            }
+            15% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(80);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -239,6 +290,36 @@
         El modo multijugador requiere que todos los jugadores estén conectados a la misma red.<br>
         Esto se puede lograr usando una red Wi-Fi o compartiendo internet entre los dispositivos 📶
     </div>
+
+    <!-- Pantalla de carga para los juegos -->
+    <div id="transition-overlay" class="transition-overlay">
+        <div id="transition-emoji" class="transition-emoji"></div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                e.preventDefault(); // Evitamos que cambie de página inmediatamente
+                
+                const href = this.getAttribute('href');
+                const icon = this.querySelector('.icon').innerText;
+                
+                const overlay = document.getElementById('transition-overlay');
+                const emojiEl = document.getElementById('transition-emoji');
+                
+                // Ponemos el emoji del juego seleccionado en la pantalla de carga
+                emojiEl.innerText = icon;
+                
+                // Activamos la animación
+                overlay.classList.add('active');
+                
+                // Esperamos que termine la animación para cambiar de página
+                setTimeout(() => {
+                    window.location.href = href;
+                }, 850); // 850 milisegundos de tiempo para asegurar que cubra todo
+            });
+        });
+    </script>
 </body>
 
 </html>
