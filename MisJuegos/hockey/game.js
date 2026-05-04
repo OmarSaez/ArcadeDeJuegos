@@ -23,6 +23,7 @@ let myColor = teamColors.A;
 let scores = { A: 0, B: 0 };
 let players = {}; // id -> { nick, team, color, x, y }
 let puckState = { x: LOGICAL_W/2, y: LOGICAL_H/2 };
+let drawnPaths = []; // Trazos de obstáculos dibujados por el Host
 
 // --- FÍSICAS (Solo Host) ---
 let engine, world;
@@ -215,6 +216,7 @@ function handleClientData(data) {
         });
         
     } else if (data.type === 'START') {
+        if (data.drawnPaths) drawnPaths = data.drawnPaths;
         showScreen('screen-game');
         document.getElementById('score-display').classList.remove('hidden');
         startGameLoop();
@@ -395,7 +397,30 @@ function startGame() {
             p.targetY = startY; // Evitar que salgan volando al centro inicialmente
         }
 
-        Object.values(clientConns).forEach(c => c.send({ type: 'START' }));
+        // Instanciar los obstáculos dibujados
+        const obstacleOptions = { isStatic: true, restitution: 0.8, friction: 0 };
+        drawnPaths.forEach(path => {
+            for (let i = 0; i < path.length - 1; i++) {
+                let p1 = path[i];
+                let p2 = path[i+1];
+                let dx = p2.x - p1.x;
+                let dy = p2.y - p1.y;
+                let length = Math.hypot(dx, dy);
+                let cx = p1.x + dx / 2;
+                let cy = p1.y + dy / 2;
+                let angle = Math.atan2(dy, dx);
+                
+                let rect = Matter.Bodies.rectangle(cx, cy, length + 15, 15, { ...obstacleOptions, angle: angle });
+                Matter.World.add(world, rect);
+            }
+            // Suavizar uniones con círculos para que el disco no se atasque en esquinas
+            for (let i = 0; i < path.length; i++) {
+                let circle = Matter.Bodies.circle(path[i].x, path[i].y, 7.5, obstacleOptions);
+                Matter.World.add(world, circle);
+            }
+        });
+
+        Object.values(clientConns).forEach(c => c.send({ type: 'START', drawnPaths: drawnPaths }));
         showScreen('screen-game');
         document.getElementById('score-display').classList.remove('hidden');
         startGameLoop();
@@ -538,6 +563,144 @@ function render() {
         ctx.fill();
     }
 
+    // 5. DIBUJAR TRAZOS/OBSTÁCULOS
+    ctx.strokeStyle = '#eab308'; // Amarillo Arcade
+    ctx.lineWidth = 15;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    drawnPaths.forEach(path => {
+        if (path.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        for(let i=1; i<path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+        ctx.stroke();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#eab308';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    });
+
     ctx.restore();
     requestAnimationFrame(render);
+}
+
+// ==========================================
+// LÓGICA DE DIBUJO DE PISTAS (SOLO HOST)
+// ==========================================
+let isDrawing = false;
+let mirrorMode = true;
+let currentPath = [];
+const drawCanvas = document.getElementById('draw-canvas');
+const drawCtx = drawCanvas.getContext('2d');
+
+function openDrawScreen() {
+    showScreen('screen-draw');
+    renderDrawCanvas();
+}
+
+function toggleMirror() {
+    mirrorMode = !mirrorMode;
+    document.getElementById('btn-mirror').innerText = mirrorMode ? "ESPEJO: ON" : "ESPEJO: OFF";
+    document.getElementById('btn-mirror').style.background = mirrorMode ? "#3b82f6" : "#64748b";
+    document.getElementById('btn-mirror').style.boxShadow = mirrorMode ? "0 4px 0 #2563eb" : "0 4px 0 #475569";
+    renderDrawCanvas();
+}
+
+function clearDraw() {
+    drawnPaths = [];
+    renderDrawCanvas();
+}
+
+function saveDraw() {
+    if (mirrorMode) {
+        let mirroredPaths = [];
+        drawnPaths.forEach(path => {
+            // Rotación simétrica perfecta
+            let mPath = path.map(p => ({ x: LOGICAL_W - p.x, y: LOGICAL_H - p.y }));
+            mirroredPaths.push(mPath);
+        });
+        drawnPaths = drawnPaths.concat(mirroredPaths);
+        // Desactivamos espejo visualmente porque ya baked
+        mirrorMode = false;
+        document.getElementById('btn-mirror').innerText = "ESPEJO: OFF";
+        document.getElementById('btn-mirror').style.background = "#64748b";
+        document.getElementById('btn-mirror').style.boxShadow = "0 4px 0 #475569";
+    }
+    showScreen('screen-lobby');
+}
+
+function getDrawCanvasPoint(e) {
+    const rect = drawCanvas.getBoundingClientRect();
+    const scaleX = drawCanvas.width / rect.width;
+    const scaleY = drawCanvas.height / rect.height;
+    let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+drawCanvas.addEventListener('pointerdown', (e) => {
+    isDrawing = true;
+    currentPath = [getDrawCanvasPoint(e)];
+    drawnPaths.push(currentPath);
+    renderDrawCanvas();
+});
+
+drawCanvas.addEventListener('pointermove', (e) => {
+    if (!isDrawing) return;
+    const pt = getDrawCanvasPoint(e);
+    const lastPt = currentPath[currentPath.length - 1];
+    // Evitar sobrecargar de puntos (mejor rendimiento en físicas)
+    if (Math.hypot(pt.x - lastPt.x, pt.y - lastPt.y) > 10) {
+        currentPath.push(pt);
+        renderDrawCanvas();
+    }
+});
+
+drawCanvas.addEventListener('pointerup', () => isDrawing = false);
+drawCanvas.addEventListener('pointercancel', () => isDrawing = false);
+drawCanvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+drawCanvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+function renderDrawCanvas() {
+    drawCtx.clearRect(0, 0, LOGICAL_W, LOGICAL_H);
+    
+    // Dibujar fondo de referencia
+    drawCtx.fillStyle = '#1e293b';
+    drawCtx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
+    
+    // Linea central
+    drawCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+    drawCtx.lineWidth = 5;
+    drawCtx.beginPath(); drawCtx.moveTo(0, LOGICAL_H/2); drawCtx.lineTo(LOGICAL_W, LOGICAL_H/2); drawCtx.stroke();
+    
+    // Porterías referencia (300px en el centro)
+    drawCtx.fillStyle = 'rgba(255, 71, 87, 0.3)'; drawCtx.fillRect(250, 0, 300, 40);
+    drawCtx.fillStyle = 'rgba(55, 66, 250, 0.3)'; drawCtx.fillRect(250, LOGICAL_H-40, 300, 40);
+
+    drawCtx.strokeStyle = '#eab308';
+    drawCtx.lineWidth = 15;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+
+    function drawPathsList(paths) {
+        paths.forEach(path => {
+            if (path.length < 2) return;
+            drawCtx.beginPath();
+            drawCtx.moveTo(path[0].x, path[0].y);
+            for(let i=1; i<path.length; i++) drawCtx.lineTo(path[i].x, path[i].y);
+            drawCtx.stroke();
+        });
+    }
+
+    drawPathsList(drawnPaths);
+
+    // Si espejo está ON, dibujar fantasma simétrico
+    if (mirrorMode) {
+        drawCtx.strokeStyle = 'rgba(234, 179, 8, 0.5)';
+        let mirrored = drawnPaths.map(path => path.map(p => ({ x: LOGICAL_W - p.x, y: LOGICAL_H - p.y })));
+        drawPathsList(mirrored);
+    }
 }
