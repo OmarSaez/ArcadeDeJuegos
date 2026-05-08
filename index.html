@@ -258,6 +258,30 @@
             transform: scale(1.1);
         }
 
+        .qr-fab {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: #4ade80;
+            color: #0f172a;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+
+        .qr-fab:hover {
+            transform: scale(1.1);
+        }
+
         .help-tooltip {
             position: fixed;
             bottom: 80px;
@@ -275,6 +299,24 @@
         }
 
         .help-tooltip.visible {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .qr-tooltip {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .qr-tooltip.visible {
             display: block;
             animation: fadeIn 0.3s;
         }
@@ -297,6 +339,13 @@
         <strong>Nota Multijugador:</strong><br><br>
         El modo multijugador requiere que todos los jugadores estén conectados a la misma red.<br>
         Esto se puede lograr usando una red Wi-Fi o compartiendo internet entre los dispositivos 📶
+    </div>
+
+    <div class="qr-fab" onclick="document.getElementById('qr-modal').classList.toggle('visible')">QR</div>
+    <div id="qr-modal" class="qr-tooltip">
+        <h4 style="color: #333; margin-top: 0; margin-bottom: 10px;">¡Comparte el Arcade!</h4>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://omarsaez.github.io/ArcadeDeJuegos/"
+            alt="QR Arcade">
     </div>
 
     <!-- Pantalla de carga para los juegos -->
