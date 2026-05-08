@@ -44,10 +44,20 @@
                     <span>Jugador: <strong id="display-nickname"></strong></span>
                     <button class="btn-small" onclick="promptNickname()">Cambiar</button>
                 </div>
-                <button class="btn btn-primary" onclick="setupMultiplayer('coop')">Crear Sala Cooperativa</button>
+                <button class="btn btn-primary" onclick="showView('view-coop-type')">Crear Sala Cooperativa</button>
                 <button class="btn btn-secondary" onclick="setupMultiplayer('comp')">Crear Sala Competitiva</button>
                 <button class="btn btn-accent" onclick="showView('view-join')">Unirse a Sala</button>
                 <button class="btn btn-outline mt-4" onclick="showView('view-main')">Volver</button>
+            </div>
+
+            <!-- Selección Tipo de Cooperativo -->
+            <div id="view-coop-type" class="view">
+                <h3>Modo Cooperativo</h3>
+                <div class="grid-buttons">
+                    <button class="btn btn-primary" onclick="setupMultiplayer('coop')">Por Turnos</button>
+                    <button class="btn btn-secondary" onclick="setupMultiplayer('coop_free')">Todos a la Vez</button>
+                </div>
+                <button class="btn btn-outline mt-4" onclick="showView('view-multi-menu')">Volver</button>
             </div>
 
             <!-- Selección de Tamaño (Multi) -->

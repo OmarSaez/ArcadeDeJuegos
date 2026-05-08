@@ -29,6 +29,7 @@ let isSpectator = false;
 let spectatingId = null;
 let spectateStates = {};
 let currentHoverIdx = -1;
+let playerHovers = {};
 
 // Variables Modo Cooperativo
 let turnOrder = [];
@@ -48,7 +49,7 @@ function setActionMode(mode) {
     document.getElementById('btn-mode-reveal').classList.remove('active');
     document.getElementById('btn-mode-flag').classList.remove('active');
     document.getElementById('btn-mode-' + mode).classList.add('active');
-    if (gameMode === 'comp' && !isSpectator) sendCompSync();
+    if ((gameMode === 'comp' || gameMode === 'coop_free') && !isSpectator) sendHoverSync();
 }
 
 function checkNicknameAndGoMulti() {
@@ -112,7 +113,8 @@ function selectDifficulty(diff) {
 
 function setupMultiplayer(mode) {
     gameMode = mode;
-    document.getElementById('multi-mode-display').innerText = mode === 'coop' ? 'Cooperativo' : 'Competitivo';
+    let displayMode = mode === 'comp' ? 'Competitivo' : (mode === 'coop_free' ? 'Coop Libre' : 'Coop Turnos');
+    document.getElementById('multi-mode-display').innerText = displayMode;
     showView('view-multi-size');
 }
 
@@ -172,6 +174,9 @@ function setupHostConnection(conn) {
             }
             else if (data.type === 'COMP_SYNC') {
                 handleCompSync(data);
+            }
+            else if (data.type === 'HOVER_SYNC') {
+                handleHoverSync(data);
             }
         });
     });
@@ -251,6 +256,8 @@ function joinRoom() {
                 if (isSpectator && spectatingId === data.syncData.playerId) {
                     renderSpectatorBoard();
                 }
+            } else if (data.type === 'HOVER_SYNC') {
+                processHoverSync(data);
             }
         });
 
@@ -416,6 +423,7 @@ function initGameUI(preGenerated = false) {
     spectatingId = null;
     spectateStates = {};
     currentHoverIdx = -1;
+    playerHovers = {};
 
     // Configurar Grid CSS
     const boardEl = document.getElementById('board');
@@ -477,15 +485,15 @@ function renderBoard() {
             handleCellClick(idx, 'flag');
         });
         div.addEventListener('mouseenter', () => {
-            if (gameMode === 'comp' && !isSpectator && !gameOver) {
+            if ((gameMode === 'comp' || gameMode === 'coop_free') && !isSpectator && !gameOver) {
                 currentHoverIdx = idx;
-                sendCompSync();
+                sendHoverSync();
             }
         });
         div.addEventListener('mouseleave', () => {
-            if (gameMode === 'comp' && !isSpectator && !gameOver && currentHoverIdx === idx) {
+            if ((gameMode === 'comp' || gameMode === 'coop_free') && !isSpectator && !gameOver && currentHoverIdx === idx) {
                 currentHoverIdx = -1;
-                sendCompSync();
+                sendHoverSync();
             }
         });
 
@@ -495,15 +503,21 @@ function renderBoard() {
     // Actualizar conteo de banderas local (para todos los modos)
     let fCount = board.filter(c => c.isFlagged).length;
     document.getElementById('mines-count').innerText = totalMines - fCount;
+
+    if (gameMode === 'coop_free') {
+        updateHoverDOM();
+    }
 }
 
 function handleCellClick(idx, action) {
     if (gameOver) return;
 
-    if (gameMode === 'coop') {
-        const currentTurnId = turnOrder[currentTurnIndex];
-        if (currentTurnId !== myId) {
-            return; // No es mi turno
+    if (gameMode === 'coop' || gameMode === 'coop_free') {
+        if (gameMode === 'coop') {
+            const currentTurnId = turnOrder[currentTurnIndex];
+            if (currentTurnId !== myId) {
+                return; // No es mi turno
+            }
         }
 
         const cell = board[idx];
@@ -555,10 +569,12 @@ function handleCellClick(idx, action) {
 // Host maneja los movimientos Coop
 // ----------------------------------------------------
 function handleClientMove(playerId, x, y, action) {
-    if (gameOver || gameMode !== 'coop') return;
+    if (gameOver || (gameMode !== 'coop' && gameMode !== 'coop_free')) return;
 
     // Verificar turno
-    if (turnOrder[currentTurnIndex] !== playerId) return;
+    if (gameMode === 'coop') {
+        if (turnOrder[currentTurnIndex] !== playerId) return;
+    }
 
     const cell = board.find(c => c.r === y && c.c === x);
     if (!cell || cell.isRevealed) return;
@@ -594,7 +610,7 @@ function handleClientMove(playerId, x, y, action) {
         broadcast({ type: 'SYNC_BOARD', board: board });
         renderBoard();
         if (!checkWinConditionCoop()) {
-            nextTurn();
+            if (gameMode === 'coop') nextTurn();
         }
     }
 }
@@ -702,7 +718,7 @@ function endGame(win, extraName = null, stats = null) {
             statusEl.innerText = "¡HAS PERDIDO!";
             statusEl.style.color = "var(--danger)";
         }
-    } else if (gameMode === 'coop') {
+    } else if (gameMode === 'coop' || gameMode === 'coop_free') {
         if (win) {
             statusEl.innerText = "¡GANARON EL JUEGO!";
             statusEl.style.color = "var(--primary)";
@@ -743,7 +759,7 @@ function showMultiSummary(win, extraName, stats) {
     const title = document.getElementById('summary-title');
     const content = document.getElementById('summary-content');
 
-    if (gameMode === 'coop') {
+    if (gameMode === 'coop' || gameMode === 'coop_free') {
         title.innerText = win ? "¡Victoria Cooperativa!" : "Derrota Cooperativa";
 
         let html = win
@@ -846,6 +862,76 @@ function handleCompSync(data) {
     const p = players.find(p => p.id === data.playerId);
     if (p) p.compState = data;
     broadcast({ type: 'SPECTATOR_SYNC', syncData: data });
+}
+
+function sendHoverSync() {
+    if (gameOver || isSpectator || (gameMode !== 'comp' && gameMode !== 'coop_free')) return;
+    const data = {
+        type: 'HOVER_SYNC',
+        playerId: myId,
+        hoverIdx: currentHoverIdx,
+        actionMode: actionMode
+    };
+    if (isHost) {
+        handleHoverSync(data);
+    } else {
+        hostConnection.send(data);
+    }
+}
+
+function handleHoverSync(data) {
+    broadcast(data);
+    if (data.playerId !== myId) {
+        processHoverSync(data);
+    }
+}
+
+function processHoverSync(data) {
+    playerHovers[data.playerId] = {
+        hoverIdx: data.hoverIdx,
+        actionMode: data.actionMode
+    };
+    
+    if (gameMode === 'coop_free') {
+        updateHoverDOM();
+    } else if (gameMode === 'comp') {
+        if (spectateStates[data.playerId]) {
+            spectateStates[data.playerId].hoverIdx = data.hoverIdx;
+            spectateStates[data.playerId].actionMode = data.actionMode;
+        }
+        if (isSpectator && spectatingId === data.playerId) {
+            renderSpectatorBoard();
+        }
+    }
+}
+
+function updateHoverDOM() {
+    const cells = document.querySelectorAll('#board .cell');
+    if (!cells || cells.length === 0) return;
+
+    cells.forEach((div, idx) => {
+        div.classList.remove('spectator-hover');
+        const cell = board[idx];
+        if (!cell.isRevealed && !cell.isFlagged) {
+            div.innerHTML = "";
+        }
+    });
+
+    Object.keys(playerHovers).forEach(id => {
+        if (id !== myId) {
+            const h = playerHovers[id];
+            if (h.hoverIdx >= 0 && h.hoverIdx < board.length) {
+                const cell = board[h.hoverIdx];
+                const div = cells[h.hoverIdx];
+                if (div) {
+                    div.classList.add('spectator-hover');
+                    if (!cell.isRevealed) {
+                        div.innerHTML = h.actionMode === 'flag' ? '<span style="opacity:0.5">🚩</span>' : '<span style="opacity:0.5">⛏️</span>';
+                    }
+                }
+            }
+        }
+    });
 }
 
 function startSpectating() {
