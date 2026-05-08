@@ -24,6 +24,12 @@ let actionMode = 'reveal'; // 'reveal' or 'flag'
 let pendingRows = 10, pendingCols = 10;
 let previousSizeView = 'view-solo-size';
 
+// Variables Modo Espectador y Competitivo
+let isSpectator = false;
+let spectatingId = null;
+let spectateStates = {};
+let currentHoverIdx = -1;
+
 // Variables Modo Cooperativo
 let turnOrder = [];
 let currentTurnIndex = 0;
@@ -42,6 +48,7 @@ function setActionMode(mode) {
     document.getElementById('btn-mode-reveal').classList.remove('active');
     document.getElementById('btn-mode-flag').classList.remove('active');
     document.getElementById('btn-mode-' + mode).classList.add('active');
+    if (gameMode === 'comp' && !isSpectator) sendCompSync();
 }
 
 function checkNicknameAndGoMulti() {
@@ -92,11 +99,11 @@ function selectDifficulty(diff) {
     else if (diff === 'normal') percentage = 0.15;
     else if (diff === 'dificil') percentage = 0.20;
     else if (diff === 'extremo') percentage = 0.30;
-    
+
     totalMines = Math.floor(pendingRows * pendingCols * percentage);
-    
+
     if (gameMode === 'solo') {
-        rows = pendingRows; cols = pendingCols; 
+        rows = pendingRows; cols = pendingCols;
         initGameUI();
     } else {
         createRoom(pendingRows, pendingCols, totalMines);
@@ -117,12 +124,12 @@ function createRoom(r, c, mines) {
     isHost = true;
     connections = [];
     players = [];
-    
+
     const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
     roomCode = shortId;
-    
+
     peer = new Peer(shortId);
-    
+
     peer.on('open', (id) => {
         myId = id;
         players.push({ id: myId, nickname: myNickname, status: 'playing' });
@@ -149,19 +156,22 @@ function createRoom(r, c, mines) {
 function setupHostConnection(conn) {
     conn.on('open', () => {
         connections.push(conn);
-        
+
         // El cliente debe enviar su nickname primero
         conn.on('data', (data) => {
             if (data.type === 'JOIN') {
                 players.push({ id: conn.peer, nickname: data.nickname, status: 'playing' });
                 updateLobbyUI();
                 broadcast({ type: 'PLAYERS_UPDATE', players: players });
-            } 
+            }
             else if (data.type === 'MOVE') {
                 handleClientMove(conn.peer, data.x, data.y, data.action);
             }
             else if (data.type === 'COMP_STATUS') {
                 updateCompStatus(conn.peer, data.status);
+            }
+            else if (data.type === 'COMP_SYNC') {
+                handleCompSync(data);
             }
         });
     });
@@ -184,17 +194,17 @@ function broadcast(data) {
 function joinRoom() {
     const code = document.getElementById('join-code').value.toUpperCase();
     if (!code) return;
-    
+
     document.getElementById('join-status').innerText = "Conectando...";
     isHost = false;
     roomCode = code;
-    
+
     peer = new Peer();
-    
+
     peer.on('open', (id) => {
         myId = id;
         hostConnection = peer.connect(code);
-        
+
         hostConnection.on('open', () => {
             hostConnection.send({ type: 'JOIN', nickname: myNickname });
             showView('view-lobby');
@@ -231,10 +241,16 @@ function joinRoom() {
             } else if (data.type === 'COMP_PROGRESS') {
                 players = data.players;
                 updateProgressUI();
+                if (isSpectator) updateSpectatorUI();
             } else if (data.type === 'GAME_OVER_COMP') {
                 endGame(true, data.winner);
             } else if (data.type === 'RETURN_LOBBY') {
                 backToLobbyUI();
+            } else if (data.type === 'SPECTATOR_SYNC') {
+                spectateStates[data.syncData.playerId] = data.syncData;
+                if (isSpectator && spectatingId === data.syncData.playerId) {
+                    renderSpectatorBoard();
+                }
             }
         });
 
@@ -276,10 +292,10 @@ function leaveRoom() {
 // ----------------------------------------------------
 function startGame() {
     if (!isHost) return;
-    
+
     turnOrder = players.map(p => p.id);
     currentTurnIndex = 0;
-    
+
     // Generar un tablero inicial plano (sin minas asignadas todavía en Coop, pero sí en Comp)
     createEmptyBoard();
     if (gameMode === 'comp') {
@@ -294,7 +310,7 @@ function startGame() {
         turnOrder: turnOrder
     };
     broadcast(config);
-    initGameUI(gameMode === 'comp'); 
+    initGameUI(gameMode === 'comp');
 }
 
 function createEmptyBoard() {
@@ -302,10 +318,10 @@ function createEmptyBoard() {
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             board.push({
-                r, c, 
-                isMine: false, 
-                isRevealed: false, 
-                isFlagged: false, 
+                r, c,
+                isMine: false,
+                isRevealed: false,
+                isFlagged: false,
                 neighborMines: 0,
                 revealedBy: null,
                 flaggedBy: null
@@ -319,7 +335,7 @@ function generateMinesRandomly(safeR = -1, safeC = -1) {
     while (minesPlaced < totalMines) {
         const idx = Math.floor(Math.random() * board.length);
         const cell = board[idx];
-        
+
         // Evitar la casilla segura (y sus adyacentes para una mejor experiencia)
         let isSafeZone = false;
         if (safeR !== -1) {
@@ -340,7 +356,7 @@ function calculateNeighbors() {
     for (let i = 0; i < board.length; i++) {
         const cell = board[i];
         if (cell.isMine) continue;
-        
+
         let count = 0;
         for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
@@ -366,7 +382,7 @@ function initGameUI(preGenerated = false) {
     document.getElementById('timer').innerText = "0";
     document.getElementById('game-status').innerText = "";
     document.getElementById('game-status').style.color = "var(--text)";
-    
+
     clearInterval(timerInterval);
     timerInterval = setInterval(() => {
         if (!gameOver) {
@@ -392,9 +408,14 @@ function initGameUI(preGenerated = false) {
     if (gameMode === 'solo') {
         createEmptyBoard();
     }
-    
+
     document.getElementById('btn-retry-solo').style.display = 'none';
     document.getElementById('modal-multi-summary').classList.remove('active');
+    document.getElementById('spectator-controls').style.display = 'none';
+    isSpectator = false;
+    spectatingId = null;
+    spectateStates = {};
+    currentHoverIdx = -1;
 
     // Configurar Grid CSS
     const boardEl = document.getElementById('board');
@@ -410,7 +431,7 @@ function updateTurnUI() {
     const player = players.find(p => p.id === currentId);
     const nameEl = document.getElementById('current-turn-name');
     nameEl.innerText = player ? player.nickname : "Desconocido";
-    
+
     if (currentId === myId) {
         nameEl.style.color = "var(--primary)";
         nameEl.innerText += " (TÚ)";
@@ -425,7 +446,7 @@ function updateTurnUI() {
 function renderBoard() {
     const boardEl = document.getElementById('board');
     boardEl.innerHTML = "";
-    
+
     board.forEach((cell, idx) => {
         const div = document.createElement('div');
         div.className = 'cell';
@@ -455,6 +476,18 @@ function renderBoard() {
             e.preventDefault();
             handleCellClick(idx, 'flag');
         });
+        div.addEventListener('mouseenter', () => {
+            if (gameMode === 'comp' && !isSpectator && !gameOver) {
+                currentHoverIdx = idx;
+                sendCompSync();
+            }
+        });
+        div.addEventListener('mouseleave', () => {
+            if (gameMode === 'comp' && !isSpectator && !gameOver && currentHoverIdx === idx) {
+                currentHoverIdx = -1;
+                sendCompSync();
+            }
+        });
 
         boardEl.appendChild(div);
     });
@@ -472,13 +505,13 @@ function handleCellClick(idx, action) {
         if (currentTurnId !== myId) {
             return; // No es mi turno
         }
-        
+
         const cell = board[idx];
         if (cell.isRevealed) return; // Ya revelada
-        
+
         // Enviar acción al host
         if (isHost) {
-            handleClientMove(myId, cell.r, cell.c, action);
+            handleClientMove(myId, cell.c, cell.r, action);
         } else {
             hostConnection.send({ type: 'MOVE', x: cell.c, y: cell.r, action: action });
         }
@@ -486,10 +519,11 @@ function handleCellClick(idx, action) {
         // Solo o Competitivo (juego local)
         const cell = board[idx];
         if (cell.isRevealed) return;
-        
+
         if (action === 'flag') {
             cell.isFlagged = !cell.isFlagged;
             renderBoard();
+            if (gameMode === 'comp') sendCompSync();
             return;
         }
 
@@ -504,11 +538,16 @@ function handleCellClick(idx, action) {
         renderBoard();
 
         if (cell.isMine) {
-            endGame(false);
-            if (gameMode === 'comp') notifyCompStatus('Derrota 💀');
+            if (gameMode === 'comp') {
+                notifyCompStatus('Derrota 💀');
+                startSpectating();
+            } else {
+                endGame(false);
+            }
         } else {
             checkWinCondition();
         }
+        if (gameMode === 'comp' && !isSpectator) sendCompSync();
     }
 }
 
@@ -517,7 +556,7 @@ function handleCellClick(idx, action) {
 // ----------------------------------------------------
 function handleClientMove(playerId, x, y, action) {
     if (gameOver || gameMode !== 'coop') return;
-    
+
     // Verificar turno
     if (turnOrder[currentTurnIndex] !== playerId) return;
 
@@ -596,7 +635,7 @@ function calculateCoopStats() {
             }
         }
     });
-    
+
     // Convert to array and sort by performance
     let sortedStats = Object.values(stats);
     sortedStats.sort((a, b) => (b.revealed + b.flagsCorrect) - (a.revealed + a.flagsCorrect));
@@ -609,9 +648,9 @@ function calculateCoopStats() {
 function revealCell(r, c, playerId = null) {
     const idx = r * cols + c;
     const cell = board[idx];
-    
+
     if (cell.isRevealed || cell.isFlagged) return;
-    
+
     cell.isRevealed = true;
     cell.revealedBy = playerId;
 
@@ -648,8 +687,10 @@ function checkWinCondition() {
 function endGame(win, extraName = null, stats = null) {
     gameOver = true;
     clearInterval(timerInterval);
+    document.getElementById('spectator-controls').style.display = 'none';
+
     const statusEl = document.getElementById('game-status');
-    
+
     if (gameMode === 'comp') {
         if (win && extraName && extraName !== myNickname) {
             statusEl.innerText = `¡${extraName} ha ganado!`;
@@ -679,7 +720,7 @@ function endGame(win, extraName = null, stats = null) {
         }
     }
 
-    if (!win) {
+    if (!win && !isSpectator) {
         revealAllMines();
         renderBoard();
     }
@@ -704,22 +745,22 @@ function showMultiSummary(win, extraName, stats) {
 
     if (gameMode === 'coop') {
         title.innerText = win ? "¡Victoria Cooperativa!" : "Derrota Cooperativa";
-        
-        let html = win 
+
+        let html = win
             ? `<p>Han logrado limpiar el campo de minas en equipo.</p><p>Tiempo: ${timeElapsed}s</p>`
             : `<p>💥 Lamentablemente <strong>${extraName || 'alguien'}</strong> pisó una mina.</p><p>Tiempo: ${timeElapsed}s</p>`;
-            
+
         if (stats) {
             html += `<hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">`;
             html += `<h4 style="margin-bottom: 10px; color: var(--secondary);">Resumen de Jugadores</h4>`;
             html += `<ul style="list-style: none; padding: 0; font-size: 0.9rem; max-height: 250px; overflow-y: auto;">`;
-            
+
             stats.forEach(s => {
                 html += `<li style="margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
                     <strong>${s.name}</strong><br>
                     <span style="color: var(--primary);">⛏️ Casillas: ${s.revealed}</span> | 
                     <span style="color: var(--accent);">🚩 Correctas: ${s.flagsCorrect}</span> | 
-                    <span style="color: var(--danger);">❌ Erróneas: ${s.flagsWrong}</span>
+                    <span style="color: var(--danger);">🚩❌ Erróneas: ${s.flagsWrong}</span>
                 </li>`;
             });
             html += `</ul>`;
@@ -730,7 +771,7 @@ function showMultiSummary(win, extraName, stats) {
         let winnerText = win && (!extraName || extraName === myNickname) ? "¡TÚ GANASTE!" : `Ganador: ${extraName}`;
         content.innerHTML = `<p>${winnerText}</p>`;
     }
-    
+
     document.getElementById('btn-return-lobby').style.display = isHost ? 'inline-block' : 'none';
     document.getElementById('summary-wait-msg').style.display = isHost ? 'none' : 'block';
 }
@@ -766,11 +807,142 @@ function updateCompStatus(playerId, status) {
     updateProgressUI();
 
     if (status.includes('Ganador')) {
-        gameOver = true;
-        const winnerName = p ? p.nickname : "Alguien";
-        broadcast({ type: 'GAME_OVER_COMP', winner: winnerName });
-        endGame(true, winnerName);
+        declareCompWinner(p);
+        return;
     }
+
+    const playing = players.filter(pl => pl.status === 'playing');
+    if (playing.length === 1 && players.length > 1) {
+        declareCompWinner(playing[0]);
+    } else if (playing.length === 0 && players.length > 0) {
+        declareCompWinner(null);
+    }
+}
+
+function declareCompWinner(winnerPlayer) {
+    gameOver = true;
+    const winnerName = winnerPlayer ? winnerPlayer.nickname : "Nadie";
+    broadcast({ type: 'GAME_OVER_COMP', winner: winnerName });
+    endGame(true, winnerName);
+}
+
+function sendCompSync() {
+    if (gameMode !== 'comp' || isSpectator) return;
+    const data = {
+        type: 'COMP_SYNC',
+        playerId: myId,
+        board: board,
+        hoverIdx: currentHoverIdx,
+        actionMode: actionMode
+    };
+    if (isHost) {
+        handleCompSync(data);
+    } else {
+        hostConnection.send(data);
+    }
+}
+
+function handleCompSync(data) {
+    const p = players.find(p => p.id === data.playerId);
+    if (p) p.compState = data;
+    broadcast({ type: 'SPECTATOR_SYNC', syncData: data });
+}
+
+function startSpectating() {
+    isSpectator = true;
+    gameOver = true;
+    
+    document.getElementById('game-status').innerText = "💀 Eliminado - Modo Espectador";
+    document.getElementById('game-status').style.color = "var(--danger)";
+    
+    const playing = players.filter(p => p.status === 'playing' && p.id !== myId);
+    if (playing.length > 0) {
+        spectatingId = playing[0].id;
+    }
+    
+    document.getElementById('spectator-controls').style.display = 'flex';
+    updateSpectatorUI();
+}
+
+function prevSpectate() {
+    const playing = players.filter(p => p.status === 'playing' && p.id !== myId);
+    if (playing.length === 0) return;
+    let idx = playing.findIndex(p => p.id === spectatingId);
+    idx = (idx - 1 + playing.length) % playing.length;
+    spectatingId = playing[idx].id;
+    updateSpectatorUI();
+}
+
+function nextSpectate() {
+    const playing = players.filter(p => p.status === 'playing' && p.id !== myId);
+    if (playing.length === 0) return;
+    let idx = playing.findIndex(p => p.id === spectatingId);
+    idx = (idx + 1) % playing.length;
+    spectatingId = playing[idx].id;
+    updateSpectatorUI();
+}
+
+function updateSpectatorUI() {
+    if (!isSpectator) return;
+    
+    let p = players.find(p => p.id === spectatingId);
+    if (!p || p.status !== 'playing') {
+        const playing = players.filter(pl => pl.status === 'playing' && pl.id !== myId);
+        if (playing.length > 0) {
+            spectatingId = playing[0].id;
+            p = playing[0];
+        } else {
+            spectatingId = null;
+        }
+    }
+    
+    if (spectatingId && p) {
+        document.getElementById('spectate-name').innerText = "Espectando a: " + p.nickname;
+        if (spectateStates[spectatingId]) {
+            renderSpectatorBoard();
+        }
+    } else {
+        document.getElementById('spectate-name').innerText = "Nadie vivo";
+    }
+}
+
+function renderSpectatorBoard() {
+    if (!isSpectator || !spectatingId) return;
+    const state = spectateStates[spectatingId];
+    if (!state) return;
+    
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = "";
+    
+    state.board.forEach((cell, idx) => {
+        const div = document.createElement('div');
+        div.className = 'cell';
+        if (cell.isRevealed) {
+            div.classList.add('revealed');
+            if (cell.isMine) {
+                div.classList.add('mine');
+                div.innerText = '💣';
+            } else if (cell.neighborMines > 0) {
+                div.innerText = cell.neighborMines;
+                div.classList.add(`num-${cell.neighborMines}`);
+            }
+        } else if (cell.isFlagged) {
+            div.classList.add('flag');
+            div.innerText = '🚩';
+        }
+        
+        if (idx === state.hoverIdx) {
+            div.classList.add('spectator-hover');
+            if (!cell.isRevealed) {
+                div.innerHTML = state.actionMode === 'flag' ? '<span style="opacity:0.5">🚩</span>' : '<span style="opacity:0.5">⛏️</span>';
+            }
+        }
+        
+        boardEl.appendChild(div);
+    });
+    
+    let fCount = state.board.filter(c => c.isFlagged).length;
+    document.getElementById('mines-count').innerText = totalMines - fCount;
 }
 
 function updateProgressUI() {

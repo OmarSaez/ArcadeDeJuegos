@@ -128,6 +128,12 @@
                     <button class="btn btn-outline" onclick="leaveGame()">Abandonar Partida</button>
                 </div>
                 
+                <div id="spectator-controls" class="mt-4" style="display: none; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                    <button class="btn btn-outline" style="padding: 5px 10px;" onclick="prevSpectate()">◀</button>
+                    <span id="spectate-name" style="color: var(--accent); font-weight: bold; margin: 0 10px;">Espectando a: ---</span>
+                    <button class="btn btn-outline" style="padding: 5px 10px;" onclick="nextSpectate()">▶</button>
+                </div>
+                
                 <div id="players-progress" class="players-progress mt-4" style="display: none;">
                     <h4>Progreso (Competitivo)</h4>
                     <ul id="progress-list"></ul>

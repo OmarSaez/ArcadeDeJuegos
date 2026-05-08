@@ -298,6 +298,11 @@ h1 {
 .cell.mine { background: #ef4444; font-size: 1rem; }
 .cell.mine-death { background: #991b1b; }
 
+.spectator-hover {
+    outline: 2px solid var(--accent);
+    background-color: rgba(0, 255, 136, 0.2) !important;
+}
+
 /* Colors for numbers */
 .num-1 { color: #3b82f6; } /* Blue */
 .num-2 { color: #22c55e; } /* Green */
