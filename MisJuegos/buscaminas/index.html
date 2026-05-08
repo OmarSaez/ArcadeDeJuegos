@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscaminas Multi-Dimensional</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div id="background-animations"></div>
+
+    <div id="app">
+        <header>
+            <h1>💣 BUSCAMINAS 💣</h1>
+            <h2 id="subtitle">Edición Definitiva</h2>
+        </header>
+
+        <main id="view-container">
+            <!-- Menú Principal -->
+            <div id="view-main" class="view active">
+                <button class="btn btn-primary" onclick="showView('view-solo-size')">Jugar Solo</button>
+                <button class="btn btn-secondary" onclick="checkNicknameAndGoMulti()">Multijugador</button>
+                <a href="../" class="btn btn-danger">Volver al Arcade</a>
+            </div>
+
+            <!-- Selección de Tamaño (Solo) -->
+            <div id="view-solo-size" class="view">
+                <h3>Selecciona el Tamaño</h3>
+                <div class="grid-buttons">
+                    <button class="btn" onclick="chooseSize(10, 10, 'solo')">10x10</button>
+                    <button class="btn" onclick="chooseSize(15, 15, 'solo')">15x15</button>
+                    <button class="btn" onclick="chooseSize(20, 20, 'solo')">20x20</button>
+                    <button class="btn" onclick="chooseSize(30, 30, 'solo')">30x30</button>
+                </div>
+                <button class="btn btn-outline mt-4" onclick="showView('view-main')">Volver</button>
+            </div>
+
+            <!-- Menú Multijugador -->
+            <div id="view-multi-menu" class="view">
+                <h3>Modo Multijugador</h3>
+                <div class="player-info">
+                    <span>Jugador: <strong id="display-nickname"></strong></span>
+                    <button class="btn-small" onclick="promptNickname()">Cambiar</button>
+                </div>
+                <button class="btn btn-primary" onclick="setupMultiplayer('coop')">Crear Sala Cooperativa</button>
+                <button class="btn btn-secondary" onclick="setupMultiplayer('comp')">Crear Sala Competitiva</button>
+                <button class="btn btn-accent" onclick="showView('view-join')">Unirse a Sala</button>
+                <button class="btn btn-outline mt-4" onclick="showView('view-main')">Volver</button>
+            </div>
+
+            <!-- Selección de Tamaño (Multi) -->
+            <div id="view-multi-size" class="view">
+                <h3>Tamaño del Mapa (<span id="multi-mode-display"></span>)</h3>
+                <div class="grid-buttons">
+                    <button class="btn" onclick="chooseSize(10, 10, 'multi')">10x10</button>
+                    <button class="btn" onclick="chooseSize(15, 15, 'multi')">15x15</button>
+                    <button class="btn" onclick="chooseSize(20, 20, 'multi')">20x20</button>
+                    <button class="btn" onclick="chooseSize(30, 30, 'multi')">30x30</button>
+                </div>
+                <button class="btn btn-outline mt-4" onclick="showView('view-multi-menu')">Volver</button>
+            </div>
+
+            <!-- Selección de Dificultad -->
+            <div id="view-difficulty" class="view">
+                <h3>Selecciona la Dificultad</h3>
+                <p style="font-size: 0.9rem; margin-bottom: 20px; color: var(--text-muted);">Afecta la cantidad de minas en el tablero</p>
+                <div class="grid-buttons">
+                    <button class="btn btn-primary" onclick="selectDifficulty('facil')">Fácil (10%)</button>
+                    <button class="btn btn-secondary" onclick="selectDifficulty('normal')">Normal (15%)</button>
+                    <button class="btn btn-accent" onclick="selectDifficulty('dificil')">Difícil (20%)</button>
+                    <button class="btn btn-danger" onclick="selectDifficulty('extremo')">EXTREMO (30%)</button>
+                </div>
+                <button class="btn btn-outline mt-4" onclick="goBackFromDifficulty()">Volver</button>
+            </div>
+
+            <!-- Unirse a Sala -->
+            <div id="view-join" class="view">
+                <h3>Unirse a Partida</h3>
+                <input type="text" id="join-code" placeholder="Ingresa el código" class="input-field" maxlength="6">
+                <button class="btn btn-accent" onclick="joinRoom()">Conectar</button>
+                <button class="btn btn-outline mt-4" onclick="showView('view-multi-menu')">Volver</button>
+                <p id="join-status" class="status-msg"></p>
+            </div>
+
+            <!-- Sala de Espera -->
+            <div id="view-lobby" class="view">
+                <h3>Sala de Espera</h3>
+                <div class="room-code-box">
+                    <p>Código de la Sala:</p>
+                    <h2 id="room-code-display">----</h2>
+                </div>
+                <div class="players-list">
+                    <h4>Jugadores (<span id="players-count">1</span>)</h4>
+                    <ul id="lobby-players"></ul>
+                </div>
+                <div id="host-controls" style="display: none;">
+                    <button class="btn btn-primary" onclick="startGame()">Comenzar Partida</button>
+                </div>
+                <p id="lobby-status" class="status-msg">Esperando a que inicie el Host...</p>
+                <button class="btn btn-outline mt-4" onclick="leaveRoom()">Salir</button>
+            </div>
+
+            <!-- Juego -->
+            <div id="view-game" class="view">
+                <div class="game-header">
+                    <div class="stats">
+                        <div class="stat-box">🚩 <span id="mines-count">0</span></div>
+                        <div class="stat-box">⏱️ <span id="timer">0</span></div>
+                    </div>
+                    <div class="action-toggle" id="action-toggle">
+                        <button id="btn-mode-reveal" class="btn-toggle active" onclick="setActionMode('reveal')">⛏️ Picar</button>
+                        <button id="btn-mode-flag" class="btn-toggle" onclick="setActionMode('flag')">🚩 Bandera</button>
+                    </div>
+                    <div id="turn-indicator" class="turn-indicator" style="display: none;">
+                        Turno de: <span id="current-turn-name">---</span>
+                    </div>
+                    <div id="game-status" class="game-status"></div>
+                </div>
+
+                <div class="board-container">
+                    <div id="board" class="board"></div>
+                </div>
+
+                <div class="game-footer mt-4">
+                    <button id="btn-retry-solo" class="btn btn-primary" onclick="retryGame()" style="display: none; margin-right: 10px;">Volver a Intentar</button>
+                    <button class="btn btn-outline" onclick="leaveGame()">Abandonar Partida</button>
+                </div>
+                
+                <div id="players-progress" class="players-progress mt-4" style="display: none;">
+                    <h4>Progreso (Competitivo)</h4>
+                    <ul id="progress-list"></ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Nickname -->
+    <div id="modal-nickname" class="modal">
+        <div class="modal-content glass">
+            <h3>¿Cómo te llamas?</h3>
+            <p>Ingresa tu apodo para jugar multijugador</p>
+            <input type="text" id="nickname-input" placeholder="Tu apodo..." class="input-field" maxlength="15">
+            <button class="btn btn-primary mt-4" onclick="saveNickname()">Guardar y Continuar</button>
+        </div>
+    </div>
+
+    <!-- Modal de Resumen Multijugador -->
+    <div id="modal-multi-summary" class="modal">
+        <div class="modal-content glass">
+            <h3 id="summary-title">Fin de la Partida</h3>
+            <div id="summary-content" style="margin: 20px 0;"></div>
+            <button id="btn-return-lobby" class="btn btn-primary" onclick="returnToLobbyFromSummary()">Volver a la Sala</button>
+            <p id="summary-wait-msg" class="status-msg mt-4">Esperando al Host...</p>
+            <button class="btn btn-outline mt-4" onclick="leaveGame()">Salir al Menú</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

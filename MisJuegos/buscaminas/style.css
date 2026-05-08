@@ -1,0 +1,324 @@
+:root {
+    --bg-color: #0f172a;
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --primary: #4ade80;
+    --primary-hover: #22c55e;
+    --secondary: #60a5fa;
+    --secondary-hover: #3b82f6;
+    --danger: #f87171;
+    --danger-hover: #ef4444;
+    --accent: #facc15;
+    --accent-hover: #eab308;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --cell-bg: #334155;
+    --cell-bg-revealed: #1e293b;
+    --cell-border: rgba(0, 0, 0, 0.5);
+    
+    --cell-size: 35px;
+}
+
+body {
+    background: linear-gradient(135deg, var(--bg-color) 0%, #020617 100%);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    text-align: center;
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+}
+
+h1 {
+    font-family: 'Press Start 2P', cursive;
+    color: var(--primary);
+    text-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
+    margin-bottom: 5px;
+    font-size: 2.5rem;
+}
+
+#subtitle {
+    color: var(--secondary);
+    font-weight: 300;
+    margin-top: 0;
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+}
+
+#app {
+    width: 100%;
+    max-width: 900px;
+    z-index: 10;
+    padding: 20px;
+}
+
+/* Views */
+.view {
+    display: none;
+    animation: fadeIn 0.4s ease forwards;
+}
+.view.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Buttons */
+.btn {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+    color: #0f172a;
+    width: 250px;
+}
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn-primary { background: var(--primary); box-shadow: 0 0 10px rgba(74, 222, 128, 0.3); }
+.btn-primary:hover { background: var(--primary-hover); }
+
+.btn-secondary { background: var(--secondary); box-shadow: 0 0 10px rgba(96, 165, 250, 0.3); }
+.btn-secondary:hover { background: var(--secondary-hover); }
+
+.btn-danger { background: var(--danger); box-shadow: 0 0 10px rgba(248, 113, 113, 0.3); color: white; }
+.btn-danger:hover { background: var(--danger-hover); }
+
+.btn-accent { background: var(--accent); box-shadow: 0 0 10px rgba(250, 204, 21, 0.3); }
+.btn-accent:hover { background: var(--accent-hover); }
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--text-muted);
+    color: var(--text);
+}
+.btn-outline:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--text); }
+
+.btn-small {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    cursor: pointer;
+}
+.btn-small:hover { background: rgba(255,255,255,0.2); }
+
+.mt-4 { margin-top: 20px; }
+
+/* Grid Buttons */
+.grid-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* Inputs */
+.input-field {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    text-align: center;
+    width: 100%;
+    max-width: 200px;
+    outline: none;
+    font-family: 'Press Start 2P', cursive;
+}
+.input-field:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(74, 222, 128, 0.2); }
+
+/* Modals */
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+}
+.modal.active { display: flex; animation: fadeIn 0.3s ease; }
+.glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    text-align: center;
+}
+
+/* Lobby */
+.room-code-box {
+    background: rgba(0,0,0,0.5);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px dashed var(--secondary);
+    margin: 15px 0;
+}
+#room-code-display {
+    font-family: 'Press Start 2P', cursive;
+    color: var(--accent);
+    letter-spacing: 5px;
+    margin: 10px 0 0 0;
+}
+.players-list {
+    background: var(--glass-bg);
+    border-radius: 8px;
+    padding: 15px;
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 20px;
+}
+.players-list ul {
+    list-style: none; padding: 0; margin: 0; text-align: left;
+}
+.players-list li {
+    padding: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+}
+.players-list li::before {
+    content: '🎮'; margin-right: 10px;
+}
+.status-msg { color: var(--secondary); font-style: italic; }
+
+/* Game Board */
+.game-header {
+    display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%;
+    margin-bottom: 15px;
+}
+.stats {
+    display: flex; gap: 20px; font-family: 'Press Start 2P', cursive; font-size: 1.2rem;
+}
+.stat-box {
+    background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 8px; border: 1px solid var(--glass-border);
+}
+.turn-indicator {
+    padding: 8px 15px; background: rgba(96, 165, 250, 0.2); border: 1px solid var(--secondary);
+    border-radius: 20px; font-weight: bold; color: var(--secondary);
+}
+.game-status {
+    font-size: 1.5rem; font-weight: bold; min-height: 35px;
+}
+
+/* Action Toggle for Mobile */
+.action-toggle {
+    display: flex;
+    background: rgba(0,0,0,0.4);
+    border-radius: 8px;
+    padding: 5px;
+    gap: 5px;
+    margin-top: 5px;
+}
+.btn-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-toggle.active {
+    background: var(--primary);
+    color: #0f172a;
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+}
+#btn-mode-flag.active {
+    background: var(--danger);
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.3);
+}
+
+.board-container {
+    background: rgba(0,0,0,0.6);
+    padding: 10px;
+    border-radius: 8px;
+    display: inline-block;
+    overflow: auto;
+    max-width: 100%;
+    max-height: 60vh;
+}
+
+.board {
+    display: grid;
+    gap: 1px;
+    background: var(--cell-border);
+    border: 2px solid var(--cell-border);
+    user-select: none;
+}
+
+.cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    background: var(--cell-bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    cursor: pointer;
+    box-shadow: inset 2px 2px 0 rgba(255,255,255,0.2), inset -2px -2px 0 rgba(0,0,0,0.4);
+    transition: filter 0.1s;
+}
+.cell:hover:not(.revealed) { filter: brightness(1.2); }
+.cell.revealed {
+    background: var(--cell-bg-revealed);
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5);
+    cursor: default;
+}
+.cell.flag { font-size: 1rem; }
+.cell.mine { background: #ef4444; font-size: 1rem; }
+.cell.mine-death { background: #991b1b; }
+
+/* Colors for numbers */
+.num-1 { color: #3b82f6; } /* Blue */
+.num-2 { color: #22c55e; } /* Green */
+.num-3 { color: #ef4444; } /* Red */
+.num-4 { color: #8b5cf6; } /* Purple */
+.num-5 { color: #f59e0b; } /* Orange */
+.num-6 { color: #06b6d4; } /* Cyan */
+.num-7 { color: #000000; } /* Black */
+.num-8 { color: #64748b; } /* Gray */
+
+.players-progress ul {
+    list-style: none; padding: 0; text-align: left;
+}
+.players-progress li {
+    padding: 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Dynamic sizes for small screens */
+@media (max-width: 600px) {
+    :root { --cell-size: 25px; }
+    .cell { font-size: 0.6rem; }
+    h1 { font-size: 1.8rem; }
+}
