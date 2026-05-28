@@ -56,7 +56,9 @@ body {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    overflow: hidden;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .hidden {
@@ -76,6 +78,10 @@ body {
     justify-content: center;
     z-index: 100;
     backdrop-filter: blur(8px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    padding: 20px 10px;
 }
 
 .menu-card {
@@ -87,6 +93,7 @@ body {
     text-align: center;
     width: 90%;
     max-width: 400px;
+    margin: auto;
 }
 
 .menu-card h1 {
@@ -204,6 +211,7 @@ body {
     position: relative;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -503,6 +511,16 @@ body {
         --card-height: 120px;
     }
 
+    #game-container {
+        height: max(100dvh, 650px);
+        min-height: 650px;
+    }
+
+    .menu-card {
+        padding: 25px 20px;
+        border-radius: 20px;
+    }
+
     #ui-layer {
         bottom: 10px;
         right: 0;
@@ -524,7 +542,7 @@ body {
 
     .table {
         width: 98%;
-        height: 60%;
+        height: 55%;
     }
 
     .current-turn-info {
