@@ -148,8 +148,6 @@ class NetworkManager {
                 updateLobbyUI(this.playersReady);
             } else if (data.type === 'START_GAME') {
                 window.game = new Game(this.playersReady, data.gameState);
-                showScreen('game-container');
-                window.game.animateDealing();
             } else if (data.type === 'UPDATE_STATE') {
                 if (window.game) window.game.loadState(data.gameState);
             } else if (data.type === 'GAME_ACTION') {
@@ -201,6 +199,11 @@ class Game {
         this.pendingUnoCalls = [];
         this.unoBufferTimeout = null;
         this.lastPlayedByPlayerId = null;
+        this.shuffled = true;
+        this.shufflerId = null;
+        this.shuffleProgress = 0;
+        this.isShufflingActive = false;
+        this.shuffleListenersAttached = false;
 
         if (net.isHost && !initialState) {
             this.initNewGame();
@@ -211,16 +214,11 @@ class Game {
 
     initNewGame() {
         this.createDeck();
-        this.shuffleDeck();
-        this.dealCards();
-        let firstCard = this.deck.pop();
-        while (firstCard.color === 'black') {
-            this.deck.unshift(firstCard);
-            firstCard = this.deck.pop();
-        }
-        this.discardPile.push(firstCard);
-        // Randomize starting player
-        this.currentPlayerIdx = Math.floor(Math.random() * this.players.length);
+        // Choose shuffler at random
+        this.shufflerId = this.players[Math.floor(Math.random() * this.players.length)].id;
+        this.shuffled = false;
+        this.shuffleProgress = 0;
+        
         net.broadcast({ type: 'START_GAME', gameState: this.getState() });
         this.render();
     }
@@ -271,7 +269,11 @@ class Game {
             totalPlayed: this.totalPlayed,
             startTime: this.startTime,
             lastValidUnoTime: this.lastValidUnoTime,
-            lastPlayedByPlayerId: this.lastPlayedByPlayerId
+            lastPlayedByPlayerId: this.lastPlayedByPlayerId,
+            shuffled: this.shuffled,
+            shufflerId: this.shufflerId,
+            shuffleProgress: this.shuffleProgress,
+            isShufflingActive: this.isShufflingActive
         };
     }
 
@@ -293,6 +295,10 @@ class Game {
         this.startTime = state.startTime || Date.now();
         this.lastValidUnoTime = state.lastValidUnoTime || 0;
         this.lastPlayedByPlayerId = state.lastPlayedByPlayerId || null;
+        this.shuffled = state.shuffled !== undefined ? state.shuffled : true;
+        this.shufflerId = state.shufflerId || null;
+        this.shuffleProgress = state.shuffleProgress || 0;
+        this.isShufflingActive = state.isShufflingActive || false;
 
         this.render();
     }
@@ -308,6 +314,50 @@ class Game {
     }
 
     render() {
+        if (!this.shuffled) {
+            showScreen('screen-shuffle');
+            
+            const shuffler = this.players.find(p => String(p.id) === String(this.shufflerId));
+            const shufflerName = shuffler ? shuffler.nickname : "Alguien";
+            const me = this.players.find(p => p.isMe);
+            const isMeShuffler = (me && String(me.id) === String(this.shufflerId));
+
+            const titleEl = document.getElementById('shuffle-title');
+            const instEl = document.getElementById('shuffle-instructions');
+            const progressContainer = document.getElementById('shuffle-progress-container');
+            const progressFill = document.getElementById('shuffle-progress-fill');
+            const deckEl = document.getElementById('shuffle-deck');
+
+            if (titleEl) titleEl.innerText = isMeShuffler ? "¡Te toca revolver!" : `¿Quién revuelve?`;
+            if (instEl) {
+                instEl.innerText = isMeShuffler 
+                    ? "Pon tu dedo/mouse sobre el mazo, mantén presionado y agítalo rápido para mezclar." 
+                    : `Esperando a que ${shufflerName} termine de revolver el mazo...`;
+            }
+
+            if (progressContainer) progressContainer.classList.remove('hidden');
+            if (progressFill) progressFill.style.width = `${this.shuffleProgress}%`;
+
+            if (deckEl) {
+                if (this.isShufflingActive && !isMeShuffler) {
+                    deckEl.classList.add('shuffling-active');
+                } else {
+                    deckEl.classList.remove('shuffling-active');
+                }
+            }
+
+            if (deckEl && isMeShuffler && !this.shuffleListenersAttached) {
+                this.setupShuffleDragging(deckEl);
+            }
+            return;
+        } else {
+            const gameContainer = document.getElementById('game-container');
+            if (gameContainer && gameContainer.classList.contains('hidden')) {
+                showScreen('game-container');
+                this.animateDealing();
+            }
+        }
+
         const container = document.getElementById('players-container');
         // Do NOT wipe container, we will update/reuse player areas
         const myPlayerIndex = this.players.findIndex(p => p.isMe);
@@ -587,6 +637,31 @@ class Game {
     executeAction(action, senderId) {
         if (this.gameover) return;
 
+        if (action.type === 'SHUFFLE_PROGRESS') {
+            this.shuffleProgress = action.progress;
+            this.isShufflingActive = action.shuffling !== undefined ? action.shuffling : false;
+            this.syncState();
+            return;
+        }
+
+        if (action.type === 'SHUFFLE_COMPLETE') {
+            if (this.shuffled) return;
+            this.shuffleDeck();
+            this.dealCards();
+            
+            let firstCard = this.deck.pop();
+            while (firstCard.color === 'black') {
+                this.deck.unshift(firstCard);
+                firstCard = this.deck.pop();
+            }
+            this.discardPile.push(firstCard);
+            this.currentPlayerIdx = Math.floor(Math.random() * this.players.length);
+            
+            this.shuffled = true;
+            this.syncState();
+            return;
+        }
+
         // Store current hand sizes to calculate which cards are new for animations
         this.players.forEach(p => { this.prevHandSizes[p.id] = p.hand.length; });
 
@@ -788,6 +863,122 @@ class Game {
 
         showScreen('screen-win');
     }
+
+    setupShuffleDragging(deckEl) {
+        this.shuffleListenersAttached = true;
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+        this.lastSyncedProgress = 0;
+        let isShufflingNow = false;
+        let shuffleActiveTimeout = null;
+        let lastVisualUpdateTime = 0;
+
+        const setShufflingActive = (active) => {
+            if (isShufflingNow !== active) {
+                isShufflingNow = active;
+                deckEl.classList.toggle('is-shuffling', active);
+                this.sendAction({ 
+                    type: 'SHUFFLE_PROGRESS', 
+                    progress: this.shuffleProgress, 
+                    shuffling: isShufflingNow 
+                });
+            }
+        };
+
+        const onStart = (e) => {
+            isDragging = true;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            lastX = clientX;
+            lastY = clientY;
+            deckEl.style.cursor = 'grabbing';
+            setShufflingActive(true);
+        };
+
+        const onMove = (e) => {
+            if (!isDragging) return;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const dx = clientX - lastX;
+            const dy = clientY - lastY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            if (dist > 5) {
+                setShufflingActive(true);
+
+                clearTimeout(shuffleActiveTimeout);
+                shuffleActiveTimeout = setTimeout(() => {
+                    setShufflingActive(false);
+                }, 200);
+
+                // Update progress locally
+                this.shuffleProgress = Math.min(this.shuffleProgress + dist * 0.15, 100);
+                
+                const progressFill = document.getElementById('shuffle-progress-fill');
+                if (progressFill) progressFill.style.width = `${this.shuffleProgress}%`;
+
+                // Throttle P2P sync (every 10% progress)
+                if (Math.floor(this.shuffleProgress / 10) > Math.floor(this.lastSyncedProgress / 10)) {
+                    this.lastSyncedProgress = this.shuffleProgress;
+                    this.sendAction({ 
+                        type: 'SHUFFLE_PROGRESS', 
+                        progress: this.shuffleProgress,
+                        shuffling: isShufflingNow
+                    });
+                }
+
+                // Shake cards visually (throttled to 140ms and with wide offsets so cards slide smoothly rather than flicker/teleport)
+                const now = Date.now();
+                if (now - lastVisualUpdateTime > 140) {
+                    lastVisualUpdateTime = now;
+                    const cards = deckEl.querySelectorAll('.deck-card');
+                    cards.forEach(card => {
+                        const rx = (Math.random() - 0.5) * 55;
+                        const ry = (Math.random() - 0.5) * 55;
+                        const rot = (Math.random() - 0.5) * 35;
+                        card.style.transform = `translate(calc(var(--i) * 2px + ${rx}px), calc(var(--i) * -2px + ${ry}px)) rotate(${rot}deg)`;
+                    });
+                }
+
+                // Move deck container slightly with lag
+                deckEl.style.transform = `translate(calc(-50% + ${dx * 0.25}px), calc(-50% + ${dy * 0.25}px))`;
+                
+                lastX = clientX;
+                lastY = clientY;
+            }
+        };
+
+        const onEnd = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            deckEl.style.cursor = 'grab';
+
+            clearTimeout(shuffleActiveTimeout);
+            setShufflingActive(false);
+
+            // Snap back
+            const cards = deckEl.querySelectorAll('.deck-card');
+            cards.forEach(card => {
+                card.style.transform = '';
+            });
+            deckEl.style.transform = '';
+
+            if (this.shuffleProgress >= 100) {
+                this.sendAction({ type: 'SHUFFLE_COMPLETE' });
+            }
+        };
+
+        deckEl.addEventListener('mousedown', onStart);
+        deckEl.addEventListener('touchstart', onStart, { passive: true });
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('touchmove', onMove, { passive: false });
+
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
+    }
 }
 
 const net = new NetworkManager();
@@ -818,7 +1009,7 @@ document.getElementById('btn-join-action').onclick = () => {
         net.joinGame(userNickname, code, () => { document.getElementById('display-game-code').innerText = code; showScreen('screen-lobby'); }, (errorMsg) => { statusEl.innerText = errorMsg; });
     }
 };
-document.getElementById('btn-start-game').onclick = () => { if (net.isHost) { window.game = new Game(net.playersReady); showScreen('game-container'); window.game.animateDealing(); } };
+document.getElementById('btn-start-game').onclick = () => { if (net.isHost) { window.game = new Game(net.playersReady); } };
 document.getElementById('draw-btn').onclick = () => {
     if (!window.game) return;
     if (window.game.justDrawnCardIdx !== -1) window.game.sendAction({ type: 'PASS' });
@@ -832,8 +1023,6 @@ const ARCADE_URL = 'https://omarsaez.github.io/ArcadeDeJuegos/';
 document.getElementById('btn-play-again').onclick = () => {
     if (net.isHost) {
         window.game = new Game(net.playersReady);
-        showScreen('game-container');
-        window.game.animateDealing();
     } else {
         alert("Eperando a que el host inicie una nueva partida...");
     }

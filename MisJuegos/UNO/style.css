@@ -772,3 +772,115 @@ body {
 .color-opt.yellow {
     background-color: var(--uno-yellow);
 }
+
+/* Shuffling Screen overlay styles */
+.shuffle-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px;
+    background: rgba(20, 20, 30, 0.95);
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    max-width: 400px;
+    width: 90%;
+}
+
+#shuffle-deck-container {
+    width: 150px;
+    height: 220px;
+    margin: 30px auto;
+    position: relative;
+    perspective: 1000px;
+}
+
+.shuffle-deck {
+    width: 100px;
+    height: 150px;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    z-index: 10;
+}
+
+.shuffle-deck:active {
+    cursor: grabbing;
+}
+
+.deck-card {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    border-radius: 12px;
+    border: 3px solid white !important;
+    background: #000 !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    transform: translate(calc(var(--i) * 2px), calc(var(--i) * -2px));
+    z-index: var(--i);
+    transition: transform 0.15s ease-out;
+}
+
+/* Progress bar styles */
+.progress-container {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--uno-red), var(--uno-yellow));
+    box-shadow: 0 0 10px var(--uno-yellow);
+    border-radius: 6px;
+    transition: width 0.1s ease;
+}
+
+/* Spectator shuffle animation active state */
+.shuffle-deck.shuffling-active .deck-card {
+    animation: spectator-shuffle-anim 0.8s infinite alternate ease-in-out;
+}
+
+.shuffle-deck.shuffling-active .deck-card:nth-child(1) { animation-delay: 0.0s; }
+.shuffle-deck.shuffling-active .deck-card:nth-child(2) { animation-delay: 0.05s; }
+.shuffle-deck.shuffling-active .deck-card:nth-child(3) { animation-delay: 0.1s; }
+.shuffle-deck.shuffling-active .deck-card:nth-child(4) { animation-delay: 0.15s; }
+.shuffle-deck.shuffling-active .deck-card:nth-child(5) { animation-delay: 0.2s; }
+
+@keyframes spectator-shuffle-anim {
+    0% {
+        transform: translate(calc(var(--i) * 2px), calc(var(--i) * -2px)) rotate(0deg);
+    }
+    20% {
+        transform: translate(calc(var(--i) * 15px - 30px), calc(15px - var(--i) * 8px)) rotate(calc(var(--i) * 8deg - 16deg));
+    }
+    40% {
+        transform: translate(calc(20px - var(--i) * 10px), calc(var(--i) * 12px - 24px)) rotate(calc(12deg - var(--i) * 6deg));
+    }
+    60% {
+        transform: translate(calc(var(--i) * -12px + 24px), calc(18px - var(--i) * 9px)) rotate(calc(var(--i) * -8deg + 16deg));
+    }
+    80% {
+        transform: translate(calc(var(--i) * 8px - 16px), calc(var(--i) * -15px + 30px)) rotate(calc(var(--i) * 7deg - 14deg));
+    }
+    100% {
+        transform: translate(calc(25px - var(--i) * 12px), calc(var(--i) * 10px - 20px)) rotate(calc(15deg - var(--i) * 7deg));
+    }
+}
