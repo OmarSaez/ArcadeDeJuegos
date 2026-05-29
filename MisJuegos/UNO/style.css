@@ -561,6 +561,18 @@ body {
         margin-left: -55px;
     }
 
+    /* Draw opponent names on top of their cards on mobile using relative positioning and negative margin */
+    .player-area:not(.is-me) .player-name {
+        position: relative;
+        z-index: 100;
+        margin-bottom: 0;
+        pointer-events: none;
+    }
+
+    .player-area:not(.is-me) .hand {
+        margin-top: -39px;
+    }
+
     .menu-buttons {
         width: 100%;
         display: flex;
