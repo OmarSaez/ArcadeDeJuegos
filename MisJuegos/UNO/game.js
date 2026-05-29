@@ -200,6 +200,7 @@ class Game {
         this.gracePeriodTimeout = null;
         this.pendingUnoCalls = [];
         this.unoBufferTimeout = null;
+        this.lastPlayedByPlayerId = null;
 
         if (net.isHost && !initialState) {
             this.initNewGame();
@@ -269,7 +270,8 @@ class Game {
             drawAccumulator: this.drawAccumulator,
             totalPlayed: this.totalPlayed,
             startTime: this.startTime,
-            lastValidUnoTime: this.lastValidUnoTime
+            lastValidUnoTime: this.lastValidUnoTime,
+            lastPlayedByPlayerId: this.lastPlayedByPlayerId
         };
     }
 
@@ -290,6 +292,7 @@ class Game {
         this.totalPlayed = state.totalPlayed || 0;
         this.startTime = state.startTime || Date.now();
         this.lastValidUnoTime = state.lastValidUnoTime || 0;
+        this.lastPlayedByPlayerId = state.lastPlayedByPlayerId || null;
 
         this.render();
     }
@@ -432,6 +435,31 @@ class Game {
             const lastCardId = lastCardInDOM ? (lastCardInDOM.dataset.cardId || "") : "";
 
             if (lastCardId !== currentCardId) {
+                if (this.lastPlayedByPlayerId) {
+                    const playerEl = document.getElementById(`player-area-${this.lastPlayedByPlayerId}`);
+                    if (playerEl) {
+                        const discardRect = discardEl.getBoundingClientRect();
+                        const playerRect = playerEl.getBoundingClientRect();
+                        
+                        const playerCenterX = playerRect.left + playerRect.width / 2;
+                        const playerCenterY = playerRect.top + playerRect.height / 2;
+                        const discardCenterX = discardRect.left + discardRect.width / 2;
+                        const discardCenterY = discardRect.top + discardRect.height / 2;
+                        
+                        const deltaX = playerCenterX - discardCenterX;
+                        const deltaY = playerCenterY - discardCenterY;
+                        
+                        let rotation = '0deg';
+                        const match = playerEl.style.transform.match(/rotate\(([^)]+)\)/);
+                        if (match && match[1]) {
+                            rotation = match[1];
+                        }
+                        
+                        cardEl.style.setProperty('--fly-from-x', `${deltaX}px`);
+                        cardEl.style.setProperty('--fly-from-y', `${deltaY}px`);
+                        cardEl.style.setProperty('--fly-from-rot', rotation);
+                    }
+                }
                 cardEl.classList.add('playing');
             }
             cardEl.dataset.cardId = currentCardId;
@@ -588,6 +616,7 @@ class Game {
             this.selectedColor = action.color || null;
             this.justDrawnCardIdx = -1;
             this.totalPlayed++;
+            this.lastPlayedByPlayerId = senderId;
 
             if (player.hand.length !== 1) player.unoCalled = false;
 
