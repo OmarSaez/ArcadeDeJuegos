@@ -214,6 +214,7 @@ class Game {
 
     initNewGame() {
         this.createDeck();
+        this.shuffleDeck(); // Pre-shuffle with Fisher-Yates so deck distribution starts mathematically perfect!
         // Choose shuffler at random
         this.shufflerId = this.players[Math.floor(Math.random() * this.players.length)].id;
         this.shuffled = false;
@@ -640,13 +641,23 @@ class Game {
         if (action.type === 'SHUFFLE_PROGRESS') {
             this.shuffleProgress = action.progress;
             this.isShufflingActive = action.shuffling !== undefined ? action.shuffling : false;
+            
+            // Swap cards in the host deck using the shuffler's exact movement vectors!
+            if (net.isHost && this.deck && this.deck.length > 1 && action.dx !== undefined && action.dy !== undefined) {
+                const idx1 = Math.abs(Math.floor(action.dx * 17 + action.dy * 31)) % this.deck.length;
+                const idx2 = Math.abs(Math.floor(action.dx * 13 - action.dy * 19 + action.progress)) % this.deck.length;
+                if (idx1 !== idx2) {
+                    const temp = this.deck[idx1];
+                    this.deck[idx1] = this.deck[idx2];
+                    this.deck[idx2] = temp;
+                }
+            }
             this.syncState();
             return;
         }
 
         if (action.type === 'SHUFFLE_COMPLETE') {
             if (this.shuffled) return;
-            this.shuffleDeck();
             this.dealCards();
             
             let firstCard = this.deck.pop();
@@ -913,8 +924,8 @@ class Game {
                     setShufflingActive(false);
                 }, 200);
 
-                // Update progress locally
-                this.shuffleProgress = Math.min(this.shuffleProgress + dist * 0.15, 100);
+                // Update progress locally (requires double the movement to fill)
+                this.shuffleProgress = Math.min(this.shuffleProgress + dist * 0.075, 100);
                 
                 const progressFill = document.getElementById('shuffle-progress-fill');
                 if (progressFill) progressFill.style.width = `${this.shuffleProgress}%`;
@@ -925,7 +936,9 @@ class Game {
                     this.sendAction({ 
                         type: 'SHUFFLE_PROGRESS', 
                         progress: this.shuffleProgress,
-                        shuffling: isShufflingNow
+                        shuffling: isShufflingNow,
+                        dx: dx,
+                        dy: dy
                     });
                 }
 
