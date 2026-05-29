@@ -573,6 +573,14 @@ body {
         margin-top: -39px;
     }
 
+    /* Push left/right players further outwards to the screen edges on mobile to give table breathing room */
+    .player-area.player-1:not(.is-me) {
+        left: 8% !important;
+    }
+    .player-area.player-3:not(.is-me) {
+        left: 92% !important;
+    }
+
     .menu-buttons {
         width: 100%;
         display: flex;
