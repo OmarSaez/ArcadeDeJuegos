@@ -183,6 +183,8 @@ class Game {
         this.drawAccumulator = 0;
         this.totalPlayed = 0;
         this.startTime = Date.now();
+        this.lastValidUnoTime = 0;
+        this.gracePeriodTimeout = null;
 
         if (net.isHost && !initialState) {
             this.initNewGame();
@@ -251,7 +253,8 @@ class Game {
             gameover: this.gameover,
             drawAccumulator: this.drawAccumulator,
             totalPlayed: this.totalPlayed,
-            startTime: this.startTime
+            startTime: this.startTime,
+            lastValidUnoTime: this.lastValidUnoTime
         };
     }
 
@@ -271,6 +274,7 @@ class Game {
         this.drawAccumulator = state.drawAccumulator || 0;
         this.totalPlayed = state.totalPlayed || 0;
         this.startTime = state.startTime || Date.now();
+        this.lastValidUnoTime = state.lastValidUnoTime || 0;
 
         this.render();
     }
@@ -433,16 +437,41 @@ class Game {
         // UNO Button Logic: High tension
         const unoBtn = document.getElementById('uno-btn');
         if (unoBtn) {
-            // PULSE only if:
-            // 1. Someone ELSE has 1 card AND hasn't called it (I can punish them)
-            // 2. I have 1 card AND haven't called it yet (Action required)
-            const othersNeedUno = this.players.some(p => !p.isMe && p.hand.length === 1 && !p.unoCalled);
-            const iNeedToCallUno = (me && me.hand.length === 1 && !me.unoCalled);
+            if (this.gracePeriodTimeout) {
+                clearTimeout(this.gracePeriodTimeout);
+                this.gracePeriodTimeout = null;
+            }
 
-            if (othersNeedUno || iNeedToCallUno) {
-                unoBtn.classList.add('uno-active');
+            const activePlayer = this.players[this.currentPlayerIdx];
+            const isActivePlayerWith2Cards = (activePlayer && activePlayer.hand.length === 2);
+            const someoneNeedsUno = this.players.some(p => p.hand.length === 1 && !p.unoCalled);
+            
+            const now = Date.now();
+            const timeSinceValidUno = this.lastValidUnoTime ? (now - this.lastValidUnoTime) : Infinity;
+            const isInGracePeriod = timeSinceValidUno < 1000;
+
+            if (isActivePlayerWith2Cards || someoneNeedsUno || isInGracePeriod) {
+                unoBtn.classList.remove('hidden');
+                
+                const othersNeedUno = this.players.some(p => !p.isMe && p.hand.length === 1 && !p.unoCalled);
+                const iNeedToCallUno = (me && me.hand.length === 1 && !me.unoCalled);
+                const iHave2CardsAndItsMyTurn = (me && activePlayer && String(me.id) === String(activePlayer.id) && me.hand.length === 2);
+
+                if (othersNeedUno || iNeedToCallUno || iHave2CardsAndItsMyTurn) {
+                    unoBtn.classList.add('uno-active');
+                } else {
+                    unoBtn.classList.remove('uno-active');
+                }
+                
+                if (isInGracePeriod) {
+                    const remainingTime = 1000 - timeSinceValidUno;
+                    this.gracePeriodTimeout = setTimeout(() => {
+                        this.gracePeriodTimeout = null;
+                        this.render();
+                    }, remainingTime + 50);
+                }
             } else {
-                unoBtn.classList.remove('uno-active');
+                unoBtn.classList.add('hidden');
             }
         }
 
@@ -508,18 +537,57 @@ class Game {
         this.players.forEach(p => { this.prevHandSizes[p.id] = p.hand.length; });
 
         if (action.type === 'UNO_CALL') {
+            const now = Date.now();
+            
+            // 1. If within the 1-second grace period of a successful call, ignore to prevent late-reaction penalties
+            if (this.lastValidUnoTime && (now - this.lastValidUnoTime < 1000)) {
+                return;
+            }
+
             const caller = this.players.find(p => String(p.id) === String(senderId));
+            if (!caller) return;
+
+            // 2. Identify if there is a valid victim (someone with 1 card who hasn't called UNO)
             const victim = this.players.find(p => p.hand.length === 1 && !p.unoCalled);
 
-            // If the caller is calling for themselves
-            if (caller && caller.hand.length <= 2) {
+            // 3. Identify if the active player has exactly 2 cards
+            const activePlayer = this.players[this.currentPlayerIdx];
+            const isActivePlayerWith2Cards = (activePlayer && activePlayer.hand.length === 2);
+
+            let isValidCall = false;
+
+            // Case A: Caller is the active player and has 2 cards (calling UNO before playing)
+            if (String(caller.id) === String(activePlayer.id) && isActivePlayerWith2Cards) {
                 caller.unoCalled = true;
+                isValidCall = true;
             }
-            // If someone is catching a victim
+            // Case B: Caller has 1 card and hasn't called UNO yet (saving themselves)
+            else if (caller.hand.length === 1 && !caller.unoCalled) {
+                caller.unoCalled = true;
+                isValidCall = true;
+            }
+            // Case C: Caller catches a victim
             else if (victim && String(victim.id) !== String(senderId)) {
                 this.forceDraw(this.players.indexOf(victim), 3);
+                victim.unoCalled = true; // Mark victim as safe now so they aren't caught repeatedly
+                isValidCall = true;
             }
-            this.syncState();
+
+            if (isValidCall) {
+                this.lastValidUnoTime = now;
+                this.syncState();
+                
+                // Set a timeout to render again after 1 second to hide the button
+                setTimeout(() => {
+                    if (net.isHost) {
+                        this.syncState();
+                    }
+                }, 1000);
+            } else {
+                // False UNO Call! Penalty: Draw 2 cards
+                this.forceDraw(this.players.indexOf(caller), 2);
+                this.syncState();
+            }
             return;
         }
 
