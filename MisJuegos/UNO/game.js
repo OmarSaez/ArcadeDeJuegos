@@ -50,6 +50,7 @@ class NetworkManager {
         this.myId = '';
         this.myNickname = '';
         this.playersReady = [];
+        this.clockOffset = 0;
     }
 
     initHost(nickname, onOpen) {
@@ -92,6 +93,10 @@ class NetworkManager {
             conn.on('open', () => {
                 clearTimeout(timeout);
                 this.setupConnection(conn);
+                
+                // Trigger clock sync with host
+                conn.send({ type: 'PING_SYNC', clientTime: Date.now() });
+                
                 onOpen();
             });
 
@@ -131,7 +136,14 @@ class NetworkManager {
         });
 
         conn.on('data', (data) => {
-            if (data.type === 'LOBBY_UPDATE') {
+            if (data.type === 'PING_SYNC') {
+                conn.send({ type: 'PONG_SYNC', clientTime: data.clientTime, hostTime: Date.now() });
+            } else if (data.type === 'PONG_SYNC') {
+                const now = Date.now();
+                const rtt = now - data.clientTime;
+                const latency = rtt / 2;
+                this.clockOffset = data.hostTime - (data.clientTime + latency);
+            } else if (data.type === 'LOBBY_UPDATE') {
                 this.playersReady = data.players;
                 updateLobbyUI(this.playersReady);
             } else if (data.type === 'START_GAME') {
@@ -169,6 +181,7 @@ class Game {
             hand: [],
             isMe: String(p.id) === String(net.myId),
             unoCalled: false,
+            falseUnoCalled: false,
             totalDrawn: 0
         }));
         this.deck = [];
@@ -185,6 +198,8 @@ class Game {
         this.startTime = Date.now();
         this.lastValidUnoTime = 0;
         this.gracePeriodTimeout = null;
+        this.pendingUnoCalls = [];
+        this.unoBufferTimeout = null;
 
         if (net.isHost && !initialState) {
             this.initNewGame();
@@ -339,6 +354,16 @@ class Game {
                     badge.className = 'uno-badge';
                     badge.innerText = '¡UNO!';
                     playerEl.appendChild(badge);
+                }
+                badge.classList.remove('falso');
+            } else if (player.falseUnoCalled) {
+                if (!badge) {
+                    badge = document.createElement('div');
+                    badge.className = 'uno-badge falso';
+                    badge.innerText = '¡UNO!';
+                    playerEl.appendChild(badge);
+                } else {
+                    badge.classList.add('falso');
                 }
             } else if (badge) {
                 badge.remove();
@@ -522,6 +547,7 @@ class Game {
     }
 
     sendAction(action) {
+        action.clickTime = Date.now() + (net.clockOffset || 0);
         if (net.isHost) this.executeAction(action, net.myId);
         else net.sendToHost({ type: 'GAME_ACTION', action: action });
     }
@@ -538,55 +564,17 @@ class Game {
 
         if (action.type === 'UNO_CALL') {
             const now = Date.now();
+            const clickTime = action.clickTime || now;
             
-            // 1. If within the 1-second grace period of a successful call, ignore to prevent late-reaction penalties
-            if (this.lastValidUnoTime && (now - this.lastValidUnoTime < 1000)) {
-                return;
-            }
-
-            const caller = this.players.find(p => String(p.id) === String(senderId));
-            if (!caller) return;
-
-            // 2. Identify if there is a valid victim (someone with 1 card who hasn't called UNO)
-            const victim = this.players.find(p => p.hand.length === 1 && !p.unoCalled);
-
-            // 3. Identify if the active player has exactly 2 cards
-            const activePlayer = this.players[this.currentPlayerIdx];
-            const isActivePlayerWith2Cards = (activePlayer && activePlayer.hand.length === 2);
-
-            let isValidCall = false;
-
-            // Case A: Caller is the active player and has 2 cards (calling UNO before playing)
-            if (String(caller.id) === String(activePlayer.id) && isActivePlayerWith2Cards) {
-                caller.unoCalled = true;
-                isValidCall = true;
-            }
-            // Case B: Caller has 1 card and hasn't called UNO yet (saving themselves)
-            else if (caller.hand.length === 1 && !caller.unoCalled) {
-                caller.unoCalled = true;
-                isValidCall = true;
-            }
-            // Case C: Caller catches a victim
-            else if (victim && String(victim.id) !== String(senderId)) {
-                this.forceDraw(this.players.indexOf(victim), 3);
-                victim.unoCalled = true; // Mark victim as safe now so they aren't caught repeatedly
-                isValidCall = true;
-            }
-
-            if (isValidCall) {
-                this.lastValidUnoTime = now;
-                this.syncState();
-                
-                // Set a timeout to render again after 1 second to hide the button
-                setTimeout(() => {
-                    if (net.isHost) {
-                        this.syncState();
-                    }
-                }, 1000);
-            } else {
-                // False UNO Call! Penalty: Draw 2 cards
-                this.forceDraw(this.players.indexOf(caller), 2);
-                this.syncState();
+            // Add to pending calls
+            this.pendingUnoCalls.push({ action, senderId, clickTime });
+            
+            // If buffer is not active, start it
+            if (!this.unoBufferTimeout) {
+                this.unoBufferTimeout = setTimeout(() => {
+                    this.unoBufferTimeout = null;
+                    this.processPendingUnoCalls();
+                }, 150); // 150ms buffer window
             }
             return;
         }
@@ -666,6 +654,84 @@ class Game {
         if (net.isHost) {
             net.broadcast({ type: 'UPDATE_STATE', gameState: this.getState() });
             this.render();
+        }
+    }
+
+    processPendingUnoCalls() {
+        if (!net.isHost) return;
+        
+        // Sort by clickTime ascending (earliest click first)
+        this.pendingUnoCalls.sort((a, b) => a.clickTime - b.clickTime);
+        
+        // Process each call
+        this.pendingUnoCalls.forEach(item => {
+            this.executeUnoCallDirectly(item.action, item.senderId);
+        });
+        
+        // Clear list
+        this.pendingUnoCalls = [];
+    }
+
+    executeUnoCallDirectly(action, senderId) {
+        const now = Date.now();
+        
+        // 1. If within the 1-second grace period of a successful call, ignore to prevent late-reaction penalties
+        if (this.lastValidUnoTime && (now - this.lastValidUnoTime < 1000)) {
+            return;
+        }
+
+        const caller = this.players.find(p => String(p.id) === String(senderId));
+        if (!caller) return;
+
+        // 2. Identify if there is a valid victim (someone with 1 card who hasn't called UNO)
+        const victim = this.players.find(p => p.hand.length === 1 && !p.unoCalled);
+
+        // 3. Identify if the active player has exactly 2 cards
+        const activePlayer = this.players[this.currentPlayerIdx];
+        const isActivePlayerWith2Cards = (activePlayer && activePlayer.hand.length === 2);
+
+        let isValidCall = false;
+
+        // Case A: Caller is the active player and has 2 cards (calling UNO before playing)
+        if (String(caller.id) === String(activePlayer.id) && isActivePlayerWith2Cards) {
+            caller.unoCalled = true;
+            isValidCall = true;
+        }
+        // Case B: Caller has 1 card and hasn't called UNO yet (saving themselves)
+        else if (caller.hand.length === 1 && !caller.unoCalled) {
+            caller.unoCalled = true;
+            isValidCall = true;
+        }
+        // Case C: Caller catches a victim
+        else if (victim && String(victim.id) !== String(senderId)) {
+            this.forceDraw(this.players.indexOf(victim), 3);
+            victim.unoCalled = true; // Mark victim as safe now so they aren't caught repeatedly
+            isValidCall = true;
+        }
+
+        if (isValidCall) {
+            this.lastValidUnoTime = now;
+            this.syncState();
+            
+            // Set a timeout to render again after 1 second to hide the button
+            setTimeout(() => {
+                if (net.isHost) {
+                    this.syncState();
+                }
+            }, 1000);
+        } else {
+            // False UNO Call! Penalty: Draw 2 cards
+            this.forceDraw(this.players.indexOf(caller), 2);
+            caller.falseUnoCalled = true;
+            this.syncState();
+
+            // Clear false UNO badge after 3 seconds
+            setTimeout(() => {
+                if (net.isHost) {
+                    caller.falseUnoCalled = false;
+                    this.syncState();
+                }
+            }, 3000);
         }
     }
 
