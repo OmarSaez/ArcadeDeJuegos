@@ -184,7 +184,7 @@ class Game {
         }));
         this.deck = [];
         this.discardPile = [];
-        this.currentPlayerIdx = 0;
+        this.currentPlayerIdx = Math.floor(Math.random() * this.players.length);
         this.direction = 1;
         this.selectedColor = null;
         this.justDrawnCardIdx = -1;
@@ -391,6 +391,16 @@ class Game {
                 playerEl.appendChild(nameEl);
             }
             nameEl.innerText = `${player.nickname} (${player.hand.length})`;
+            
+            // Align text with cards, but flip 180deg if on the upper half of the screen so it's never upside down
+            let normAngle = angle % 360;
+            if (normAngle > 180) normAngle -= 360;
+            if (normAngle < -180) normAngle += 360;
+            if (Math.abs(normAngle) > 90) {
+                nameEl.style.transform = 'rotate(180deg)';
+            } else {
+                nameEl.style.transform = 'none';
+            }
 
             if (this.players[this.currentPlayerIdx].id === player.id) {
                 nameEl.style.color = 'var(--uno-yellow)';

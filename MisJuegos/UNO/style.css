@@ -338,11 +338,11 @@ body {
 
 /* Center Oval */
 .card .center-oval {
-    width: 60%;
-    height: 50%;
+    width: 165%;
+    height: 46%;
     background: white;
     border-radius: 50%;
-    transform: rotate(-25deg);
+    transform: rotate(-48deg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -350,9 +350,9 @@ body {
 }
 
 .card .value {
-    font-size: 3rem;
+    font-size: 3.8rem;
     font-weight: 900;
-    transform: rotate(25deg);
+    transform: rotate(48deg);
     text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
 }
 
@@ -494,8 +494,9 @@ body {
 
 .card.back .value {
     color: white;
-    font-size: 0.8rem;
-    transform: rotate(25deg);
+    font-size: 1.8rem;
+    font-weight: 900;
+    transform: none;
 }
 
 /* UI Layer */
