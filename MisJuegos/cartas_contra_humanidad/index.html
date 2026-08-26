@@ -2020,10 +2020,12 @@
                     }
                     if (alreadyVoted) return;
 
-                    // Base reading time + staggered decision
-                    const baseReading = 2000 + (subCount * 1200);
+                    // Natural reading time: ~1.8s per card + organic deliberation spread across the round
+                    const baseReading = 2000 + (subCount * 1800);
                     const slotProgress = (bIdx + 1) / (shuffledBots.length + 1);
-                    const delay = Math.min(maxAllowedDelay, baseReading + (slotProgress * (maxAllowedDelay - baseReading)) + (Math.random() * 1500));
+                    const baseDelay = baseReading + (slotProgress * Math.max(0, maxAllowedDelay - baseReading));
+                    const jitter = (Math.random() - 0.5) * 1800;
+                    const delay = Math.max(2500, Math.min(maxAllowedDelay, baseDelay + jitter));
 
                     const t = setTimeout(() => {
                         if (gameState.phase !== 'VOTING') return;
@@ -3366,10 +3368,15 @@
         }
 
         function handleVote(voterId, subIndex) {
-            // Find who is voting
-            // Allow self-votes (but they count as 0 later)
             const targetSub = gameState.submissions[subIndex];
             if (!targetSub) return;
+
+            // Check if already voted (Scan all submissions for this voterId in votes array)
+            let alreadyVoted = false;
+            gameState.submissions.forEach(s => {
+                if (s.votes && s.votes.includes(voterId)) alreadyVoted = true;
+            });
+            if (alreadyVoted) return;
 
             // Self-Vote Penalty Logic (Host Side)
             if (targetSub.playerId === voterId) {
@@ -3387,30 +3394,32 @@
                 }
             }
 
-            // Check if already voted? (Scan all submissions for this voterId in votes array)
-            let alreadyVoted = false;
-            gameState.submissions.forEach(s => {
-                if (s.votes && s.votes.includes(voterId)) alreadyVoted = true;
-            });
-            if (alreadyVoted) return;
-
             // Record vote
             if (!targetSub.votes) targetSub.votes = [];
             targetSub.votes.push(voterId);
 
             console.log(`Vote recorded from ${voterId} for sub ${subIndex}`);
 
-            // Check if all players have voted
             // Count total votes
             let totalVotes = 0;
             gameState.submissions.forEach(s => {
                 if (s.votes) totalVotes += s.votes.length;
             });
 
-            // Need votes from everyone? Or everyone except... no everyone votes in Democracy usually?
-            // "y una vez votan todos sale el ganador"
+            // If everyone has voted, stop timer and score immediately!
             if (totalVotes >= players.length) {
+                clearBotTimeouts();
+                if (currentStateTimer) {
+                    clearInterval(currentStateTimer);
+                    currentStateTimer = null;
+                }
                 scoreVotingRound();
+            } else {
+                // Broadcast updated votes state so real-time player list updates
+                broadcast({
+                    type: 'SITUATION_UPDATE',
+                    state: gameState
+                });
             }
         }
 
@@ -4639,9 +4648,21 @@
                     const isCzar = (p.id === gameState.czarId);
                     const swapped = p.hasSwapped ? '<span style="color:#e11d48; margin-left:4px; font-weight:bold;">(Cambió)</span>' : '';
 
-                    // Check if they submitted
-                    const hasSubmitted = gameState.submissions && gameState.submissions.some(s => s.playerId === p.id);
-                    const ready = (hasSubmitted && !isCzar) ? '<span style="color:#10b981; margin-left:4px; font-weight:bold;">✓ Listo</span>' : '';
+                    // Check if they are ready (based on current phase)
+                    let ready = '';
+                    if (gameState.phase === 'SELECTION') {
+                        const hasSubmitted = gameState.submissions && gameState.submissions.some(s => s.playerId === p.id);
+                        if (hasSubmitted && !isCzar) {
+                            ready = '<span style="color:#10b981; margin-left:4px; font-weight:bold;">✓ Listo</span>';
+                        }
+                    } else if (gameState.phase === 'VOTING') {
+                        const hasVoted = gameState.submissions && gameState.submissions.some(s => s.votes && s.votes.includes(p.id));
+                        if (hasVoted) {
+                            ready = '<span style="color:#10b981; margin-left:4px; font-weight:bold;">✓ Votó</span>';
+                        } else {
+                            ready = '<span style="color:#fbbf24; margin-left:4px; font-size:0.75rem;">(Votando...)</span>';
+                        }
+                    }
 
                     const isMe = (p.id === myId);
                     const meTag = isMe ? ' (Tú)' : '';
