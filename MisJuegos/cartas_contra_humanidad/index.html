@@ -39,16 +39,30 @@
             left: 0;
             width: 100%;
             height: 100%;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
+            padding: 20px 15px 50px 15px;
             background: var(--bg-color);
             transition: opacity 0.3s ease;
             z-index: 10;
             overflow-y: auto;
+            overflow-x: hidden;
             box-sizing: border-box;
             -webkit-overflow-scrolling: touch;
+        }
+
+        #screen-menu {
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #screen-game {
+            padding: 0 !important;
+            justify-content: flex-start;
+            overflow: hidden !important;
         }
 
         .hidden {
@@ -278,8 +292,90 @@
         #lobby-list {
             list-style: none;
             padding: 0;
-            width: 300px;
+            width: 100%;
+            max-width: 320px;
             margin-bottom: 20px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        /* --- CARD AUTHOR BADGES (End of round reveal) --- */
+        .card-author-badge {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1e293b;
+            border: 1px solid #cbd5e1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            animation: popIn 0.3s ease-out both;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-author-badge.is-winner {
+            background: #fefce8;
+            color: #854d0e;
+            border: 1.5px solid #eab308;
+            box-shadow: 0 0 8px rgba(234, 179, 8, 0.35);
+        }
+
+        /* --- INGAME PLAYER STRIP --- */
+        .ingame-player-strip {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #f8fafc;
+            border-top: 1px solid #f1f5f9;
+            width: 100%;
+            box-sizing: border-box;
+            align-items: center;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            min-height: 38px;
+        }
+
+        .ingame-player-strip::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .ingame-player-strip::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .player-chip {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 3px 8px;
+            border-radius: 16px;
+            font-size: 0.78rem;
+            color: #334155;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .player-chip.is-me {
+            background: #eff6ff;
+            border-color: #93c5fd;
+            color: #1e40af;
+            font-weight: 600;
+        }
+
+        .player-chip.is-czar {
+            background: #fefce8;
+            border-color: #fef08a;
+            color: #854d0e;
         }
 
         /* --- STARS --- */
@@ -364,13 +460,18 @@
 
         #lobby-list li {
             background: white;
-            padding: 10px 15px;
-            margin-bottom: 5px;
-            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 8px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
             font-weight: bold;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            font-size: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            flex-shrink: 0;
+            box-sizing: border-box;
+            min-height: 44px;
         }
 
         /* --- ANIMATIONS --- */
@@ -414,9 +515,8 @@
         /* --- MOBILE --- */
         @media (max-width: 600px) {
             .screen {
-                justify-content: flex-start;
-                padding-top: 40px;
-                padding-bottom: 40px;
+                padding-top: 20px;
+                padding-bottom: 50px;
             }
 
             .card {
@@ -436,16 +536,6 @@
             h2 {
                 font-size: 1.5rem;
             }
-
-            #ingame-player-list {
-                top: auto;
-                bottom: 270px;
-                /* Above hand area */
-                right: 10px;
-                font-size: 0.75rem;
-                text-align: right;
-            }
-
         }
 
         /* Placeholder for ContentEditable */
@@ -478,10 +568,12 @@
 
     <!-- SCREEN 2: LOBBY -->
     <div id="screen-lobby" class="screen hidden">
-        <h2>SALA: <span id="lobby-code"
-                style="font-family:monospace; background:#e5e5e5; padding:2px 8px; border-radius:4px;">CODE</span></h2>
+        <h2 style="margin: 0 0 15px 0; font-size: 2.2rem; letter-spacing: -1px; text-align: center; flex-shrink: 0;">
+            SALA: <span id="lobby-code" style="font-family: monospace; background: #e5e5e5; padding: 4px 14px; border-radius: 8px; font-size: 2.2rem; letter-spacing: 2px;">CODE</span>
+        </h2>
+
         <ul id="lobby-list"></ul>
-        <div id="host-controls" class="hidden" style="width: 100%; max-width: 300px;">
+        <div id="host-controls" class="hidden" style="width: 100%; max-width: 300px; flex-shrink: 0;">
             <div
                 style="background: white; padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                 <label style="color:#666; font-size:0.8rem; font-weight:bold; display:block; margin-bottom: 2px;">PUNTOS
@@ -523,6 +615,8 @@
                 <button id="btn-timer-toggle" class="btn secondary"
                     style="width:100%; margin-top:5px; font-size:0.8rem; padding: 2px;" onclick="toggleTimerLimit()">Sin
                     Límite</button>
+            </div>
+
             <div
                 style="background: white; padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                 <label style="color:#666; font-size:0.8rem; font-weight:bold; display:block; margin-bottom: 2px;">JUGADORES BOT (IA)</label>
@@ -540,7 +634,7 @@
             <button class="btn" onclick="startGame()">Comenzar Juego</button>
         </div> <!-- Close Host Controls -->
 
-        <div id="client-settings-view" class="hidden" style="margin-bottom: 20px;">
+        <div id="client-settings-view" class="hidden" style="margin-bottom: 20px; flex-shrink: 0;">
             <p style="color:#666; font-weight:bold;">Puntos para ganar: <span id="points-display-client"
                     style="font-size:1.2rem; color:black;">3</span></p>
             <p style="color:#666; font-weight:bold;">Modo: <span id="mode-display-client"
@@ -550,11 +644,11 @@
             <p style="color:#666; font-weight:bold;">Bots: <span id="bots-display-client"
                     style="font-size:1.2rem; color:black;">0 🤖</span></p>
         </div>
-        <p id="wait-msg">Esperando al anfitrión...</p>
+        <p id="wait-msg" style="flex-shrink: 0;">Esperando al anfitrión...</p>
 
         <!-- Universal Create Card Button -->
         <div
-            style="margin-top: 15px; margin-bottom: 30px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            style="margin-top: 15px; margin-bottom: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px; flex-shrink: 0;">
             <button class="btn secondary" style="width: auto; padding: 10px 20px; font-size: 0.9rem;"
                 onclick="showCreateCardMenu()">
                 + Crear Carta
@@ -975,7 +1069,7 @@
         style="background: #e5e5e5; display: flex; flex-direction: column; overflow: hidden;">
         <!-- Unified Game Header -->
         <div id="unified-game-header"
-            style="flex: 0 0 auto; width: 100%; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 20; box-sizing: border-box;">
+            style="flex: 0 0 auto; width: 100%; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.08); z-index: 20; box-sizing: border-box;">
             <!-- Top Row: Stats -->
             <div
                 style="display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; border-bottom: 1px solid #f0f0f0;">
@@ -993,20 +1087,16 @@
             </div>
             <!-- Bottom Row: Status -->
             <div id="status-display"
-                style="text-align: center; padding: 8px 10px; font-size: 0.95rem; color: #1f2937; font-weight: 600; background: #fdfdfd; width: 100%; box-sizing: border-box;">
+                style="text-align: center; padding: 6px 10px; font-size: 0.9rem; color: #1f2937; font-weight: 600; background: #fdfdfd; width: 100%; box-sizing: border-box;">
                 Estado...
             </div>
+            <!-- Responsive Player Strip (Never overlaps black card, touch scrollable) -->
+            <div id="ingame-player-list" class="ingame-player-strip"></div>
         </div>
 
-        <!-- Player List (Floating but smaller) -->
-        <div id="ingame-player-list"
-            style="position: absolute; top: 100px; right: 10px; text-align: right; pointer-events: none; z-index: 15; opacity: 0.8; transform: scale(0.8); transform-origin: top right;">
-        </div>
-
-        <!-- SCROLLABLE CONTENT AREA -->
         <!-- SCROLLABLE CONTENT AREA -->
         <div
-            style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; padding-top: 20px; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 100%; box-sizing: border-box;">
+            style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; padding-top: 15px; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 100%; box-sizing: border-box; -webkit-overflow-scrolling: touch;">
 
             <!-- 1. BLACK CARD (Always Top) -->
             <div id="black-card-spot" style="margin-bottom: 15px; flex: 0 0 auto;"></div>
@@ -3287,6 +3377,46 @@
         }
 
         /* --- UI HELPERS --- */
+        function copyRoomCode() {
+            const codeEl = document.getElementById('lobby-code');
+            const code = codeEl ? codeEl.innerText.trim() : '';
+            if (!code || code === 'CODE') return;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(() => {
+                    showCopyFeedback("¡Código copiado al portapapeles! 📋");
+                }).catch(() => {
+                    fallbackCopy(code);
+                });
+            } else {
+                fallbackCopy(code);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const temp = document.createElement("input");
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            try {
+                document.execCommand("copy");
+                showCopyFeedback("¡Código copiado! 📋");
+            } catch (err) {
+                console.error("Copy failed:", err);
+            }
+            document.body.removeChild(temp);
+        }
+
+        function showCopyFeedback(msg) {
+            const fb = document.getElementById('copy-feedback');
+            if (fb) {
+                fb.innerText = msg;
+                setTimeout(() => {
+                    if (fb.innerText === msg) fb.innerText = '';
+                }, 2500);
+            }
+        }
+
         function showScreen(id) {
             console.log("Switching to screen:", id);
             document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
@@ -3492,22 +3622,25 @@
         }
 
         function updateTableUI() {
-            // Update Player List
+            // Update Player List (Responsive Strip)
             const listContainer = document.getElementById('ingame-player-list');
             if (listContainer && gameState.players) {
                 listContainer.innerHTML = gameState.players.map(p => {
                     const isCzar = (p.id === gameState.czarId);
-                    const swapped = p.hasSwapped ? '<span style="color:#e11d48; margin-left:5px;">(Cambió)</span>' : '';
+                    const swapped = p.hasSwapped ? '<span style="color:#e11d48; margin-left:4px; font-weight:bold;">(Cambió)</span>' : '';
 
                     // Check if they submitted
                     const hasSubmitted = gameState.submissions && gameState.submissions.some(s => s.playerId === p.id);
-                    const ready = (hasSubmitted && !isCzar) ? '<span style="color:#10b981; margin-left:5px;">(Listo)</span>' : '';
+                    const ready = (hasSubmitted && !isCzar) ? '<span style="color:#10b981; margin-left:4px; font-weight:bold;">✓ Listo</span>' : '';
 
-                    const isMe = (p.id === myId) ? ' (Tú)' : '';
-                    const botBadge = p.isBot ? ' <span style="font-size:0.7rem; background:#3b82f6; color:white; padding:1px 5px; border-radius:6px; font-weight:bold; margin-left:3px;">BOT</span>' : '';
-                    return `<div style="margin-bottom:5px; background: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 15px; font-size: 0.85rem; display:inline-block;">
-                        ${isCzar ? '👑 ' : ''}<strong>${p.name}</strong>${botBadge}${isMe}: ${p.score} pts ${swapped} ${ready}
-                    </div><br>`;
+                    const isMe = (p.id === myId);
+                    const meTag = isMe ? ' (Tú)' : '';
+                    const botBadge = p.isBot ? '<span style="font-size:0.65rem; background:#3b82f6; color:white; padding:1px 4px; border-radius:4px; font-weight:bold; margin-left:3px;">BOT</span>' : '';
+                    const chipClass = `player-chip ${isMe ? 'is-me' : ''} ${isCzar ? 'is-czar' : ''}`;
+
+                    return `<div class="${chipClass}">
+                        ${isCzar ? '👑 ' : ''}<span>${p.name}</span>${botBadge}${meTag}:&nbsp;<strong>${p.score} pts</strong>${swapped}${ready}
+                    </div>`;
                 }).join('');
             }
             // Update Czar Info
@@ -3713,6 +3846,31 @@
                             starRow.appendChild(s);
                         });
                         group.appendChild(starRow);
+                    }
+
+                    // Reveal Player Attribution in SCORE phase (Both Classic Judge & Democracy modes)
+                    if (gameState.phase === 'SCORE') {
+                        const allPlayersList = (gameState.players && gameState.players.length > 0) ? gameState.players : players;
+                        const player = allPlayersList.find(p => p.id === sub.playerId);
+                        const pName = player ? player.name : (sub.playerName || 'Jugador');
+                        const isWinner = (idx === gameState.winningSubmissionIndex);
+                        const isMe = (sub.playerId === myId);
+                        const botBadge = (player && player.isBot) ? ' <span style="font-size:0.65rem; background:#3b82f6; color:white; padding:1px 4px; border-radius:4px; font-weight:bold; margin-left:3px;">BOT</span>' : '';
+                        const meTag = isMe ? ' <span style="font-size:0.75rem; opacity:0.8;">(Tú)</span>' : '';
+                        const winnerTag = isWinner ? ' 👑' : '';
+
+                        const authorBadge = document.createElement('div');
+                        authorBadge.className = `card-author-badge ${isWinner ? 'is-winner' : ''}`;
+                        authorBadge.innerHTML = `<span>${pName}</span>${botBadge}${meTag}${winnerTag}`;
+
+                        // In democracy mode, delay appearance slightly so stars pop in first
+                        if (gameMode === 'DEMOC' && sub.votes && sub.votes.length > 0) {
+                            const totalVotes = countTotalVotes();
+                            const delaySeconds = (totalVotes * 0.4) + 0.3;
+                            authorBadge.style.animationDelay = delaySeconds + 's';
+                        }
+
+                        group.appendChild(authorBadge);
                     }
 
                     pcArea.appendChild(group);
