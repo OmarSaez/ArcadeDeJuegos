@@ -301,7 +301,7 @@
 
         /* --- CARD AUTHOR BADGES (End of round reveal) --- */
         .card-author-badge {
-            margin-top: 8px;
+            margin-top: 6px;
             font-size: 0.85rem;
             font-weight: bold;
             padding: 5px 12px;
@@ -313,7 +313,8 @@
             align-items: center;
             justify-content: center;
             white-space: nowrap;
-            animation: popIn 0.3s ease-out both;
+            opacity: 0;
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
@@ -382,13 +383,18 @@
         .star-container {
             display: flex;
             justify-content: center;
-            margin-top: 5px;
+            align-items: center;
+            margin-top: 6px;
+            margin-bottom: 2px;
+            min-height: 26px; /* RESERVES EXACT SAME SPACE EVEN WITH 0 STARS */
             flex-wrap: wrap;
-            gap: 2px;
+            gap: 3px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .star-icon {
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             display: inline-block;
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
             margin-right: 2px;
@@ -437,24 +443,6 @@
                 border-color: gold;
                 background-color: rgba(255, 215, 0, 0.2);
                 transform: scale(1);
-            }
-        }
-
-        .star-black {
-            color: #1f2937;
-            text-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
-        }
-
-
-        @keyframes popIn {
-            from {
-                transform: scale(0);
-                opacity: 0;
-            }
-
-            to {
-                transform: scale(1);
-                opacity: 1;
             }
         }
 
@@ -3064,7 +3052,9 @@
                     broadcast({ type: 'SITUATION_UPDATE', state: gameState });
 
                     // Delay next round
-                    setTimeout(() => startRound(), 5000);
+                    const starInfo = getStarDelaysInfo();
+                    const delayToNextRound = (starInfo.finalRevealTime * 1000) + 4000;
+                    setTimeout(() => startRound(), delayToNextRound);
 
                 } else {
                     // Single Winner
@@ -3093,27 +3083,33 @@
                 });
 
                 // No score update, just wait
-                setTimeout(() => startRound(), 5000);
+                const starInfo = getStarDelaysInfo();
+                const delayToNextRound = (starInfo.finalRevealTime * 1000) + 4000;
+                setTimeout(() => startRound(), delayToNextRound);
             }
         }
 
         let gameStartTime = 0;
 
         function checkGameEnd(p) {
+            const starInfo = getStarDelaysInfo();
+            const delayToNextRound = (gameMode === 'DEMOC') ? ((starInfo.finalRevealTime * 1000) + 4000) : 5500;
+
             // Check for Game Winner
             if (p.score >= pointsToWin) {
-                // Game Over
+                // Game Over after reveal
+                const goDelay = Math.max(1000, delayToNextRound - 1000);
                 setTimeout(() => {
                     const durationMs = Date.now() - gameStartTime;
                     showGameOverScreen(p, durationMs);
                     // Broadcast to clients WITH final players list
                     broadcast({ type: 'GAME_OVER', winner: p, duration: durationMs, players: players });
-                }, 1000);
+                }, goDelay);
             } else {
                 // Wait then next round
                 setTimeout(() => {
                     startRound();
-                }, 5000);
+                }, delayToNextRound);
             }
         }
 
@@ -3569,72 +3565,91 @@
             }
         }
 
-        // Memoized star delays
-        let starDelayCache = { round: -1, phase: '', voteCount: -1, map: new Map() };
+        // Memoized star delays & reveal timing
+        let starDelayCache = { round: -1, phase: '', voteCount: -1, delays: new Map(), finalRevealTime: 0 };
 
-        function getStarDelays() {
-            // Cache invalidation conditions
+        function getStarDelaysInfo() {
             const currentVoteCount = countTotalVotes();
             if (starDelayCache.round === gameState.round &&
                 starDelayCache.phase === gameState.phase &&
                 starDelayCache.voteCount === currentVoteCount) {
-                return starDelayCache.map;
+                return starDelayCache;
             }
 
-            // Compute
             const delayMap = new Map();
-
-            // Find max depth (max number of votes any card has)
-            let maxDepth = 0;
-            if (gameState.submissions) {
-                gameState.submissions.forEach(sub => {
-                    if (sub.votes && sub.votes.length > maxDepth) maxDepth = sub.votes.length;
-                });
-            }
-
-            // Assign delays based on Waves
-            // Wave N: All stars at index N appear together.
-            // Self-votes appear AFTER all possible normal waves.
-            const waveDuration = 0.6; // Seconds between waves
-            const selfVoteOffset = (maxDepth * waveDuration) + 0.5;
+            const blackStars = [];
+            const greyStars = [];
+            const goldRanks = []; // goldRanks[0] = 1st gold star of each card, goldRanks[1] = 2nd gold star, etc.
 
             if (gameState.submissions) {
                 gameState.submissions.forEach((sub, sIdx) => {
                     if (sub.votes) {
-                        // We want self votes to be visually last? 
-                        // The DOM order is determined by sub.votes array order.
-                        // But we can just delay the animation heavily.
-
-                        let selfCountInThisCard = 0;
-
+                        let goldCountThisSub = 0;
                         sub.votes.forEach((vId, vIdx) => {
                             const isSelf = (vId === sub.playerId);
-                            let delay = 0;
-
-                            if (!isSelf) {
-                                // Wave based on index
-                                delay = vIdx * waveDuration;
-                                // Add slight organic jitter
-                                delay += (Math.random() * 0.2);
+                            if (isSelf) {
+                                const allPlayers = (gameState.players && gameState.players.length > 0) ? gameState.players : players;
+                                const voter = allPlayers.find(p => p.id === vId);
+                                const isBlack = (voter && (voter.selfVoteCount || 0) >= 3);
+                                if (isBlack) {
+                                    blackStars.push({ sIdx, vIdx });
+                                } else {
+                                    greyStars.push({ sIdx, vIdx });
+                                }
                             } else {
-                                // Self vote: Push to end
-                                delay = selfVoteOffset + (selfCountInThisCard * 0.5);
-                                selfCountInThisCard++;
+                                const rank = goldCountThisSub;
+                                goldCountThisSub++;
+                                if (!goldRanks[rank]) goldRanks[rank] = [];
+                                goldRanks[rank].push({ sIdx, vIdx });
                             }
-
-                            delayMap.set(`${sIdx}-${vIdx}`, delay);
                         });
                     }
                 });
             }
 
+            let currentTime = 0.5; // Initial 0.5s pause after cards land
+
+            // 1. Black Stars (Penalty self-votes pop first)
+            if (blackStars.length > 0) {
+                blackStars.forEach((star, idx) => {
+                    delayMap.set(`${star.sIdx}-${star.vIdx}`, currentTime + (idx * 0.6));
+                });
+                currentTime += (blackStars.length * 0.6) + 0.4;
+            }
+
+            // 2. Grey Stars (Self-votes pop next)
+            if (greyStars.length > 0) {
+                greyStars.forEach((star, idx) => {
+                    delayMap.set(`${star.sIdx}-${star.vIdx}`, currentTime + (idx * 0.6));
+                });
+                currentTime += (greyStars.length * 0.6) + 0.4;
+            }
+
+            // 3. Gold Stars (Round by round - all cards with 1st star pop, then 2nd star pop, etc.)
+            for (let r = 0; r < goldRanks.length; r++) {
+                const wave = goldRanks[r];
+                if (wave && wave.length > 0) {
+                    wave.forEach((star, k) => {
+                        // Subtle stagger (80ms) across cards in the wave for organic suspense
+                        delayMap.set(`${star.sIdx}-${star.vIdx}`, currentTime + (k * 0.08));
+                    });
+                    currentTime += 0.9; // 900ms between star waves for maximum suspense
+                }
+            }
+
+            // Final reveal time for winner glow and author badges
+            const totalStars = blackStars.length + greyStars.length + (goldRanks.reduce((acc, w) => acc + (w ? w.length : 0), 0));
+            const finalRevealTime = (totalStars > 0) ? (currentTime + 0.2) : 0.4;
+
             starDelayCache = {
                 round: gameState.round,
                 phase: gameState.phase,
                 voteCount: currentVoteCount,
-                map: delayMap
+                delays: delayMap,
+                finalRevealTime: finalRevealTime
             };
-            return delayMap;
+
+            return starDelayCache;
         }
 
         function countTotalVotes() {
@@ -3710,7 +3725,7 @@
                     }
                 }
             } else if (gameState.phase === 'JUDGING') {
-                status.innerText = (gameState.czarId === myId) ? "¡JUZGA! Elige la ganadora." : "El Juez está eligiendo...";
+                status.innerText = (gameState.czarId === myId) ? "Eres el JUEZ. ¡Elige la mejor carta!" : "El Juez está eligiendo...";
                 // Hide Hand
                 const hc = document.getElementById('hand-container');
                 if (hc) hc.style.display = 'none';
@@ -3754,6 +3769,8 @@
                     pcArea.appendChild(group);
                 });
             } else if (gameState.phase === 'JUDGING' || gameState.phase === 'SCORE' || gameState.phase === 'VOTING') {
+                const starInfo = getStarDelaysInfo();
+
                 // Show real cards
                 gameState.submissions.forEach((sub, idx) => {
                     const group = document.createElement('div');
@@ -3766,18 +3783,14 @@
                         group.style.animationDelay = (idx * 0.15) + 's';
                     }
 
-                    // If SCORING, highlight winner AFTER stars
+                    // If SCORING, highlight winner AFTER all stars have landed
                     if (gameState.phase === 'SCORE' && idx === gameState.winningSubmissionIndex) {
                         group.style.border = '2px solid transparent'; // Start invisible
                         group.style.borderRadius = '10px';
                         group.style.padding = '5px';
                         group.style.background = 'transparent'; // Start invisible
 
-                        // Calculate delay based on total votes
-                        // We know delay is index * 0.5s. 
-                        const totalVotes = countTotalVotes();
-                        const delaySeconds = (totalVotes * 0.5) + 0.5; // Wait for all stars + 0.5s buffer
-
+                        const delaySeconds = (gameMode === 'DEMOC') ? starInfo.finalRevealTime : 0.3;
                         group.style.animation = `winnerGlow 0.8s ease-out forwards ${delaySeconds}s`;
                     }
 
@@ -3793,7 +3806,7 @@
                     const cardWrapper = document.createElement('div');
                     cardWrapper.style.display = 'flex';
                     cardWrapper.style.gap = '5px';
-                    group.style.flexDirection = 'column'; // Allow stars below
+                    group.style.flexDirection = 'column'; // Allow stars & badge below
                     group.style.alignItems = 'center';
                     group.appendChild(cardWrapper);
 
@@ -3849,34 +3862,36 @@
                         cardWrapper.appendChild(c);
                     });
 
-                    // Append Stars if applicable
-                    if ((gameState.phase === 'SCORE' || gameState.phase === 'JUDGING') && sub.votes && sub.votes.length > 0) {
-                        const starDelays = getStarDelays();
+                    // Append Stars container in Democracy mode (or whenever votes exist)
+                    // Always appended so ALL cards have the EXACT same vertical height!
+                    if (gameMode === 'DEMOC' || (sub.votes && sub.votes.length > 0)) {
                         const starRow = document.createElement('div');
                         starRow.className = 'star-container';
-                        sub.votes.forEach((vId, vIdx) => {
-                            const s = document.createElement('span');
-                            const isSelf = (vId === sub.playerId);
-                            let starClass = 'star-gold';
 
-                            if (isSelf) {
-                                starClass = 'star-grey';
-                                const voter = players.find(p => p.id === vId);
-                                if (voter && (voter.selfVoteCount || 0) >= 3) {
-                                    starClass = 'star-black';
+                        if ((gameState.phase === 'SCORE' || gameState.phase === 'JUDGING') && sub.votes && sub.votes.length > 0) {
+                            sub.votes.forEach((vId, vIdx) => {
+                                const s = document.createElement('span');
+                                const isSelf = (vId === sub.playerId);
+                                let starClass = 'star-gold';
+
+                                if (isSelf) {
+                                    starClass = 'star-grey';
+                                    const allPlayers = (gameState.players && gameState.players.length > 0) ? gameState.players : players;
+                                    const voter = allPlayers.find(p => p.id === vId);
+                                    if (voter && (voter.selfVoteCount || 0) >= 3) {
+                                        starClass = 'star-black';
+                                    }
                                 }
-                            }
 
-                            s.className = `star-icon ${starClass}`;
-                            s.innerHTML = '★';
+                                s.className = `star-icon ${starClass}`;
+                                s.innerHTML = '★';
 
-                            // Use calculated global delay
-                            const dVal = starDelays ? starDelays.get(`${idx}-${vIdx}`) : undefined;
-                            const delay = (dVal !== undefined) ? dVal : (vIdx * 0.2);
-                            s.style.animationDelay = delay + 's';
+                                const delay = starInfo.delays.get(`${idx}-${vIdx}`) || 0.5;
+                                s.style.animationDelay = delay + 's';
 
-                            starRow.appendChild(s);
-                        });
+                                starRow.appendChild(s);
+                            });
+                        }
                         group.appendChild(starRow);
                     }
 
@@ -3895,12 +3910,9 @@
                         authorBadge.className = `card-author-badge ${isWinner ? 'is-winner' : ''}`;
                         authorBadge.innerHTML = `<span>${pName}</span>${botBadge}${meTag}${winnerTag}`;
 
-                        // In democracy mode, delay appearance slightly so stars pop in first
-                        if (gameMode === 'DEMOC' && sub.votes && sub.votes.length > 0) {
-                            const totalVotes = countTotalVotes();
-                            const delaySeconds = (totalVotes * 0.4) + 0.3;
-                            authorBadge.style.animationDelay = delaySeconds + 's';
-                        }
+                        // In Democracy mode, reveal author badges simultaneously when the final star lands
+                        const delaySeconds = (gameMode === 'DEMOC') ? starInfo.finalRevealTime : 0.3;
+                        authorBadge.style.animationDelay = delaySeconds + 's';
 
                         group.appendChild(authorBadge);
                     }
