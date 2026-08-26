@@ -1207,25 +1207,51 @@
             broadcast({ type: 'UPDATE_LOBBY', players: players });
         }
 
-        // Heuristic classification of White Cards
+        // Advanced linguistic and thematic classification of White Cards
         function classifyWhiteCard(text) {
             const clean = (text || "").trim();
-            const verbRegex = /^(?:[A-ZÁÉÍÓÚa-záéíóú]+(?:ar|er|ir|arse|erse|irse)|andar|hacer|tener|decir|estar|ir|ver|dar|saber|querer|llegar|pasar|deber|poner|parecer|quedar|creer|hablar|llevar|dejar|seguir|encontrar|llamar|venir|pensar|salir|volver|tomar|conocer|vivir|sentir|tratar|mirar|contar|empezar|esperar|buscar|existir|entrar|trabajar|escribir|perder|producir|ocurrir|entender|pedir|recibir|recordar|terminar|permitir|aparecer|conseguir|comenzar|servir|sacar|necesitar|mantener|resultar|leer|caer|cambiar|presentar|crear|abrir|considerar|oir|acabar|ganar|formar|traer|partir|morir|aceptar|realizar|suponer|comprender|lograr|explicar|preguntar|tocar|reconocer|nacer|dirigir|correr|utilizar|pagar|ayudar|gustar|jugar|escuchar|cumplir|ofrecer|descubrir|levantar|intentar|tirar|golpear|destaquear|lamer|avisar|enseñar|pretender)\b/i;
+            const lower = clean.toLowerCase();
+
+            // 1. Verb / Action Detection
+            const verbRegex = /^(?:[A-ZÁÉÍÓÚa-záéíóú]+(?:ar|er|ir|arse|erse|irse|ando|iendo)|andar|hacer|tener|decir|estar|ir|ver|dar|saber|querer|llegar|pasar|deber|poner|parecer|quedar|creer|hablar|llevar|dejar|seguir|encontrar|llamar|venir|pensar|salir|volver|tomar|conocer|vivir|sentir|tratar|mirar|contar|empezar|esperar|buscar|existir|entrar|trabajar|escribir|perder|producir|ocurrir|entender|pedir|recibir|recordar|terminar|permitir|aparecer|conseguir|comenzar|servir|sacar|necesitar|mantener|resultar|leer|caer|cambiar|presentar|crear|abrir|considerar|oir|acabar|ganar|formar|traer|partir|morir|aceptar|realizar|suponer|comprender|lograr|explicar|preguntar|tocar|reconocer|nacer|dirigir|correr|utilizar|pagar|ayudar|gustar|jugar|escuchar|cumplir|ofrecer|descubrir|levantar|intentar|tirar|golpear|destaquear|lamer|avisar|enseñar|pretender|escapar|destruir|violar|follar|coger|mear|cagar|gritar|rezar|chupar|besar|gemir)\b/i;
             const isAction = verbRegex.test(clean);
 
-            const spicyRegex = /(?:sexo|pene|vagina|pedor|caca|mierda|orina|violar|droga|feto|muerte|matar|ano|prostituta|porno|orgasmo|eyaculac|putin|hitler|nazi|jud[ií]o|racis|yihad|semen|consolador|cond[oó]n|pez[oó]n|teta|culo|tetas|pechos|gemir|desnudo|leche|borracho|drogas|marihuana|coca[ií]na|travesti|gay|lesbiana|incesto|pedof|cad[aá]ver|violencia|fantas[ií]as?|le[ñn]adores|excremento)/i;
-            const isSpicy = spicyRegex.test(clean);
+            // 2. Entity / Person / Subject Detection
+            const personRegex = /(?:batman|putin|hitler|will smith|amber heard|el negro de whatsapp|leñadores|taxistas|yihadista|hombres|mujeres|anfitrión|progres|amiga de mami|papa francisco|bebé|anciano|abuela|policía|presidente|alcalde|chavales|niños|gay|lesbiana|travesti|gringos|maradona|messi|shakira|arjona|doctor|profesor|elvis|trump|obama)/i;
+            const isPerson = personRegex.test(lower);
+
+            // 3. Body / Biological / Sexual / Taboo Detection
+            const spicyRegex = /(?:sexo|pene|vagina|pedor|pedo|caca|mierda|orina|violar|droga|feto|muerte|matar|ano|prostituta|porno|orgasmo|eyaculac|putin|hitler|nazi|jud[ií]o|racis|yihad|semen|consolador|cond[oó]n|pez[oó]n|teta|culo|tetas|pechos|gemir|desnudo|leche|borracho|drogas|marihuana|coca[ií]na|travesti|gay|lesbiana|incesto|pedof|cad[aá]ver|violencia|fantas[ií]as?|le[ñn]adores|excremento|sangre|vómito|diarrea|orgía|masturbar|clítoris|esperma|prepucio|prostata)/i;
+            const isSpicy = spicyRegex.test(lower);
+
+            // 4. Abstract / Cultural / Political Concept
+            const conceptRegex = /(?:ideología|género|masculinidad|feminismo|familia tradicional|carbono neutral|comunismo|capitalismo|religión|peste negra|covid|trauma|estado sentimental|combustión|democracia|justicia|pobreza|apocalipsis)/i;
+            const isConcept = conceptRegex.test(lower);
+
+            // 5. Gender & Number Agreement Heuristics
+            const startsWithEl = /^(?:el|un|este|ese)\b/i.test(clean);
+            const startsWithLa = /^(?:la|una|esta|esa)\b/i.test(clean);
+            const startsWithPlural = /^(?:los|las|unos|unas|estos|estas)\b/i.test(clean);
+
+            const isPlural = startsWithPlural || (clean.endsWith('s') && !clean.endsWith('is') && !clean.endsWith('as'));
+            const isFeminine = startsWithLa || (clean.endsWith('a') && !startsWithEl);
+            const isMasculine = startsWithEl || (!isFeminine && !isPlural);
 
             return {
                 text: clean,
-                isAction: isAction,
+                isAction,
                 isSubject: !isAction,
-                isSpicy: isSpicy,
+                isPerson,
+                isConcept,
+                isSpicy,
+                isPlural,
+                isFeminine,
+                isMasculine,
                 length: clean.length
             };
         }
 
-        // Analyze Black Card syntax to determine requirements per blank
+        // Deep analysis of Black Card syntax and context around each blank
         function analyzeBlackCard(blackCard) {
             const text = (blackCard && blackCard.text) ? blackCard.text : "";
             const blanks = (blackCard && blackCard.blanks) ? blackCard.blanks : 1;
@@ -1234,20 +1260,45 @@
 
             for (let i = 0; i < blanks; i++) {
                 const prevText = (parts[i] || "").toLowerCase().trim();
-                const needsAction = /(?:quiero|puedo|debo|ten[íi]a que|para|a|al|antes de|despu[eé]s de|empez[oó] a|iba a|saber|aprendi[oó] a|prohibido|capaz de|gusta|dejar de|sin)\s*$/i.test(prevText);
-                const needsSubject = /(?:un|una|unos|unas|el|la|los|las|con|de|del|junto a|contra|sobre|hacia|entre|hijo de|rey de|anfitri[oó]n|tributo a|retrato de|es|era|soy|eres|somos)\s*$/i.test(prevText);
+                const nextText = (parts[i + 1] || "").toLowerCase().trim();
+
+                // 1. Action requirement triggers
+                const needsAction = /(?:quiero|puedo|debo|ten[íi]a que|para|a|al|antes de|despu[eé]s de|empez[oó] a|iba a|saber|aprendi[oó] a|prohibido|capaz de|gusta|dejar de|sin|en vez de|dedicarse a|termin[oó] por|comenz[oó] a)\s*$/i.test(prevText);
+
+                // 2. Person / Entity triggers
+                const needsPerson = /(?:con|junto a|contra|anfitri[oó]n|retrato de|tributo a|hijo de|biograf[ií]a de|álbum de|enviado por|enterraran con|matar a|votar por|enamorarse de|casarse con|anfitriones)\s*$/i.test(prevText);
+
+                // 3. Object / Concept / Cause triggers
+                const needsConceptOrThing = /(?:ley de|provoca|causa de|historia de|lección de|invent[oó]|lleno de|sobra en|transformar[aá] en|experto en|proyecto de|secretos de|secuelas de|donar)\s*$/i.test(prevText);
+
+                // 4. Preceding article gender/number agreement
+                const favorsMasculine = /(?:un|el|del|al|este|ese)\s*$/i.test(prevText);
+                const favorsFeminine = /(?:una|la|de la|a la|esta|esa)\s*$/i.test(prevText);
+                const favorsPlural = /(?:unos|unas|los|las|de los|de las|varios|muchos)\s*$/i.test(prevText);
 
                 blankNeeds.push({
-                    needsAction: needsAction && !needsSubject,
-                    needsSubject: needsSubject || !needsAction,
-                    isFirstBlank: i === 0
+                    needsAction: needsAction && !needsPerson,
+                    needsPerson: needsPerson,
+                    needsConceptOrThing: needsConceptOrThing,
+                    needsSubject: !needsAction,
+                    favorsMasculine,
+                    favorsFeminine,
+                    favorsPlural,
+                    isFirstBlank: (i === 0),
+                    isLastBlank: (i === blanks - 1),
+                    prevText,
+                    nextText
                 });
             }
 
-            return { blanks, blankNeeds };
+            // Overall tone of the black card
+            const isSpicyPrompt = /(?:sexo|muerte|lecho|león|puto|placer|prohibido|cama|cuerpo|pecado|broma|morgue|borracho|cárcel|violar|desnudo)/i.test(text);
+            const isFormalPrompt = /(?:ley|gobierno|presidente|filarmónica|iglesia|concurso|instituto|biografía|empresa|premio|historia)/i.test(text);
+
+            return { blanks, blankNeeds, isSpicyPrompt, isFormalPrompt, rawText: text };
         }
 
-        // Bot picks cards according to black card context and personality
+        // Smart Card Selection for Bots
         function botPickCards(bot, blackCard) {
             if (!bot.hand || bot.hand.length === 0) return [];
             const analysis = analyzeBlackCard(blackCard);
@@ -1263,29 +1314,62 @@
                 available.forEach(card => {
                     let score = 50 + Math.random() * 20;
 
-                    if (req.needsAction && card.isAction) score += 40;
-                    if (req.needsSubject && card.isSubject) score += 30;
-                    if (req.needsAction && card.isSubject) score -= 25;
+                    // Grammatical Role Harmony
+                    if (req.needsAction) {
+                        if (card.isAction) score += 45;
+                        else score -= 30;
+                    }
+                    if (req.needsPerson) {
+                        if (card.isPerson) score += 40;
+                        else if (card.isSubject) score += 20;
+                        else score -= 15;
+                    }
+                    if (req.needsSubject) {
+                        if (card.isSubject) score += 30;
+                        else score -= 20;
+                    }
 
-                    if (bot.personality === 'spicy' && card.isSpicy) score += 50;
-                    if (bot.personality === 'coherent') {
+                    // Gender & Number Agreement Bonus
+                    if (req.favorsMasculine && card.isMasculine) score += 18;
+                    if (req.favorsFeminine && card.isFeminine) score += 18;
+                    if (req.favorsPlural && card.isPlural) score += 18;
+
+                    // Black Card Tone Synergy
+                    if (analysis.isSpicyPrompt && card.isSpicy) score += 25;
+                    if (analysis.isFormalPrompt && card.isSpicy) score += 35; // Contrast humor!
+
+                    // Personality Profiles
+                    if (bot.personality === 'spicy') {
+                        if (card.isSpicy) score += 55;
+                        if (card.isPerson) score += 20;
+                    } else if (bot.personality === 'coherent') {
                         if (req.needsAction && card.isAction) score += 50;
                         if (req.needsSubject && card.isSubject) score += 40;
-                    }
-                    if (bot.personality === 'absurd') {
-                        if (req.needsAction && card.isSubject) score += 35;
+                        if (req.favorsMasculine && card.isMasculine) score += 20;
+                        if (req.favorsFeminine && card.isFeminine) score += 20;
+                    } else if (bot.personality === 'absurd') {
+                        // Contrarian humor / unexpected absurdity
+                        if (req.needsAction && card.isSubject) score += 30;
+                        if (card.isPerson && !req.needsPerson) score += 35;
                         if (card.isSpicy) score += 25;
-                    }
-                    if (bot.personality === 'chaotic') {
-                        score += (Math.random() * 60);
+                    } else if (bot.personality === 'chaotic') {
+                        score += (Math.random() * 65);
                         if (card.isSpicy) score += 30;
+                    }
+
+                    // Double-card synergy (if picking 2nd card, favor contrast with 1st card)
+                    if (b > 0 && selected.length > 0) {
+                        const firstCard = classifyWhiteCard(selected[0]);
+                        if (firstCard.isPerson && card.isAction) score += 30;
+                        if (firstCard.isAction && card.isPerson) score += 30;
+                        if (!firstCard.isSpicy && card.isSpicy) score += 40; // Punchline escalation!
                     }
 
                     card._tempScore = score;
                 });
 
                 available.sort((a, b) => b._tempScore - a._tempScore);
-                const pickIdx = (available.length > 1 && Math.random() < 0.2) ? 1 : 0;
+                const pickIdx = (available.length > 1 && Math.random() < 0.15) ? 1 : 0;
                 const chosen = available.splice(pickIdx, 1)[0];
                 if (chosen) selected.push(chosen.text);
             }
@@ -1293,30 +1377,97 @@
             return selected;
         }
 
-        // Bot Czar picks the winning submission
+        // Bot Czar picks the winning submission with deep evaluation
         function botJudgeSubmissions(bot, submissions, blackCard) {
             if (!submissions || submissions.length === 0) return 0;
+            const analysis = analyzeBlackCard(blackCard);
 
             const scored = submissions.map((sub, idx) => {
                 let score = 50 + Math.random() * 25;
+                const classifiedCards = sub.cards.map(c => classifyWhiteCard(c));
 
-                sub.cards.forEach(cardText => {
-                    const c = classifyWhiteCard(cardText);
-                    if (bot.personality === 'spicy' && c.isSpicy) score += 45;
+                classifiedCards.forEach((c, cIdx) => {
+                    const req = analysis.blankNeeds[cIdx] || { needsAction: false, needsSubject: true };
+
+                    // Grammar flow
+                    if (req.needsAction && c.isAction) score += 30;
+                    if (req.needsSubject && c.isSubject) score += 20;
+                    if (req.favorsFeminine && c.isFeminine) score += 15;
+                    if (req.favorsMasculine && c.isMasculine) score += 15;
+
+                    // Personality affinity
+                    if (bot.personality === 'spicy' && c.isSpicy) score += 50;
                     if (bot.personality === 'coherent') {
-                        score += 20;
-                        if (c.isAction || c.isSubject) score += 15;
+                        if (req.needsAction && c.isAction) score += 35;
+                        if (req.needsSubject && c.isSubject) score += 25;
                     }
                     if (bot.personality === 'absurd') {
-                        if (c.length < 20 || c.isSpicy) score += 30;
+                        if (c.isPerson || c.isSpicy) score += 35;
                     }
                     if (bot.personality === 'chaotic') {
                         score += Math.random() * 50;
                     }
-                    if (cardText.length > 15 && cardText.length < 60) score += 10;
+
+                    // Ideal punchline length
+                    if (c.length > 15 && c.length < 55) score += 10;
                 });
 
+                // Narrative build-up bonus for multi-card submissions
+                if (classifiedCards.length >= 2) {
+                    const [c1, c2] = classifiedCards;
+                    if ((c1.isPerson && c2.isAction) || (c1.isAction && c2.isPerson)) score += 30;
+                    if (!c1.isSpicy && c2.isSpicy) score += 45; // Perfect punchline!
+                }
+
                 return { index: idx, score: score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+            const pick = (scored.length > 1 && Math.random() < 0.12) ? scored[1].index : scored[0].index;
+            return pick;
+        }
+
+        // Bot votes in Democracy mode (with 3% chance of self-vote as a funny easter egg!)
+        function botVoteSubmission(bot, submissions, blackCard) {
+            if (!submissions || submissions.length === 0) return -1;
+
+            const selfSubIdx = submissions.findIndex(s => s.playerId === bot.id);
+            // 3% probability for a cheeky self-vote
+            if (selfSubIdx !== -1 && Math.random() < 0.03) {
+                console.log(`[BOT VOTE] 😈 ${bot.name} decidió narcisistamente votar por sí mismo!`);
+                return selfSubIdx;
+            }
+
+            // Normal flow: strictly filter out self
+            const validSubs = submissions
+                .map((sub, idx) => ({ sub, idx }))
+                .filter(item => item.sub.playerId !== bot.id);
+
+            if (validSubs.length === 0) return (selfSubIdx !== -1 ? selfSubIdx : 0);
+
+            const analysis = analyzeBlackCard(blackCard);
+
+            const scored = validSubs.map(item => {
+                let score = 50 + Math.random() * 30;
+                const classifiedCards = item.sub.cards.map(c => classifyWhiteCard(c));
+
+                classifiedCards.forEach((c, cIdx) => {
+                    const req = analysis.blankNeeds[cIdx] || { needsAction: false, needsSubject: true };
+                    if (req.needsAction && c.isAction) score += 25;
+                    if (req.needsSubject && c.isSubject) score += 20;
+
+                    if (bot.personality === 'spicy' && c.isSpicy) score += 45;
+                    if (bot.personality === 'coherent') score += 25;
+                    if (bot.personality === 'chaotic') score += Math.random() * 45;
+                    if (c.isSpicy) score += 20;
+                });
+
+                if (classifiedCards.length >= 2) {
+                    const [c1, c2] = classifiedCards;
+                    if (!c1.isSpicy && c2.isSpicy) score += 35;
+                }
+
+                return { index: item.idx, score: score };
             });
 
             scored.sort((a, b) => b.score - a.score);
@@ -1324,34 +1475,7 @@
             return pick;
         }
 
-        // Bot votes in Democracy mode (CRITICAL: NEVER VOTES FOR SELF)
-        function botVoteSubmission(bot, submissions, blackCard) {
-            if (!submissions || submissions.length === 0) return -1;
-
-            const validSubs = submissions
-                .map((sub, idx) => ({ sub, idx }))
-                .filter(item => item.sub.playerId !== bot.id);
-
-            if (validSubs.length === 0) return -1;
-
-            const scored = validSubs.map(item => {
-                let score = 50 + Math.random() * 30;
-                item.sub.cards.forEach(cardText => {
-                    const c = classifyWhiteCard(cardText);
-                    if (bot.personality === 'spicy' && c.isSpicy) score += 40;
-                    if (bot.personality === 'coherent') score += 25;
-                    if (bot.personality === 'chaotic') score += Math.random() * 40;
-                    if (c.isSpicy) score += 20;
-                });
-                return { index: item.idx, score: score };
-            });
-
-            scored.sort((a, b) => b.score - a.score);
-            const pick = (scored.length > 1 && Math.random() < 0.2) ? scored[1].index : scored[0].index;
-            return pick;
-        }
-
-        // Orchestrates bot turns in SELECTION, JUDGING, and VOTING phases
+        // Orchestrates bot turns in SELECTION, JUDGING, and VOTING phases with realistic thinking times
         function triggerBotActions() {
             if (!isHost) return;
             clearBotTimeouts();
@@ -1359,40 +1483,66 @@
             const botPlayers = players.filter(p => p.isBot);
             if (botPlayers.length === 0) return;
 
+            const effectiveRoundTime = (timerSetting > 0) ? timerSetting : 40;
+
             if (gameState.phase === 'SELECTION') {
                 const submittedIds = new Set((gameState.submissions || []).map(s => s.playerId));
+                const activeBots = botPlayers.filter(bot => {
+                    if (gameMode === 'JUDGE' && bot.id === gameState.czarId) return false;
+                    return !submittedIds.has(bot.id);
+                });
 
-                botPlayers.forEach((bot, bIdx) => {
-                    if (gameMode === 'JUDGE' && bot.id === gameState.czarId) return; // Bot Czar waits
-                    if (submittedIds.has(bot.id)) return;
+                if (activeBots.length === 0) return;
 
-                    const delay = 1200 + (bIdx * 600) + Math.random() * 1000;
+                // Stagger bots naturally throughout the round timer
+                // Max submission delay is capped safely before timer expiration
+                const maxAllowedDelay = Math.max(4000, (effectiveRoundTime - 4) * 1000);
+
+                // Shuffle bot order for randomized thinking speed
+                const shuffledBots = [...activeBots].sort(() => Math.random() - 0.5);
+
+                shuffledBots.forEach((bot, bIdx) => {
+                    // Spread delays: Fast bots (3-7s), Moderate (8-16s), Slower (18-28s)
+                    const slotProgress = (bIdx + 1) / (shuffledBots.length + 1);
+                    const baseDelay = 2500 + (slotProgress * (maxAllowedDelay - 4000));
+                    const jitter = (Math.random() - 0.5) * 2000;
+                    const finalDelay = Math.max(2000, Math.min(maxAllowedDelay, baseDelay + jitter));
+
                     const t = setTimeout(() => {
                         if (gameState.phase !== 'SELECTION') return;
                         const picks = botPickCards(bot, gameState.blackCard);
                         if (picks && picks.length > 0) {
-                            console.log(`[BOT] ${bot.name} submitting cards:`, picks);
+                            console.log(`[BOT] ${bot.name} submitting cards after ${(finalDelay / 1000).toFixed(1)}s:`, picks);
                             handleSubmission(bot.id, picks);
                         }
-                    }, delay);
+                    }, finalDelay);
                     pendingBotTimeouts.push(t);
                 });
             } else if (gameState.phase === 'JUDGING') {
                 const czar = players.find(p => p.id === gameState.czarId);
                 if (czar && czar.isBot) {
-                    const delay = 2500 + Math.random() * 1500;
+                    // Bot Czar reading time: ~1.8s per submission + contemplation time
+                    const subCount = gameState.submissions ? gameState.submissions.length : 1;
+                    const readingTime = 2500 + (subCount * 1800) + Math.random() * 1500;
+                    const maxAllowedDelay = Math.max(3500, (effectiveRoundTime - 3) * 1000);
+                    const finalDelay = Math.min(maxAllowedDelay, readingTime);
+
                     const t = setTimeout(() => {
                         if (gameState.phase !== 'JUDGING') return;
                         const winIdx = botJudgeSubmissions(czar, gameState.submissions, gameState.blackCard);
                         if (winIdx !== -1 && winIdx !== undefined) {
-                            console.log(`[BOT CZAR] ${czar.name} picked winner sub index:`, winIdx);
+                            console.log(`[BOT CZAR] ${czar.name} picked winner sub index ${winIdx} after ${(finalDelay / 1000).toFixed(1)}s`);
                             hostSelectWinner(winIdx);
                         }
-                    }, delay);
+                    }, finalDelay);
                     pendingBotTimeouts.push(t);
                 }
             } else if (gameState.phase === 'VOTING') {
-                botPlayers.forEach((bot, bIdx) => {
+                const subCount = gameState.submissions ? gameState.submissions.length : 1;
+                const maxAllowedDelay = Math.max(4000, (effectiveRoundTime - 4) * 1000);
+                const shuffledBots = [...botPlayers].sort(() => Math.random() - 0.5);
+
+                shuffledBots.forEach((bot, bIdx) => {
                     let alreadyVoted = false;
                     if (gameState.submissions) {
                         gameState.submissions.forEach(s => {
@@ -1401,12 +1551,16 @@
                     }
                     if (alreadyVoted) return;
 
-                    const delay = 1500 + (bIdx * 700) + Math.random() * 1200;
+                    // Base reading time + staggered decision
+                    const baseReading = 2000 + (subCount * 1200);
+                    const slotProgress = (bIdx + 1) / (shuffledBots.length + 1);
+                    const delay = Math.min(maxAllowedDelay, baseReading + (slotProgress * (maxAllowedDelay - baseReading)) + (Math.random() * 1500));
+
                     const t = setTimeout(() => {
                         if (gameState.phase !== 'VOTING') return;
                         const voteSubIdx = botVoteSubmission(bot, gameState.submissions, gameState.blackCard);
                         if (voteSubIdx !== -1 && voteSubIdx !== undefined) {
-                            console.log(`[BOT VOTE] ${bot.name} voting for sub index:`, voteSubIdx);
+                            console.log(`[BOT VOTE] ${bot.name} voting for sub index ${voteSubIdx} after ${(delay / 1000).toFixed(1)}s`);
                             handleVote(bot.id, voteSubIdx);
                         }
                     }, delay);
