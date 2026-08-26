@@ -435,8 +435,9 @@ body {
 .hand {
     display: flex;
     justify-content: center;
-    max-width: 150px;
-    /* Constrain others' hands */
+    align-items: center;
+    width: max-content;
+    max-width: 90vw;
 }
 
 .hand.my-hand {
@@ -561,24 +562,11 @@ body {
         margin-left: -55px;
     }
 
-    /* Draw opponent names on top of their cards on mobile using relative positioning and negative margin */
+    /* Draw opponent names cleanly with compact size on mobile */
     .player-area:not(.is-me) .player-name {
-        position: relative;
-        z-index: 100;
-        margin-bottom: 0;
-        pointer-events: none;
-    }
-
-    .player-area:not(.is-me) .hand {
-        margin-top: -39px;
-    }
-
-    /* Push left/right players further outwards to the screen edges on mobile to give table breathing room */
-    .player-area.player-1:not(.is-me) {
-        left: 8% !important;
-    }
-    .player-area.player-3:not(.is-me) {
-        left: 92% !important;
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        margin-bottom: 6px;
     }
 
     .menu-buttons {
