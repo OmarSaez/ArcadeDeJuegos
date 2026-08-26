@@ -565,9 +565,9 @@
             background: linear-gradient(145deg, #18181b, #09090b);
             border: 2px solid rgba(255, 215, 0, 0.45);
             border-radius: 20px;
-            padding: 20px 16px;
-            width: 100%;
-            max-width: 480px;
+            padding: 18px 16px;
+            width: 94%;
+            max-width: 520px;
             max-height: 94vh;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 35px rgba(234, 179, 8, 0.25);
             text-align: center;
@@ -581,11 +581,11 @@
 
         #roulette-wheel-wrapper {
             position: relative;
-            width: 310px;
-            height: 310px;
-            max-width: 72vw;
-            max-height: 72vw;
-            margin: 6px auto;
+            width: 350px;
+            height: 350px;
+            max-width: 80vw;
+            max-height: 80vw;
+            margin: 4px auto;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -594,14 +594,15 @@
 
         @media (max-width: 480px) {
             #roulette-container {
-                padding: 14px 10px;
+                padding: 12px 8px;
                 border-radius: 16px;
+                width: 96%;
             }
             #roulette-wheel-wrapper {
-                width: 250px;
-                height: 250px;
-                max-width: 68vw;
-                max-height: 68vw;
+                width: 300px;
+                height: 300px;
+                max-width: 84vw;
+                max-height: 84vw;
             }
             #roulette-container h2 {
                 font-size: 1.35rem !important;
@@ -610,21 +611,21 @@
                 font-size: 0.78rem !important;
             }
             .roulette-player-chip {
-                padding: 4px 8px !important;
-                font-size: 0.75rem !important;
+                padding: 5px 10px !important;
+                font-size: 0.8rem !important;
             }
             #roulette-winner-announcement div {
-                font-size: 0.95rem !important;
-                padding: 8px 14px !important;
+                font-size: 1.05rem !important;
+                padding: 9px 18px !important;
             }
         }
 
-        @media (max-height: 650px) {
+        @media (max-height: 680px) {
             #roulette-wheel-wrapper {
-                width: 210px;
-                height: 210px;
-                max-width: 50vh;
-                max-height: 50vh;
+                width: 250px;
+                height: 250px;
+                max-width: 48vh;
+                max-height: 48vh;
             }
             #roulette-container {
                 padding: 10px 8px;
@@ -953,8 +954,8 @@
                 </div>
 
                 <!-- Central Hub Badge -->
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle, #27272a 40%, #09090b 100%); border: 2.5px solid #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.45), inset 0 2px 4px rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; z-index: 10; pointer-events: none;">
-                    <span style="color: white; font-weight: 900; font-size: 0.95rem; letter-spacing: -0.5px;">CCH</span>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle, #27272a 40%, #09090b 100%); border: 2px solid #fbbf24; box-shadow: 0 0 12px rgba(251, 191, 36, 0.45), inset 0 2px 4px rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; z-index: 10; pointer-events: none;">
+                    <span style="color: white; font-weight: 900; font-size: 0.82rem; letter-spacing: -0.5px;">CCH</span>
                 </div>
             </div>
 
@@ -3574,7 +3575,7 @@
             const height = canvas.height;
             const cx = width / 2;
             const cy = height / 2;
-            const radius = Math.min(cx, cy) - 20;
+            const radius = Math.min(cx, cy) - 16;
 
             ctx.clearRect(0, 0, width, height);
 
@@ -3641,21 +3642,27 @@
                 ctx.shadowOffsetX = 1;
                 ctx.shadowOffsetY = 1;
 
-                // Auto font size based on slice count
-                let fontSize = 22;
-                if (totalSlices >= 9) fontSize = 16;
-                if (totalSlices >= 16) fontSize = 13;
-                if (totalSlices >= 25) fontSize = 10;
+                // Auto font size (enlarged for crystal-clear readability with plenty of breathing room)
+                let fontSize = 38;
+                if (totalSlices >= 9) fontSize = 28;
+                if (totalSlices >= 16) fontSize = 22;
+                if (totalSlices >= 25) fontSize = 18;
                 ctx.font = `900 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
 
                 // Shorten name if needed
                 let displayName = s.playerName || 'Jugador';
-                const maxLen = totalSlices >= 16 ? 9 : 13;
+                const maxLen = totalSlices >= 16 ? 12 : 15;
                 if (displayName.length > maxLen) {
                     displayName = displayName.substring(0, maxLen - 1) + '…';
                 }
 
-                ctx.fillText(displayName, radius - 24, 0);
+                // Crisp dark stroke outline for maximum contrast on all slice colors
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = Math.max(3.5, fontSize * 0.16);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
+                ctx.strokeText(displayName, radius - 16, 0);
+
+                ctx.fillText(displayName, radius - 16, 0);
                 ctx.restore();
             }
 
@@ -3802,14 +3809,11 @@
                     }
                 });
 
-                const slicesPerPlayer = data.slices.length / uniquePlayers.length;
-
                 legend.innerHTML = uniquePlayers.map(p => {
                     return `
                         <div class="roulette-player-chip">
                             <span class="roulette-chip-dot" style="background-color: ${p.color};"></span>
                             <span>${p.playerName}</span>
-                            <span style="opacity: 0.6; font-size: 0.72rem;">(${slicesPerPlayer} ${slicesPerPlayer === 1 ? 'parte' : 'partes'})</span>
                         </div>
                     `;
                 }).join('');
