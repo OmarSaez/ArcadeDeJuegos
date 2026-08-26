@@ -523,9 +523,20 @@
                 <button id="btn-timer-toggle" class="btn secondary"
                     style="width:100%; margin-top:5px; font-size:0.8rem; padding: 2px;" onclick="toggleTimerLimit()">Sin
                     Límite</button>
-            </div> <!-- Close Timer Panel -->
+            <div
+                style="background: white; padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                <label style="color:#666; font-size:0.8rem; font-weight:bold; display:block; margin-bottom: 2px;">JUGADORES BOT (IA)</label>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <button class="btn secondary" style="width: 30px; height: 30px; padding:0; font-size:1rem;"
+                        onclick="removeBot()">-</button>
+                    <span id="bots-count-display"
+                        style="font-size: 1.2rem; font-weight: bold; min-width: 40px;">0 🤖</span>
+                    <button class="btn secondary" style="width: 30px; height: 30px; padding:0; font-size:1rem;"
+                        onclick="addBot()">+</button>
+                </div>
+            </div>
 
-            <p style="color:#666; font-size:0.9rem;">Se recomiendan 3+ jugadores</p>
+            <p style="color:#666; font-size:0.9rem;">Se recomiendan 3+ jugadores (agrega bots si faltan)</p>
             <button class="btn" onclick="startGame()">Comenzar Juego</button>
         </div> <!-- Close Host Controls -->
 
@@ -536,6 +547,8 @@
                     style="font-size:1.2rem; color:black;">Juez Clásico</span></p>
             <p style="color:#666; font-weight:bold;">Tiempo: <span id="timer-setting-client"
                     style="font-size:1.2rem; color:black;">40s</span></p>
+            <p style="color:#666; font-weight:bold;">Bots: <span id="bots-display-client"
+                    style="font-size:1.2rem; color:black;">0 🤖</span></p>
         </div>
         <p id="wait-msg">Esperando al anfitrión...</p>
 
@@ -1135,6 +1148,272 @@
             submissions: [],
             players: []
         };
+
+        /* --- BOT (AI) SYSTEM --- */
+        const BOT_PROFILES = [
+            { name: "🤖 Bot Sarcástico", personality: "spicy" },
+            { name: "🤖 Bot Tío Borracho", personality: "chaotic" },
+            { name: "🤖 Bot Filósofo", personality: "coherent" },
+            { name: "🤖 Bot Funable", personality: "spicy" },
+            { name: "🤖 Bot Poeta", personality: "coherent" },
+            { name: "🤖 Bot Sin Filtro", personality: "spicy" },
+            { name: "🤖 Bot Random", personality: "absurd" },
+            { name: "🤖 Bot Cuñao", personality: "chaotic" },
+            { name: "🤖 Bot Inteligente", personality: "coherent" },
+            { name: "🤖 Bot NPC", personality: "absurd" }
+        ];
+
+        let botCounter = 1;
+        let pendingBotTimeouts = [];
+
+        function clearBotTimeouts() {
+            pendingBotTimeouts.forEach(t => clearTimeout(t));
+            pendingBotTimeouts = [];
+        }
+
+        function addBot() {
+            if (!isHost) return;
+            if (players.length >= 10) return alert("Máximo 10 jugadores.");
+
+            const usedNames = new Set(players.map(p => p.name));
+            const available = BOT_PROFILES.filter(bp => !usedNames.has(bp.name));
+            const profile = available.length > 0
+                ? available[Math.floor(Math.random() * available.length)]
+                : { name: `🤖 Bot ${botCounter}`, personality: ['spicy', 'coherent', 'absurd', 'chaotic'][Math.floor(Math.random() * 4)] };
+
+            const botId = `BOT_${Date.now()}_${botCounter++}`;
+            players.push({
+                id: botId,
+                name: profile.name,
+                score: 0,
+                hand: [],
+                isBot: true,
+                personality: profile.personality,
+                selfVoteCount: 0,
+                hasSwapped: false
+            });
+
+            updateLobbyUI();
+            broadcast({ type: 'UPDATE_LOBBY', players: players });
+        }
+
+        function removeBot() {
+            if (!isHost) return;
+            const lastBotIdx = players.map(p => p.isBot).lastIndexOf(true);
+            if (lastBotIdx === -1) return;
+
+            players.splice(lastBotIdx, 1);
+            updateLobbyUI();
+            broadcast({ type: 'UPDATE_LOBBY', players: players });
+        }
+
+        // Heuristic classification of White Cards
+        function classifyWhiteCard(text) {
+            const clean = (text || "").trim();
+            const verbRegex = /^(?:[A-ZÁÉÍÓÚa-záéíóú]+(?:ar|er|ir|arse|erse|irse)|andar|hacer|tener|decir|estar|ir|ver|dar|saber|querer|llegar|pasar|deber|poner|parecer|quedar|creer|hablar|llevar|dejar|seguir|encontrar|llamar|venir|pensar|salir|volver|tomar|conocer|vivir|sentir|tratar|mirar|contar|empezar|esperar|buscar|existir|entrar|trabajar|escribir|perder|producir|ocurrir|entender|pedir|recibir|recordar|terminar|permitir|aparecer|conseguir|comenzar|servir|sacar|necesitar|mantener|resultar|leer|caer|cambiar|presentar|crear|abrir|considerar|oir|acabar|ganar|formar|traer|partir|morir|aceptar|realizar|suponer|comprender|lograr|explicar|preguntar|tocar|reconocer|nacer|dirigir|correr|utilizar|pagar|ayudar|gustar|jugar|escuchar|cumplir|ofrecer|descubrir|levantar|intentar|tirar|golpear|destaquear|lamer|avisar|enseñar|pretender)\b/i;
+            const isAction = verbRegex.test(clean);
+
+            const spicyRegex = /(?:sexo|pene|vagina|pedor|caca|mierda|orina|violar|droga|feto|muerte|matar|ano|prostituta|porno|orgasmo|eyaculac|putin|hitler|nazi|jud[ií]o|racis|yihad|semen|consolador|cond[oó]n|pez[oó]n|teta|culo|tetas|pechos|gemir|desnudo|leche|borracho|drogas|marihuana|coca[ií]na|travesti|gay|lesbiana|incesto|pedof|cad[aá]ver|violencia|fantas[ií]as?|le[ñn]adores|excremento)/i;
+            const isSpicy = spicyRegex.test(clean);
+
+            return {
+                text: clean,
+                isAction: isAction,
+                isSubject: !isAction,
+                isSpicy: isSpicy,
+                length: clean.length
+            };
+        }
+
+        // Analyze Black Card syntax to determine requirements per blank
+        function analyzeBlackCard(blackCard) {
+            const text = (blackCard && blackCard.text) ? blackCard.text : "";
+            const blanks = (blackCard && blackCard.blanks) ? blackCard.blanks : 1;
+            const parts = text.split(/_+/);
+            const blankNeeds = [];
+
+            for (let i = 0; i < blanks; i++) {
+                const prevText = (parts[i] || "").toLowerCase().trim();
+                const needsAction = /(?:quiero|puedo|debo|ten[íi]a que|para|a|al|antes de|despu[eé]s de|empez[oó] a|iba a|saber|aprendi[oó] a|prohibido|capaz de|gusta|dejar de|sin)\s*$/i.test(prevText);
+                const needsSubject = /(?:un|una|unos|unas|el|la|los|las|con|de|del|junto a|contra|sobre|hacia|entre|hijo de|rey de|anfitri[oó]n|tributo a|retrato de|es|era|soy|eres|somos)\s*$/i.test(prevText);
+
+                blankNeeds.push({
+                    needsAction: needsAction && !needsSubject,
+                    needsSubject: needsSubject || !needsAction,
+                    isFirstBlank: i === 0
+                });
+            }
+
+            return { blanks, blankNeeds };
+        }
+
+        // Bot picks cards according to black card context and personality
+        function botPickCards(bot, blackCard) {
+            if (!bot.hand || bot.hand.length === 0) return [];
+            const analysis = analyzeBlackCard(blackCard);
+            const count = analysis.blanks || 1;
+
+            const classifiedHand = bot.hand.map(c => classifyWhiteCard(c));
+            const selected = [];
+            const available = [...classifiedHand];
+
+            for (let b = 0; b < count; b++) {
+                const req = analysis.blankNeeds[b] || { needsAction: false, needsSubject: true };
+
+                available.forEach(card => {
+                    let score = 50 + Math.random() * 20;
+
+                    if (req.needsAction && card.isAction) score += 40;
+                    if (req.needsSubject && card.isSubject) score += 30;
+                    if (req.needsAction && card.isSubject) score -= 25;
+
+                    if (bot.personality === 'spicy' && card.isSpicy) score += 50;
+                    if (bot.personality === 'coherent') {
+                        if (req.needsAction && card.isAction) score += 50;
+                        if (req.needsSubject && card.isSubject) score += 40;
+                    }
+                    if (bot.personality === 'absurd') {
+                        if (req.needsAction && card.isSubject) score += 35;
+                        if (card.isSpicy) score += 25;
+                    }
+                    if (bot.personality === 'chaotic') {
+                        score += (Math.random() * 60);
+                        if (card.isSpicy) score += 30;
+                    }
+
+                    card._tempScore = score;
+                });
+
+                available.sort((a, b) => b._tempScore - a._tempScore);
+                const pickIdx = (available.length > 1 && Math.random() < 0.2) ? 1 : 0;
+                const chosen = available.splice(pickIdx, 1)[0];
+                if (chosen) selected.push(chosen.text);
+            }
+
+            return selected;
+        }
+
+        // Bot Czar picks the winning submission
+        function botJudgeSubmissions(bot, submissions, blackCard) {
+            if (!submissions || submissions.length === 0) return 0;
+
+            const scored = submissions.map((sub, idx) => {
+                let score = 50 + Math.random() * 25;
+
+                sub.cards.forEach(cardText => {
+                    const c = classifyWhiteCard(cardText);
+                    if (bot.personality === 'spicy' && c.isSpicy) score += 45;
+                    if (bot.personality === 'coherent') {
+                        score += 20;
+                        if (c.isAction || c.isSubject) score += 15;
+                    }
+                    if (bot.personality === 'absurd') {
+                        if (c.length < 20 || c.isSpicy) score += 30;
+                    }
+                    if (bot.personality === 'chaotic') {
+                        score += Math.random() * 50;
+                    }
+                    if (cardText.length > 15 && cardText.length < 60) score += 10;
+                });
+
+                return { index: idx, score: score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+            const pick = (scored.length > 1 && Math.random() < 0.15) ? scored[1].index : scored[0].index;
+            return pick;
+        }
+
+        // Bot votes in Democracy mode (CRITICAL: NEVER VOTES FOR SELF)
+        function botVoteSubmission(bot, submissions, blackCard) {
+            if (!submissions || submissions.length === 0) return -1;
+
+            const validSubs = submissions
+                .map((sub, idx) => ({ sub, idx }))
+                .filter(item => item.sub.playerId !== bot.id);
+
+            if (validSubs.length === 0) return -1;
+
+            const scored = validSubs.map(item => {
+                let score = 50 + Math.random() * 30;
+                item.sub.cards.forEach(cardText => {
+                    const c = classifyWhiteCard(cardText);
+                    if (bot.personality === 'spicy' && c.isSpicy) score += 40;
+                    if (bot.personality === 'coherent') score += 25;
+                    if (bot.personality === 'chaotic') score += Math.random() * 40;
+                    if (c.isSpicy) score += 20;
+                });
+                return { index: item.idx, score: score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+            const pick = (scored.length > 1 && Math.random() < 0.2) ? scored[1].index : scored[0].index;
+            return pick;
+        }
+
+        // Orchestrates bot turns in SELECTION, JUDGING, and VOTING phases
+        function triggerBotActions() {
+            if (!isHost) return;
+            clearBotTimeouts();
+
+            const botPlayers = players.filter(p => p.isBot);
+            if (botPlayers.length === 0) return;
+
+            if (gameState.phase === 'SELECTION') {
+                const submittedIds = new Set((gameState.submissions || []).map(s => s.playerId));
+
+                botPlayers.forEach((bot, bIdx) => {
+                    if (gameMode === 'JUDGE' && bot.id === gameState.czarId) return; // Bot Czar waits
+                    if (submittedIds.has(bot.id)) return;
+
+                    const delay = 1200 + (bIdx * 600) + Math.random() * 1000;
+                    const t = setTimeout(() => {
+                        if (gameState.phase !== 'SELECTION') return;
+                        const picks = botPickCards(bot, gameState.blackCard);
+                        if (picks && picks.length > 0) {
+                            console.log(`[BOT] ${bot.name} submitting cards:`, picks);
+                            handleSubmission(bot.id, picks);
+                        }
+                    }, delay);
+                    pendingBotTimeouts.push(t);
+                });
+            } else if (gameState.phase === 'JUDGING') {
+                const czar = players.find(p => p.id === gameState.czarId);
+                if (czar && czar.isBot) {
+                    const delay = 2500 + Math.random() * 1500;
+                    const t = setTimeout(() => {
+                        if (gameState.phase !== 'JUDGING') return;
+                        const winIdx = botJudgeSubmissions(czar, gameState.submissions, gameState.blackCard);
+                        if (winIdx !== -1 && winIdx !== undefined) {
+                            console.log(`[BOT CZAR] ${czar.name} picked winner sub index:`, winIdx);
+                            hostSelectWinner(winIdx);
+                        }
+                    }, delay);
+                    pendingBotTimeouts.push(t);
+                }
+            } else if (gameState.phase === 'VOTING') {
+                botPlayers.forEach((bot, bIdx) => {
+                    let alreadyVoted = false;
+                    if (gameState.submissions) {
+                        gameState.submissions.forEach(s => {
+                            if (s.votes && s.votes.includes(bot.id)) alreadyVoted = true;
+                        });
+                    }
+                    if (alreadyVoted) return;
+
+                    const delay = 1500 + (bIdx * 700) + Math.random() * 1200;
+                    const t = setTimeout(() => {
+                        if (gameState.phase !== 'VOTING') return;
+                        const voteSubIdx = botVoteSubmission(bot, gameState.submissions, gameState.blackCard);
+                        if (voteSubIdx !== -1 && voteSubIdx !== undefined) {
+                            console.log(`[BOT VOTE] ${bot.name} voting for sub index:`, voteSubIdx);
+                            handleVote(bot.id, voteSubIdx);
+                        }
+                    }, delay);
+                    pendingBotTimeouts.push(t);
+                });
+            }
+        }
 
         /* --- DECK MANAGEMENT HELPERS --- */
         function refillWhiteDeck() {
@@ -1877,13 +2156,16 @@
             myName = document.getElementById('nickname').value || "Host";
             const code = Math.random().toString(36).substr(2, 4).toUpperCase();
             isHost = true;
-            players = [{ id: "HOST", name: myName, score: 0, hand: [] }]; // Temp ID
+            players = [{ id: "HOST", name: myName, score: 0, hand: [], isBot: false }]; // Temp ID
+            botCounter = 1;
+            clearBotTimeouts();
 
             showScreen('screen-lobby');
             document.getElementById('host-controls').classList.remove('hidden');
 
             // Set display code immediately
             document.getElementById('lobby-code').innerText = code;
+            updateLobbyUI();
 
             initPeer("cah_" + code);
         }
@@ -1908,7 +2190,7 @@
 
         /* --- GAME LOGIC --- */
         function startGame() {
-            if (players.length < 2) return alert("Se necesitan al menos 2 jugadores (ideal 3+)");
+            if (players.length < 2) return alert("Se necesitan al menos 2 jugadores (ideal 3+, puedes agregar Bots).");
 
             console.log("Starting game. Players:", JSON.stringify(players));
 
@@ -1920,10 +2202,12 @@
             refillWhiteDeck();
             refilBlackDeck();
 
-            // Deal initial hands (7 cards)
+            // Deal initial hands (10 cards)
             players.forEach(p => {
                 p.hand = drawWhiteCards(10);
-                if (p.id !== myId) {
+                if (p.isBot) {
+                    // Bot hand stored directly in player object
+                } else if (p.id !== myId) {
                     const conn = connections[p.id];
                     if (conn && conn.open) conn.send({ type: 'UPDATE_HAND', hand: p.hand });
                 } else {
@@ -1984,7 +2268,7 @@
                 czarId: gameState.czarId,
                 round: gameState.round,
                 submissions: [], // Empty for clients initially
-                players: players.map(p => ({ id: p.id, name: p.name, score: p.score, hasSwapped: false }))
+                players: players.map(p => ({ id: p.id, name: p.name, score: p.score, isBot: !!p.isBot, hasSwapped: false }))
             };
 
             broadcast({ type: 'SITUATION_UPDATE', state: stateSnapshot });
@@ -2000,6 +2284,10 @@
             if (isHost && timerSetting !== -1) {
                 startTimerSequence();
             }
+
+            if (isHost) {
+                triggerBotActions();
+            }
         }
 
         let currentStateTimer = null;
@@ -2008,13 +2296,10 @@
             let timeLeft = timerSetting;
 
             // Broadcast initial time
-            broadcast({ type: 'SITUATION_UPDATE', state: gameState, timeLeft: timeLeft }); // Reuse situation update to sync time
+            broadcast({ type: 'SITUATION_UPDATE', state: gameState, timeLeft: timeLeft });
 
             currentStateTimer = setInterval(() => {
                 timeLeft--;
-                // Broadcast time tick (optimize? maybe every 5s or just local countdown? 
-                // Let's broadcast every second for sync primarily for now, optimization later if needed)
-                // Actually, sending state every second is heavy. Let's send TIME_TICK.
                 broadcast({ type: 'TIME_TICK', timeLeft: timeLeft });
 
                 if (timeLeft <= 0) {
@@ -2026,22 +2311,25 @@
 
         function handleTimeout() {
             console.log("Timer Expired for phase:", gameState.phase);
+            clearBotTimeouts();
+
             if (gameState.phase === 'SELECTION') {
                 // Force submit for players who haven't submitted
                 const submittedIds = gameState.submissions.map(s => s.playerId);
                 players.forEach(p => {
                     if (p.id === gameState.czarId && gameMode === 'JUDGE') return; // Czar safe
                     if (!submittedIds.includes(p.id)) {
-                        // Auto pick random
                         const required = gameState.blackCard.blanks || 1;
-                        // Clone hand to avoid mutation issues during splice loop
-                        const available = [...p.hand];
-                        const picks = [];
-                        for (let i = 0; i < required; i++) {
-                            if (available.length > 0) {
-                                const ridx = Math.floor(Math.random() * available.length);
-                                picks.push(available[ridx]);
-                                available.splice(ridx, 1);
+                        let picks = p.isBot ? botPickCards(p, gameState.blackCard) : [];
+                        if (!picks || picks.length === 0) {
+                            const available = [...p.hand];
+                            picks = [];
+                            for (let i = 0; i < required; i++) {
+                                if (available.length > 0) {
+                                    const ridx = Math.floor(Math.random() * available.length);
+                                    picks.push(available[ridx]);
+                                    available.splice(ridx, 1);
+                                }
                             }
                         }
                         console.log(`Auto-picked for ${p.name}:`, picks);
@@ -2049,18 +2337,16 @@
                     }
                 });
             } else if (gameState.phase === 'JUDGING' || gameState.phase === 'VOTING') {
-                // Force winner selection
                 if (gameMode === 'JUDGE') {
-                    // Host (Czar?) picks random if Czar didn't pick
-                    // Actually handleTimeout is Host logic.
-                    // If Czar hasn't picked...
                     const count = gameState.submissions.length;
                     if (count > 0) {
-                        const ridx = Math.floor(Math.random() * count);
-                        hostSelectWinner(ridx);
+                        const czar = players.find(p => p.id === gameState.czarId);
+                        const winIdx = (czar && czar.isBot)
+                            ? botJudgeSubmissions(czar, gameState.submissions, gameState.blackCard)
+                            : Math.floor(Math.random() * count);
+                        hostSelectWinner(winIdx);
                     }
                 } else {
-                    // Voting: Time is up, score with current votes
                     scoreVotingRound();
                 }
             }
@@ -2369,6 +2655,7 @@
             });
 
             if (isHost && timerSetting !== -1) startTimerSequence();
+            if (isHost) triggerBotActions();
         }
 
         function startVoting() {
@@ -2384,6 +2671,7 @@
             });
 
             if (isHost && timerSetting !== -1) startTimerSequence();
+            if (isHost) triggerBotActions();
         }
 
         function hostSelectWinner(submissionIndex) {
@@ -2599,7 +2887,7 @@
 
                 const nameStyle = isWinner ? 'color: #fbbf24; font-weight: 800;' : (isMe ? 'font-weight: bold;' : '');
                 const icon = isWinner ? '👑 ' : '';
-                const meTag = isMe ? ' <span style="font-size:0.8em; opacity:0.7">(Tú)</span>' : '';
+                const meTag = isMe ? ' <span style="font-size:0.8em; opacity:0.7">(Tú)</span>' : (p.isBot ? ' <span style="font-size:0.75em; opacity:0.8; color:#93c5fd;">(BOT)</span>' : '');
 
                 tableHtml += `
                 <tr style="${rowBg}">
@@ -2855,7 +3143,16 @@
 
         function updateLobbyUI() {
             const list = document.getElementById('lobby-list');
-            list.innerHTML = players.map(p => `<li>${p.name} <span>${p.score} pts</span></li>`).join('');
+            list.innerHTML = players.map(p => {
+                const botBadge = p.isBot ? ' <span style="font-size:0.75rem; background:#3b82f6; color:white; padding:2px 6px; border-radius:10px; font-weight:bold;">BOT</span>' : '';
+                return `<li>${p.name}${botBadge} <span>${p.score} pts</span></li>`;
+            }).join('');
+
+            const botCount = players.filter(p => p.isBot).length;
+            const botCountDisplay = document.getElementById('bots-count-display');
+            if (botCountDisplay) botCountDisplay.innerText = `${botCount} 🤖`;
+            const botClientDisplay = document.getElementById('bots-display-client');
+            if (botClientDisplay) botClientDisplay.innerText = `${botCount} 🤖`;
         }
 
         function startGameUI() {
@@ -3053,8 +3350,9 @@
                     const ready = (hasSubmitted && !isCzar) ? '<span style="color:#10b981; margin-left:5px;">(Listo)</span>' : '';
 
                     const isMe = (p.id === myId) ? ' (Tú)' : '';
+                    const botBadge = p.isBot ? ' <span style="font-size:0.7rem; background:#3b82f6; color:white; padding:1px 5px; border-radius:6px; font-weight:bold; margin-left:3px;">BOT</span>' : '';
                     return `<div style="margin-bottom:5px; background: rgba(255,255,255,0.8); padding: 4px 10px; border-radius: 15px; font-size: 0.85rem; display:inline-block;">
-                        ${isCzar ? '👑 ' : ''}<strong>${p.name}</strong>${isMe}: ${p.score} pts ${swapped} ${ready}
+                        ${isCzar ? '👑 ' : ''}<strong>${p.name}</strong>${botBadge}${isMe}: ${p.score} pts ${swapped} ${ready}
                     </div><br>`;
                 }).join('');
             }
