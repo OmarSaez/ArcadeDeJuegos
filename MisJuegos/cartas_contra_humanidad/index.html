@@ -1660,6 +1660,27 @@
         }
 
         /* --- DECK MANAGEMENT HELPERS --- */
+        function shuffleDeck(deck, passes = 3) {
+            if (!Array.isArray(deck) || deck.length <= 1) return deck;
+            for (let pass = 0; pass < passes; pass++) {
+                for (let i = deck.length - 1; i > 0; i--) {
+                    let r;
+                    if (window.crypto && window.crypto.getRandomValues) {
+                        const randArr = new Uint32Array(1);
+                        window.crypto.getRandomValues(randArr);
+                        r = randArr[0] / (0xffffffff + 1);
+                    } else {
+                        r = Math.random();
+                    }
+                    const j = Math.floor(r * (i + 1));
+                    const temp = deck[i];
+                    deck[i] = deck[j];
+                    deck[j] = temp;
+                }
+            }
+            return deck;
+        }
+
         function refillWhiteDeck() {
             let potentialCards = [...MASTER_WHITE];
 
@@ -1707,11 +1728,12 @@
                 whiteCards = uniqueCards;
             } else {
                 console.warn("Deck exhaustion: Not enough unique cards. Allowing duplicates.");
-                whiteCards = potentialCards;
+                whiteCards = potentialCards.filter(c => !bannedCards.white.has(c));
             }
 
-            whiteCards.sort(() => Math.random() - 0.5);
-            console.log("White Deck Refilled. Size:", whiteCards.length);
+            // 3-Pass Fisher-Yates high entropy shuffle
+            shuffleDeck(whiteCards, 3);
+            console.log("White Deck Refilled & 3-Pass Shuffled. Size:", whiteCards.length);
         }
 
         function refilBlackDeck() {
@@ -1737,15 +1759,22 @@
             // BAN FILTER
             blackCards = blackCards.filter(c => !bannedCards.black.has(c.text));
 
-            blackCards.sort(() => Math.random() - 0.5);
-            console.log("Black Deck Refilled. Size:", blackCards.length);
+            // 3-Pass Fisher-Yates high entropy shuffle
+            shuffleDeck(blackCards, 3);
+            console.log("Black Deck Refilled & 3-Pass Shuffled. Size:", blackCards.length);
         }
 
         function drawWhiteCards(count) {
-            if (whiteCards.length < count) {
-                refillWhiteDeck();
+            const drawn = [];
+            for (let i = 0; i < count; i++) {
+                if (whiteCards.length === 0) {
+                    refillWhiteDeck();
+                }
+                if (whiteCards.length === 0) break;
+                const randIdx = Math.floor(Math.random() * whiteCards.length);
+                drawn.push(whiteCards.splice(randIdx, 1)[0]);
             }
-            return whiteCards.splice(0, count);
+            return drawn;
         }
 
         /* --- NETWORK (Standard Arcade P2P) --- */
@@ -2477,8 +2506,9 @@
             // Refill decks if empty (simple reload for black)
             if (blackCards.length === 0) refilBlackDeck();
 
-            // Next Black Card
-            gameState.blackCard = blackCards.pop();
+            // Next Black Card (draw randomly from remaining shuffled deck)
+            const randBlackIdx = Math.floor(Math.random() * blackCards.length);
+            gameState.blackCard = blackCards.splice(randBlackIdx, 1)[0];
             gameState.gameMode = gameMode; // Lock in mode for the round
 
             // Next Czar (Only for JUDGE mode)
@@ -3427,7 +3457,8 @@
 
         function updateLobbyUI() {
             const list = document.getElementById('lobby-list');
-            list.innerHTML = players.map(p => {
+            const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+            list.innerHTML = sortedPlayers.map(p => {
                 const botBadge = p.isBot ? ' <span style="font-size:0.75rem; background:#3b82f6; color:white; padding:2px 6px; border-radius:10px; font-weight:bold;">BOT</span>' : '';
                 return `<li>${p.name}${botBadge} <span>${p.score} pts</span></li>`;
             }).join('');
@@ -3622,10 +3653,11 @@
         }
 
         function updateTableUI() {
-            // Update Player List (Responsive Strip)
+            // Update Player List (Responsive Strip sorted from highest to lowest score)
             const listContainer = document.getElementById('ingame-player-list');
             if (listContainer && gameState.players) {
-                listContainer.innerHTML = gameState.players.map(p => {
+                const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+                listContainer.innerHTML = sortedPlayers.map(p => {
                     const isCzar = (p.id === gameState.czarId);
                     const swapped = p.hasSwapped ? '<span style="color:#e11d48; margin-left:4px; font-weight:bold;">(Cambió)</span>' : '';
 
