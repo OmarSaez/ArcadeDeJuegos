@@ -663,6 +663,91 @@
             from { opacity: 0; transform: scale(0.96); }
             to { opacity: 1; transform: scale(1); }
         }
+
+        /* --- GENERIC IN-GAME DIALOG STYLES --- */
+        #modal-game-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(10, 10, 15, 0.82);
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(6px);
+            padding: 16px;
+            box-sizing: border-box;
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        #modal-game-dialog.hidden {
+            display: none !important;
+        }
+
+        #game-dialog-card {
+            background: linear-gradient(145deg, #18181b, #0f172a);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 18px;
+            padding: 24px 22px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 25px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            position: relative;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+            box-sizing: border-box;
+        }
+
+        .dialog-card-btn {
+            flex: 1;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .dialog-card-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .dialog-card-btn:active {
+            transform: translateY(1px);
+        }
+
+        .black-card-btn {
+            background: #09090b !important;
+            color: #ffffff !important;
+            border: 2px solid rgba(255, 255, 255, 0.35) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+        }
+
+        .black-card-btn:hover {
+            background: #18181b !important;
+            border-color: rgba(255, 255, 255, 0.7) !important;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.8);
+        }
+
+        .white-card-btn {
+            background: #ffffff !important;
+            color: #09090b !important;
+            border: 2px solid #ffffff !important;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.25);
+        }
+
+        .white-card-btn:hover {
+            background: #f4f4f5 !important;
+            box-shadow: 0 6px 18px rgba(255, 255, 255, 0.45);
+        }
     </style>
 </head>
 
@@ -887,6 +972,32 @@
 
             <!-- Confetti Canvas -->
             <canvas id="roulette-confetti-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25;"></canvas>
+        </div>
+    </div>
+
+    <!-- GENERIC GAME CONFIRM / ALERT MODAL -->
+    <div id="modal-game-dialog" class="hidden">
+        <div id="game-dialog-card">
+            <!-- Mini-badge header -->
+            <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px; color: #fbbf24; font-weight: 800; margin-bottom: 5px;">CARTAS CONTRA LA HUMANIDAD</div>
+            <h3 id="game-dialog-title" style="margin: 0 0 10px 0; color: #ffffff; font-size: 1.35rem; font-weight: 900; letter-spacing: -0.3px;">Confirmación</h3>
+            
+            <!-- Message Body -->
+            <div id="game-dialog-message" style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.5; margin: 14px 0 22px 0;">
+                ¿Deseas realizar esta acción?
+            </div>
+            
+            <!-- Actions (Black Card Cancel on Left, White Card Confirm on Right) -->
+            <div style="display: flex; gap: 12px; justify-content: center; align-items: center; margin-top: 10px;">
+                <!-- Cancel Button (Black Card Style) -->
+                <button id="game-dialog-cancel-btn" class="dialog-card-btn black-card-btn">
+                    Cancelar
+                </button>
+                <!-- Confirm Button (White Card Style) -->
+                <button id="game-dialog-confirm-btn" class="dialog-card-btn white-card-btn">
+                    Confirmar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1313,6 +1424,110 @@
 
     <script src="cards.js"></script>
     <script>
+        /* --- GENERIC IN-GAME CONFIRM & ALERT SYSTEM --- */
+        function showGameConfirm(options) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modal-game-dialog');
+                if (!modal) {
+                    resolve(window.confirm(typeof options === 'string' ? options : (options.message || '')));
+                    return;
+                }
+
+                let title = '¿Estás seguro?';
+                let message = '';
+                let cancelText = 'Cancelar';
+                let confirmText = 'Confirmar';
+
+                if (typeof options === 'string') {
+                    message = options;
+                } else if (options) {
+                    if (options.title) title = options.title;
+                    if (options.message) message = options.message;
+                    if (options.cancelText) cancelText = options.cancelText;
+                    if (options.confirmText) confirmText = options.confirmText;
+                }
+
+                const titleEl = document.getElementById('game-dialog-title');
+                const msgEl = document.getElementById('game-dialog-message');
+                const btnCancel = document.getElementById('game-dialog-cancel-btn');
+                const btnConfirm = document.getElementById('game-dialog-confirm-btn');
+
+                if (titleEl) titleEl.innerText = title;
+                if (msgEl) msgEl.innerHTML = message.replace(/\n/g, '<br>');
+
+                if (btnCancel) {
+                    btnCancel.style.display = 'inline-flex';
+                    btnCancel.innerText = cancelText;
+                }
+                if (btnConfirm) {
+                    btnConfirm.innerText = confirmText;
+                }
+
+                function onCancel() {
+                    cleanup();
+                    resolve(false);
+                }
+                function onConfirm() {
+                    cleanup();
+                    resolve(true);
+                }
+                function cleanup() {
+                    modal.classList.add('hidden');
+                    if (btnCancel) btnCancel.removeEventListener('click', onCancel);
+                    if (btnConfirm) btnConfirm.removeEventListener('click', onConfirm);
+                }
+
+                if (btnCancel) btnCancel.addEventListener('click', onCancel);
+                if (btnConfirm) btnConfirm.addEventListener('click', onConfirm);
+
+                modal.classList.remove('hidden');
+            });
+        }
+
+        function showGameAlert(options) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modal-game-dialog');
+                if (!modal) {
+                    window.alert(typeof options === 'string' ? options : (options.message || ''));
+                    resolve();
+                    return;
+                }
+
+                let title = 'Aviso';
+                let message = '';
+                let okText = 'Entendido';
+
+                if (typeof options === 'string') {
+                    message = options;
+                } else if (options) {
+                    if (options.title) title = options.title;
+                    if (options.message) message = options.message;
+                    if (options.okText) okText = options.okText;
+                }
+
+                const titleEl = document.getElementById('game-dialog-title');
+                const msgEl = document.getElementById('game-dialog-message');
+                const btnCancel = document.getElementById('game-dialog-cancel-btn');
+                const btnConfirm = document.getElementById('game-dialog-confirm-btn');
+
+                if (titleEl) titleEl.innerText = title;
+                if (msgEl) msgEl.innerHTML = message.replace(/\n/g, '<br>');
+
+                if (btnCancel) btnCancel.style.display = 'none'; // Alert has no cancel button
+                if (btnConfirm) btnConfirm.innerText = okText;
+
+                function onOk() {
+                    modal.classList.add('hidden');
+                    if (btnConfirm) btnConfirm.removeEventListener('click', onOk);
+                    resolve();
+                }
+
+                if (btnConfirm) btnConfirm.addEventListener('click', onOk);
+
+                modal.classList.remove('hidden');
+            });
+        }
+
         /* --- GAME DATA --- */
         let whiteCards = [];
         let blackCards = [];
@@ -1375,7 +1590,7 @@
                 }
             } catch (e) {
                 console.error(e);
-                alert("Error cargando cartas: Verifique cards.js y la consola.");
+                showGameAlert({ title: 'Error de Cartas', message: 'Error cargando cartas: Verifique cards.js y la consola.' });
             }
         }
         loadCards();
@@ -1427,7 +1642,7 @@
 
         function addBot() {
             if (!isHost) return;
-            if (players.length >= 10) return alert("Máximo 10 jugadores.");
+            if (players.length >= 10) return showGameAlert({ title: 'Límite de Jugadores', message: 'Máximo 10 jugadores por sala.' });
 
             const usedNames = new Set(players.map(p => p.name));
             const available = BOT_PROFILES.filter(bp => !usedNames.has(bp.name));
@@ -2122,7 +2337,7 @@
         function handleBlackKeypress(e) {
             if (e.key === '_') {
                 e.preventDefault();
-                alert("Usa el botón 'Poner espacio' para insertar espacios en blanco.");
+                showGameAlert({ title: 'Espacios en Blanco', message: "Usa el botón 'Poner espacio' para insertar espacios en blanco." });
             }
         }
 
@@ -2247,7 +2462,7 @@
             const text = editor.innerText.trim();
 
             if (!text) {
-                alert("La carta está vacía.");
+                showGameAlert({ title: 'Carta Vacía', message: 'La carta no puede estar vacía.' });
                 return;
             }
 
@@ -2333,16 +2548,28 @@
 
                 if (deleteMode[type]) {
                     div.style.border = '2px solid red';
-                    div.onclick = () => {
-                        if (confirm("¿Eliminar carta?")) {
+                    div.onclick = async () => {
+                        const ok = await showGameConfirm({
+                            title: '🗑️ Eliminar Carta',
+                            message: '¿Estás seguro de que deseas eliminar esta carta personalizada?',
+                            confirmText: 'Eliminar',
+                            cancelText: 'Cancelar'
+                        });
+                        if (ok) {
                             myCreatedCards[type].splice(idx, 1);
                             renderCreatedList(type);
                         }
                     };
                 } else {
-                    div.onclick = () => {
+                    div.onclick = async () => {
                         if (document.getElementById(`editor-card-${type}`).innerText.trim() !== '') {
-                            if (!confirm("¿Editar esta carta? Se perderá lo que escribiste si no guardaste.")) return;
+                            const ok = await showGameConfirm({
+                                title: '📝 Editar Carta',
+                                message: '¿Editar esta carta? Se perderá el texto que estabas escribiendo si no lo guardaste.',
+                                confirmText: 'Editar',
+                                cancelText: 'Cancelar'
+                            });
+                            if (!ok) return;
                         }
                         document.getElementById(`editor-card-${type}`).innerText = card.text;
                         editingIndex[type] = idx;
@@ -2367,7 +2594,7 @@
         function showExportOptions(type) {
             // New Centralized Export Logic
             if (isHost && globalCreatedCards[type].length === 0 && myCreatedCards[type].length === 0) {
-                return alert("No hay cartas para exportar.");
+                return showGameAlert({ title: 'Exportar Cartas', message: 'No hay cartas para exportar.' });
             }
             if (!isHost && myCreatedCards[type].length === 0) {
                 // Even if local is empty, might want to export global? 
@@ -2401,9 +2628,9 @@
                     // Ask Host
                     if (hostConn && hostConn.open) {
                         hostConn.send({ type: 'REQUEST_EXPORT', cardType: type });
-                        alert("Solicitud enviada al Anfitrión. La descarga comenzará pronto...");
+                        showGameAlert({ title: 'Solicitud Enviada', message: 'Solicitud enviada al Anfitrión. La descarga comenzará pronto...' });
                     } else {
-                        alert("No estás conectado al Anfitrión.");
+                        showGameAlert({ title: 'Error de Conexión', message: 'No estás conectado al Anfitrión.' });
                     }
                 }
             }
@@ -2458,7 +2685,7 @@
                     if (data.type !== expectedType) {
                         const gotColor = (data.type === 'N') ? 'Negras' : 'Blancas';
                         const expectedColor = (type === 'black') ? 'Negras' : 'Blancas';
-                        alert(`❌ El archivo que subiste es de cartas ${gotColor}, debe ser de cartas ${expectedColor}.`);
+                        showGameAlert({ title: 'Archivo Inválido', message: `❌ El archivo que subiste es de cartas ${gotColor}, debe ser de cartas ${expectedColor}.` });
                         return;
                     }
 
@@ -2481,15 +2708,15 @@
                                 });
                             }
                         });
-                        alert(`✅ Importadas ${added} cartas ${type === 'black' ? 'negras' : 'blancas'}.`);
+                        showGameAlert({ title: 'Importación Exitosa', message: `✅ Importadas ${added} cartas ${type === 'black' ? 'negras' : 'blancas'}.` });
                         renderCreatedList(type);
                     } else {
-                        alert("Formato de archivo inválido (faltan cartas).");
+                        showGameAlert({ title: 'Error de Archivo', message: 'Formato de archivo inválido (faltan cartas).' });
                     }
 
                 } catch (err) {
                     console.error(err);
-                    alert("Error leyendo el archivo JSON.");
+                    showGameAlert({ title: 'Error de Lectura', message: 'Error leyendo el archivo JSON.' });
                 }
             };
             reader.readAsText(file);
@@ -2536,10 +2763,10 @@
             peer.on('error', (err) => {
                 console.error("P2P Error:", err);
                 if (err.type === 'peer-unavailable') {
-                    alert("No se encontró la sala. Verifica el código.");
+                    showGameAlert({ title: 'Sala No Encontrada', message: 'No se encontró la sala. Verifica el código ingresado.' });
                     showScreen('screen-menu');
                 } else if (err.type === 'unavailable-id') {
-                    alert("El código de sala ya está en uso. Intenta otro.");
+                    showGameAlert({ title: 'Código Ocupado', message: 'El código de sala ya está en uso. Intenta con otro.' });
                     showScreen('screen-menu');
                 } else {
                     console.log("Error no critico:", err);
@@ -2580,7 +2807,7 @@
                     players = players.filter(p => p.id !== conn.peer);
                     broadcast({ type: 'UPDATE_LOBBY', players: players });
                 } else {
-                    alert("Desconectado del Anfitrión");
+                    showGameAlert({ title: 'Desconectado', message: 'Te has desconectado del Anfitrión.' });
                     location.reload();
                 }
             });
@@ -2611,7 +2838,7 @@
         function joinRoom() {
             myName = document.getElementById('nickname').value || "Guest";
             const code = document.getElementById('room-code-input').value.trim().toUpperCase();
-            if (!code) return alert("Ingresa código");
+            if (!code) return showGameAlert({ title: 'Código Requerido', message: 'Por favor ingresa un código de sala para unirte.' });
 
             isHost = false;
             pendingJoinCode = code; // Store for when open fires
@@ -2627,7 +2854,7 @@
 
         /* --- GAME LOGIC --- */
         function startGame() {
-            if (players.length < 2) return alert("Se necesitan al menos 2 jugadores (ideal 3+, puedes agregar Bots).");
+            if (players.length < 2) return showGameAlert({ title: 'Jugadores Insuficientes', message: 'Se necesitan al menos 2 jugadores (ideal 3+, puedes agregar Bots).' });
 
             console.log("Starting game. Players:", JSON.stringify(players));
 
@@ -2876,9 +3103,9 @@
         let hasSwappedThisRound = false;
 
         function enableSwapMode() {
-            if (gameState.phase !== 'SELECTION') return alert("Solo puedes cambiar cartas en tu turno.");
-            if (gameState.czarId === myId) return alert("El Czar no puede cambiar cartas.");
-            if (hasSwappedThisRound) return alert("Ya cambiaste cartas en esta ronda.");
+            if (gameState.phase !== 'SELECTION') return showGameAlert({ title: 'No Permitido', message: 'Solo puedes cambiar cartas durante la fase de selección en tu turno.' });
+            if (gameState.czarId === myId) return showGameAlert({ title: 'No Permitido', message: 'El Czar no puede cambiar cartas.' });
+            if (hasSwappedThisRound) return showGameAlert({ title: 'Ya Cambiaste', message: 'Ya utilizaste tu cambio de cartas en esta ronda.' });
 
             isSwapping = !isSwapping;
             selectedCards = [];
@@ -4230,7 +4457,7 @@
                         cardElem.classList.add('selected');
                         selectedCards.push(text);
                     } else {
-                        alert("Solo puedes cambiar 2 cartas.");
+                        showGameAlert({ title: 'Cambio de Cartas', message: 'Solo puedes cambiar 2 cartas a la vez.' });
                     }
                 }
 
@@ -4240,8 +4467,14 @@
                     btn.innerText = "CONFIRMAR CAMBIO";
                     btn.classList.remove('hidden');
                     btn.style.background = '#e11d48';
-                    btn.onclick = () => {
-                        if (confirm("¿Cambiar estas 2 cartas? perderás tu turno de cambio esta ronda.")) {
+                    btn.onclick = async () => {
+                        const ok = await showGameConfirm({
+                            title: '🔄 Confirmar Cambio',
+                            message: '¿Cambiar estas 2 cartas? Perderás tu turno de cambio durante esta ronda.',
+                            confirmText: 'Cambiar',
+                            cancelText: 'Cancelar'
+                        });
+                        if (ok) {
                             handleSwapRequest(selectedCards);
                         }
                     };
@@ -4253,7 +4486,7 @@
 
             // Normal Play Mode
             if (gameState.phase !== 'SELECTION') return;
-            if (gameState.czarId === myId) return alert("Eres el Czar, no juegas cartas, solo juzgas.");
+            if (gameState.czarId === myId) return showGameAlert({ title: '👑 Eres el Czar', message: 'Eres el Czar en esta ronda: no juegas cartas, solo juzgas.' });
 
             const required = gameState.blackCard.blanks || 1;
 
@@ -4265,9 +4498,7 @@
                     cardElem.classList.add('selected');
                     selectedCards.push(text);
                 } else {
-                    // Replace first? or strict limit?
-                    // Let's strict limit, user must deselect
-                    alert(`Solo elige ${required} carta(s).`);
+                    showGameAlert({ title: 'Límite de Cartas', message: `Solo debes elegir ${required} carta(s).` });
                 }
             }
 
@@ -4551,8 +4782,14 @@
                             c.onmouseenter = () => c.style.transform = 'scale(1.05)';
                             c.onmouseleave = () => c.style.transform = 'scale(1)';
 
-                            c.onclick = () => {
-                                if (confirm("¿Elegir esta como ganadora?")) {
+                            c.onclick = async () => {
+                                const ok = await showGameConfirm({
+                                    title: '👑 Elegir Ganadora',
+                                    message: '¿Elegir esta carta como la ganadora de la ronda?',
+                                    confirmText: 'Elegir',
+                                    cancelText: 'Cancelar'
+                                });
+                                if (ok) {
                                     if (isHost) {
                                         hostSelectWinner(idx);
                                     } else {
@@ -4570,12 +4807,19 @@
                                 c.onmouseenter = () => c.style.transform = 'scale(1.05)';
                                 c.onmouseleave = () => c.style.transform = 'scale(1)';
 
-                                c.onclick = () => {
+                                c.onclick = async () => {
                                     const isMyCard = (myId === sub.playerId);
+                                    const warningTitle = isMyCard ? '⚠️ Auto-voto' : '🗳️ Confirmar Voto';
                                     const warning = isMyCard
-                                        ? "¿Votar por ti mismo? (No contara el voto, y si lo haces mucho te restará puntos)"
-                                        : "¿Votar por esta carta? No podrás cambiar tu voto.";
-                                    if (confirm(warning)) {
+                                        ? '¿Votar por ti mismo? Es una advertencia: tu voto <strong>NO contará</strong> para el conteo final de votos, y si lo haces más de 2 veces te restará puntos.'
+                                        : '¿Votar por esta carta? No podrás cambiar tu voto una vez confirmado.';
+                                    const ok = await showGameConfirm({
+                                        title: warningTitle,
+                                        message: warning,
+                                        confirmText: 'Votar',
+                                        cancelText: 'Cancelar'
+                                    });
+                                    if (ok) {
                                         myVotedIndex = idx; // Lock locally
                                         updateTableUI(); // Re-render to show blue
 
