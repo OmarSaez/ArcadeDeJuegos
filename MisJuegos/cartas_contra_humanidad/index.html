@@ -535,6 +535,134 @@
             display: block;
             /* For Firefox */
         }
+
+        /* --- TIE-BREAKER ROULETTE STYLES --- */
+        #modal-roulette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(10, 10, 18, 0.88);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+            padding: 12px;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            animation: fadeIn 0.3s ease-out;
+            overflow-y: auto;
+        }
+
+        #modal-roulette.hidden {
+            display: none !important;
+        }
+
+        #roulette-container {
+            background: linear-gradient(145deg, #18181b, #09090b);
+            border: 2px solid rgba(255, 215, 0, 0.45);
+            border-radius: 20px;
+            padding: 20px 16px;
+            width: 100%;
+            max-width: 480px;
+            max-height: 94vh;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 35px rgba(234, 179, 8, 0.25);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        #roulette-wheel-wrapper {
+            position: relative;
+            width: 310px;
+            height: 310px;
+            max-width: 72vw;
+            max-height: 72vw;
+            margin: 6px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 480px) {
+            #roulette-container {
+                padding: 14px 10px;
+                border-radius: 16px;
+            }
+            #roulette-wheel-wrapper {
+                width: 250px;
+                height: 250px;
+                max-width: 68vw;
+                max-height: 68vw;
+            }
+            #roulette-container h2 {
+                font-size: 1.35rem !important;
+            }
+            #roulette-subtitle {
+                font-size: 0.78rem !important;
+            }
+            .roulette-player-chip {
+                padding: 4px 8px !important;
+                font-size: 0.75rem !important;
+            }
+            #roulette-winner-announcement div {
+                font-size: 0.95rem !important;
+                padding: 8px 14px !important;
+            }
+        }
+
+        @media (max-height: 650px) {
+            #roulette-wheel-wrapper {
+                width: 210px;
+                height: 210px;
+                max-width: 50vh;
+                max-height: 50vh;
+            }
+            #roulette-container {
+                padding: 10px 8px;
+            }
+        }
+
+        .roulette-player-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: white;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+        }
+
+        .roulette-chip-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 6px currentColor;
+            flex-shrink: 0;
+        }
+
+        #roulette-pointer.tick {
+            transform: translateX(-50%) rotate(-16deg) !important;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
     </style>
 </head>
 
@@ -681,6 +809,7 @@
                     <ul style="font-size: 0.9rem; color: #4b5563; padding-left: 20px; margin-top: 5px;">
                         <li>Luego, todos votan por la carta que les parezca más graciosa.</li>
                         <li>La carta con más votos gana la ronda.</li>
+                        <li><strong>⚡ Desempate por Ruleta:</strong> Si hay empate de votos, se activa una <strong>ruleta de la fortuna intercalada</strong> para elegir justamente al ganador de la ronda.</li>
                     </ul>
                 </div>
 
@@ -689,20 +818,18 @@
                     <ul style="list-style: none; padding: 0; font-size: 0.9rem; color: #4b5563;">
                         <li style="margin-bottom: 8px; display: flex; align-items: center;">
                             <span class="star-icon star-gold" style="transform: scale(1); margin-right: 8px;">★</span>
-                            <span>Estrella amarilla: voto normal.</span>
+                            <span><strong>Estrella dorada:</strong> Voto normal hacia otro jugador (cuenta como voto válido).</span>
                         </li>
                         <li style="margin-bottom: 8px; display: flex; align-items: center;">
                             <span class="star-icon star-grey" style="transform: scale(1); margin-right: 8px;">★</span>
-                            <span>Estrella gris: Alguien se auto-voto (dueño) y el voto no cuenta para la votación
-                                final.</span>
+                            <span><strong>Estrella gris (Advertencia):</strong> Auto-voto. No cuenta para el conteo final de votos.</span>
                         </li>
                         <li style="margin-bottom: 8px; display: flex; align-items: start;">
                             <span class="star-icon star-black"
                                 style="transform: scale(1); margin-right: 8px; margin-top: 2px;">★</span>
                             <span>
                                 <strong>Estrella negra (Penalización):</strong><br>
-                                Si votas por ti mismo más de 2 veces, pierdes 1 punto y el voto no cuenta para la
-                                votación final.
+                                Si votas por ti mismo más de 2 veces, pierdes 1 punto y el voto NO cuenta para la votación final.
                             </span>
                         </li>
                     </ul>
@@ -713,6 +840,55 @@
             </div>
         </div>
     </div> <!-- Close Help Modal -->
+
+    <!-- ROULETTE TIE-BREAKER MODAL -->
+    <div id="modal-roulette" class="hidden">
+        <div id="roulette-container">
+            <!-- Header Banner -->
+            <div style="margin-bottom: 8px;">
+                <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 2px; color: #fbbf24; font-weight: 800; margin-bottom: 3px;">⚡ MODO DEMOCRACIA ⚡</div>
+                <h2 style="margin: 0; color: #ffffff; font-size: 1.6rem; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,0.6);">¡EMPATE DE VOTOS!</h2>
+                <p id="roulette-subtitle" style="margin: 3px 0 0 0; color: #a1a1aa; font-size: 0.85rem;">La Ruleta de la Fortuna decidirá al ganador de la ronda</p>
+            </div>
+
+            <!-- Wheel Canvas Area with Top Pointer / Needle -->
+            <div id="roulette-wheel-wrapper">
+                <!-- Canvas for the spinning wheel -->
+                <canvas id="roulette-canvas" width="640" height="640" style="width: 100%; height: 100%; border-radius: 50%;"></canvas>
+                
+                <!-- Black Pointer Needle at Top Center -->
+                <div id="roulette-pointer" style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); width: 32px; height: 46px; z-index: 20; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.85)); transform-origin: 50% 12px; transition: transform 0.06s ease-out; pointer-events: none;">
+                    <svg viewBox="0 0 36 50" width="100%" height="100%">
+                        <!-- Pointer Body -->
+                        <polygon points="18,48 4,14 32,14" fill="#09090b" stroke="#fbbf24" stroke-width="2.5" stroke-linejoin="round" />
+                        <!-- Needle Pin / Hub -->
+                        <circle cx="18" cy="14" r="10" fill="#18181b" stroke="#fbbf24" stroke-width="2.5" />
+                        <circle cx="18" cy="14" r="4.5" fill="#fbbf24" />
+                    </svg>
+                </div>
+
+                <!-- Central Hub Badge -->
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle, #27272a 40%, #09090b 100%); border: 2.5px solid #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.45), inset 0 2px 4px rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; z-index: 10; pointer-events: none;">
+                    <span style="color: white; font-weight: 900; font-size: 0.95rem; letter-spacing: -0.5px;">CCH</span>
+                </div>
+            </div>
+
+            <!-- Tied Players Legend Strip -->
+            <div id="roulette-legend" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; width: 100%; max-height: 75px; overflow-y: auto;">
+                <!-- Player chips inserted dynamically -->
+            </div>
+
+            <!-- Winner Announcement (Centered below wheel/legend) -->
+            <div id="roulette-winner-announcement" class="hidden" style="margin-top: 10px; width: 100%; display: flex; justify-content: center; z-index: 30;">
+                <div style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #18181b; padding: 10px 22px; border-radius: 30px; font-weight: 900; font-size: 1.05rem; box-shadow: 0 8px 25px rgba(245, 158, 11, 0.7); animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; text-align: center; border: 2px solid #ffffff; max-width: 95%; word-break: break-word;">
+                    🏆 ¡Ganador: <span id="roulette-winner-name">...</span>! 🏆
+                </div>
+            </div>
+
+            <!-- Confetti Canvas -->
+            <canvas id="roulette-confetti-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25;"></canvas>
+        </div>
+    </div>
 
     <!-- SCREEN: BAN MANAGER -->
     <div id="screen-ban-menu" class="screen hidden">
@@ -2488,6 +2664,8 @@
                 return;
             }
 
+            hideRouletteModal();
+
             gameState.phase = 'SELECTION';
             gameState.submissions = [];
 
@@ -3015,7 +3193,7 @@
             let winners = []; // Indices
 
             gameState.submissions.forEach((sub, idx) => {
-                // Calculate valid votes (exclude self-votes)
+                // Calculate valid votes (exclude self-votes: neither grey nor black count towards total)
                 let validVotes = 0;
                 if (sub.votes) {
                     sub.votes.forEach(voterId => {
@@ -3033,39 +3211,33 @@
 
             // Assign points
             if (maxVotes > 0) {
-                // Winner(s)
-                // Remove automatic point increment for all "winners" array in first pass
-                // winners.forEach(...) -> Removed. 
-                // We handle point assignment in single winner logic below.
-
                 // Winners check
                 if (winners.length > 1) {
-                    // TIE
-                    gameState.winningSubmissionIndex = -1; // No single winner highlight
-                    gameState.winnerName = "¡EMPATE! Nadie gana puntos";
-                    // No points added
+                    // TIE -> Trigger Tie-Breaker Roulette!
+                    gameState.winningSubmissionIndex = -1; // No single winner highlight yet
+                    gameState.winnerName = "¡EMPATE! Preparando Ruleta...";
                     gameState.phase = 'SCORE';
-
                     gameState.players = players; // SYNC
 
                     broadcast({ type: 'PLAYER_UPDATE', players: players });
                     broadcast({ type: 'SITUATION_UPDATE', state: gameState });
 
-                    // Delay next round
+                    // Delay before roulette opens so star reveal animations finish smoothly
                     const starInfo = getStarDelaysInfo();
-                    const delayToNextRound = (starInfo.finalRevealTime * 1000) + 4000;
-                    setTimeout(() => startRound(), delayToNextRound);
+                    const delayToRoulette = (starInfo.finalRevealTime * 1000) + 1200;
+                    setTimeout(() => {
+                        triggerDemocracyTieRoulette(winners);
+                    }, delayToRoulette);
 
                 } else {
                     // Single Winner
-                    gameState.winningSubmissionIndex = winners[0]; // Highlight first winner
+                    gameState.winningSubmissionIndex = winners[0]; // Highlight winner
                     const wSub = gameState.submissions[winners[0]];
                     const wPlayer = players.find(p => p.id === wSub.playerId);
                     gameState.winnerName = wPlayer ? wPlayer.name : "Nadie";
                     if (wPlayer) wPlayer.score++; // Point awarded to single winner
 
                     gameState.phase = 'SCORE';
-
                     gameState.players = players; // SYNC
 
                     broadcast({ type: 'PLAYER_UPDATE', players: players });
@@ -3086,6 +3258,559 @@
                 const starInfo = getStarDelaysInfo();
                 const delayToNextRound = (starInfo.finalRevealTime * 1000) + 4000;
                 setTimeout(() => startRound(), delayToNextRound);
+            }
+        }
+
+        /* ==========================================================
+           --- TIE-BREAKER ROULETTE (MODO DEMOCRACIA) ---
+           ========================================================== */
+
+        /* --- WEB AUDIO SYNTHESIZER FOR ROULETTE --- */
+        let cahAudioCtx = null;
+        function getCahAudioCtx() {
+            try {
+                if (!cahAudioCtx) {
+                    const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtxClass) cahAudioCtx = new AudioCtxClass();
+                }
+                if (cahAudioCtx && cahAudioCtx.state === 'suspended') {
+                    cahAudioCtx.resume().catch(() => {});
+                }
+            } catch (e) {}
+            return cahAudioCtx;
+        }
+
+        function playRouletteTickSound(pitchFactor = 1.0) {
+            try {
+                const ctx = getCahAudioCtx();
+                if (!ctx) return;
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(540 * Math.max(0.6, Math.min(2.0, pitchFactor)), now);
+                osc.frequency.exponentialRampToValueAtTime(120, now + 0.04);
+
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.04);
+            } catch (e) {}
+        }
+
+        function playRouletteWinFanfare() {
+            try {
+                const ctx = getCahAudioCtx();
+                if (!ctx) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, i) => {
+                    const now = ctx.currentTime + (i * 0.12);
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                });
+            } catch (e) {}
+        }
+
+        /* --- ROULETTE WHEEL CANVAS RENDERER --- */
+        function drawRouletteWheel(canvas, slices, rotationAngle, winningSliceIndex = -1, isWinningState = false, pulse = 0) {
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const cx = width / 2;
+            const cy = height / 2;
+            const radius = Math.min(cx, cy) - 20;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const totalSlices = slices.length;
+            const theta = (2 * Math.PI) / totalSlices;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(rotationAngle);
+
+            // Slices (Slice 0 starts at 12 o'clock / -PI/2)
+            for (let i = 0; i < totalSlices; i++) {
+                const s = slices[i];
+                const startA = -Math.PI / 2 + (i * theta);
+                const endA = -Math.PI / 2 + ((i + 1) * theta);
+
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, radius, startA, endA);
+                ctx.closePath();
+
+                ctx.fillStyle = s.color || '#3b82f6';
+                ctx.fill();
+
+                // Inner radial gradient for 3D depth
+                const grad = ctx.createRadialGradient(0, 0, radius * 0.15, 0, 0, radius);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+                grad.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0.28)');
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Highlight winning slice with radiant golden outline and light aura
+                if (isWinningState && i === winningSliceIndex) {
+                    ctx.save();
+                    const winAlpha = 0.25 + (0.15 * Math.sin(pulse));
+                    ctx.fillStyle = `rgba(255, 255, 255, ${winAlpha})`;
+                    ctx.fill();
+
+                    ctx.lineWidth = 6;
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.shadowColor = '#fbbf24';
+                    ctx.shadowBlur = 16;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Slice border divider
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                ctx.stroke();
+
+                // Player name label along radial line
+                ctx.save();
+                const midA = startA + (theta / 2);
+                ctx.rotate(midA);
+
+                // Text styling
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+                ctx.shadowBlur = 6;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+
+                // Auto font size based on slice count
+                let fontSize = 22;
+                if (totalSlices >= 9) fontSize = 16;
+                if (totalSlices >= 16) fontSize = 13;
+                if (totalSlices >= 25) fontSize = 10;
+                ctx.font = `900 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+
+                // Shorten name if needed
+                let displayName = s.playerName || 'Jugador';
+                const maxLen = totalSlices >= 16 ? 9 : 13;
+                if (displayName.length > maxLen) {
+                    displayName = displayName.substring(0, maxLen - 1) + '…';
+                }
+
+                ctx.fillText(displayName, radius - 24, 0);
+                ctx.restore();
+            }
+
+            // Outer Metallic Wheel Rim
+            ctx.restore(); // back to center-unrotated
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Rim Outer Circle
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#18181b';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, 0, radius + 4, 0, 2 * Math.PI);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#fbbf24';
+            ctx.stroke();
+
+            // Golden studs/rivets around the perimeter
+            const rivetCount = Math.max(totalSlices, 16);
+            for (let r = 0; r < rivetCount; r++) {
+                const rAngle = (r * (2 * Math.PI / rivetCount)) + rotationAngle;
+                const rx = (radius + 2) * Math.cos(rAngle);
+                const ry = (radius + 2) * Math.sin(rAngle);
+
+                ctx.beginPath();
+                ctx.arc(rx, ry, 3.5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#fbbf24';
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = '#78350f';
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        /* --- ROULETTE CONFETTI BURST --- */
+        let confettiAnimId = null;
+        function launchRouletteConfetti(canvas) {
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * (window.devicePixelRatio || 1);
+            canvas.height = rect.height * (window.devicePixelRatio || 1);
+
+            const colors = ['#fbbf24', '#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#ffffff'];
+            const particles = [];
+            const count = 75;
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height * 0.45;
+
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * 2 * Math.PI;
+                const speed = 4 + Math.random() * 9;
+                particles.push({
+                    x: cx,
+                    y: cy,
+                    vx: Math.cos(angle) * speed * (0.8 + Math.random() * 0.4),
+                    vy: (Math.sin(angle) * speed * 0.9) - 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    w: 6 + Math.random() * 6,
+                    h: 4 + Math.random() * 4,
+                    rot: Math.random() * 360,
+                    vRot: (Math.random() - 0.5) * 12,
+                    opacity: 1,
+                    decay: 0.007 + Math.random() * 0.008
+                });
+            }
+
+            if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+
+            function updateConfetti() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = 0;
+
+                particles.forEach(p => {
+                    if (p.opacity <= 0) return;
+                    alive++;
+
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.22; // gravity
+                    p.vx *= 0.98; // drag
+                    p.rot += p.vRot;
+                    p.opacity = Math.max(0, p.opacity - p.decay);
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rot * Math.PI / 180);
+                    ctx.globalAlpha = p.opacity;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+                });
+
+                if (alive > 0) {
+                    confettiAnimId = requestAnimationFrame(updateConfetti);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    confettiAnimId = null;
+                }
+            }
+
+            confettiAnimId = requestAnimationFrame(updateConfetti);
+        }
+
+        /* --- ROULETTE MODAL & ANIMATION LOGIC --- */
+        let rouletteAnimId = null;
+        let activeRouletteData = null;
+
+        function showRouletteModal(data) {
+            activeRouletteData = data;
+            const modal = document.getElementById('modal-roulette');
+            if (!modal) return;
+
+            modal.classList.remove('hidden');
+
+            // Set subtitle
+            const subTitle = document.getElementById('roulette-subtitle');
+            if (subTitle) subTitle.innerText = "La Ruleta de la Fortuna decidirá al ganador de la ronda";
+
+            // Hide winner announcement
+            const ann = document.getElementById('roulette-winner-announcement');
+            if (ann) ann.classList.add('hidden');
+
+            // Render Legend Chips
+            const legend = document.getElementById('roulette-legend');
+            if (legend) {
+                // Unique tied players
+                const uniquePlayers = [];
+                const seenIds = new Set();
+                data.slices.forEach(s => {
+                    if (!seenIds.has(s.playerId)) {
+                        seenIds.add(s.playerId);
+                        uniquePlayers.push(s);
+                    }
+                });
+
+                const slicesPerPlayer = data.slices.length / uniquePlayers.length;
+
+                legend.innerHTML = uniquePlayers.map(p => {
+                    return `
+                        <div class="roulette-player-chip">
+                            <span class="roulette-chip-dot" style="background-color: ${p.color};"></span>
+                            <span>${p.playerName}</span>
+                            <span style="opacity: 0.6; font-size: 0.72rem;">(${slicesPerPlayer} ${slicesPerPlayer === 1 ? 'parte' : 'partes'})</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Canvas & Animation setup
+            const canvas = document.getElementById('roulette-canvas');
+            const pointer = document.getElementById('roulette-pointer');
+
+            if (rouletteAnimId) cancelAnimationFrame(rouletteAnimId);
+
+            const totalSlices = data.slices.length;
+            const theta = (2 * Math.PI) / totalSlices;
+            const startTime = data.startTime || (Date.now() + 100);
+            const duration = data.spinDuration || 5200;
+            const totalRotation = data.totalRotation;
+
+            let lastTickSlice = -1;
+            let stopped = false;
+            let pulseTime = 0;
+
+            // Needle tick helper
+            let needleTickTimeout = null;
+            function triggerNeedleTick() {
+                if (!pointer) return;
+                pointer.classList.add('tick');
+                if (needleTickTimeout) clearTimeout(needleTickTimeout);
+                needleTickTimeout = setTimeout(() => {
+                    if (pointer) pointer.classList.remove('tick');
+                }, 40);
+            }
+
+            function animateSpin() {
+                const now = Date.now();
+                const elapsed = now - startTime;
+
+                if (elapsed < 0) {
+                    // Waiting for synchronized start
+                    drawRouletteWheel(canvas, data.slices, 0);
+                    rouletteAnimId = requestAnimationFrame(animateSpin);
+                    return;
+                }
+
+                const progress = Math.min(1, Math.max(0, elapsed / duration));
+
+                // Smooth Quartic Easing Out: 1 - (1 - t)^4
+                const eased = 1 - Math.pow(1 - progress, 4);
+                const currentRotation = eased * totalRotation;
+
+                // Slice passing under 12 o'clock pointer
+                let normalized = (2 * Math.PI - (currentRotation % (2 * Math.PI))) % (2 * Math.PI);
+                if (normalized < 0) normalized += 2 * Math.PI;
+                const currentSliceUnderNeedle = Math.floor(normalized / theta) % totalSlices;
+
+                if (currentSliceUnderNeedle !== lastTickSlice) {
+                    lastTickSlice = currentSliceUnderNeedle;
+                    triggerNeedleTick();
+                    const speed = 1 - progress;
+                    playRouletteTickSound(0.8 + (speed * 0.9));
+                }
+
+                if (progress < 1) {
+                    drawRouletteWheel(canvas, data.slices, currentRotation);
+                    rouletteAnimId = requestAnimationFrame(animateSpin);
+                } else {
+                    // Wheel Stopped
+                    if (!stopped) {
+                        stopped = true;
+                        if (pointer) pointer.classList.remove('tick');
+
+                        // Show winner announcement
+                        const winNameEl = document.getElementById('roulette-winner-name');
+                        if (winNameEl) winNameEl.innerText = data.winnerName;
+                        if (ann) ann.classList.remove('hidden');
+
+                        // Sound & Confetti
+                        playRouletteWinFanfare();
+                        const confettiCanvas = document.getElementById('roulette-confetti-canvas');
+                        launchRouletteConfetti(confettiCanvas);
+                    }
+
+                    pulseTime += 0.08;
+                    drawRouletteWheel(canvas, data.slices, data.totalRotation, data.winningSliceIndex, true, pulseTime);
+                    rouletteAnimId = requestAnimationFrame(animateSpin);
+                }
+            }
+
+            rouletteAnimId = requestAnimationFrame(animateSpin);
+        }
+
+        function hideRouletteModal() {
+            if (rouletteAnimId) {
+                cancelAnimationFrame(rouletteAnimId);
+                rouletteAnimId = null;
+            }
+            if (confettiAnimId) {
+                cancelAnimationFrame(confettiAnimId);
+                confettiAnimId = null;
+            }
+            const modal = document.getElementById('modal-roulette');
+            if (modal) modal.classList.add('hidden');
+            activeRouletteData = null;
+        }
+
+        /* --- HOST ROULETTE ORCHESTRATION --- */
+        function triggerDemocracyTieRoulette(winnerIndices) {
+            if (!isHost) return;
+
+            // 1. Gather tied entries by mapping each unique submission/player
+            const uniqueTiedEntries = [];
+            const seenPlayerIds = new Set();
+            winnerIndices.forEach(subIdx => {
+                const sub = gameState.submissions[subIdx];
+                if (!sub) return;
+                const allPlayers = (gameState.players && gameState.players.length > 0 ? gameState.players : players);
+                const p = allPlayers.find(pl => pl.id === sub.playerId);
+                const pId = sub.playerId;
+                if (!seenPlayerIds.has(pId)) {
+                    seenPlayerIds.add(pId);
+                    uniqueTiedEntries.push({
+                        subIndex: subIdx,
+                        playerId: pId,
+                        playerName: p ? p.name : (sub.playerName || 'Jugador'),
+                        isBot: p ? !!p.isBot : false
+                    });
+                }
+            });
+
+            const N = uniqueTiedEntries.length;
+            if (N < 2) return;
+
+            // Curated palette of distinct vibrant colors
+            const palette = [
+                '#e11d48', // Vibrant Crimson / Rose
+                '#2563eb', // Royal Blue
+                '#059669', // Emerald Green
+                '#d97706', // Amber Gold
+                '#7c3aed', // Purple Violet
+                '#0891b2', // Electric Cyan
+                '#db2777', // Hot Pink
+                '#ea580c', // Sunset Orange
+                '#4f46e5', // Deep Indigo
+                '#0d9488'  // Dark Teal
+            ];
+
+            uniqueTiedEntries.forEach((entry, idx) => {
+                entry.color = palette[idx % palette.length];
+            });
+
+            // 2. Build interleaved slices: N players * N slices each = N^2 total slices
+            // Interleaved pattern: [P0, P1, ..., PN-1] repeated N times
+            const slices = [];
+            for (let rep = 0; rep < N; rep++) {
+                uniqueTiedEntries.forEach((entry, eIdx) => {
+                    slices.push({
+                        playerId: entry.playerId,
+                        playerName: entry.playerName,
+                        color: entry.color,
+                        subIndex: entry.subIndex,
+                        isBot: entry.isBot,
+                        entryIndex: eIdx,
+                        sliceIndex: slices.length
+                    });
+                });
+            }
+
+            const totalSlices = slices.length; // N^2
+            const theta = (2 * Math.PI) / totalSlices;
+
+            // 3. Pick totally random winning slice index
+            const winningSliceIndex = Math.floor(Math.random() * totalSlices);
+            const winningSlice = slices[winningSliceIndex];
+
+            // 4. Calculate landing rotation angle to position winning slice under top pointer (12 o'clock)
+            // Jitter within +/- 25% of slice width to avoid exact borders
+            const jitter = (Math.random() - 0.5) * 0.5 * theta;
+            const targetSliceAngle = (winningSliceIndex + 0.5) * theta + jitter;
+
+            let baseAngle = (2 * Math.PI - targetSliceAngle) % (2 * Math.PI);
+            if (baseAngle < 0) baseAngle += 2 * Math.PI;
+
+            const fullSpins = 6 + Math.floor(Math.random() * 2); // 6 to 7 full rotations
+            const totalRotation = (2 * Math.PI * fullSpins) + baseAngle;
+            const spinDuration = 5200; // 5.2s
+
+            const roulettePayload = {
+                slices: slices.map(s => ({
+                    playerId: s.playerId,
+                    playerName: s.playerName,
+                    color: s.color,
+                    subIndex: s.subIndex,
+                    sliceIndex: s.sliceIndex
+                })),
+                winningSliceIndex: winningSliceIndex,
+                winnerPlayerId: winningSlice.playerId,
+                winnerSubIndex: winningSlice.subIndex,
+                winnerName: winningSlice.playerName,
+                totalRotation: totalRotation,
+                spinDuration: spinDuration,
+                startTime: Date.now() + 150
+            };
+
+            console.log(`[ROULETTE] Tie detected among ${N} players. Slices: ${totalSlices}. Random Winner: ${winningSlice.playerName} (Slice ${winningSliceIndex})`);
+
+            broadcast({ type: 'START_ROULETTE', payload: roulettePayload });
+
+            // Host timeout to finalize round after spin + celebration
+            const totalWait = spinDuration + 3600;
+            setTimeout(() => {
+                finalizeRouletteRound(roulettePayload);
+            }, totalWait);
+        }
+
+        function finalizeRouletteRound(payload) {
+            if (!isHost) return;
+
+            // Hide roulette on all clients
+            broadcast({ type: 'CLOSE_ROULETTE' });
+
+            const wPlayer = players.find(p => p.id === payload.winnerPlayerId);
+            if (wPlayer) {
+                wPlayer.score++;
+                console.log(`[ROULETTE] Point awarded to ${wPlayer.name}. Score: ${wPlayer.score}`);
+            }
+
+            gameState.winningSubmissionIndex = payload.winnerSubIndex;
+            gameState.winnerName = payload.winnerName;
+            gameState.phase = 'SCORE';
+            gameState.players = players;
+
+            broadcast({ type: 'PLAYER_UPDATE', players: players });
+            broadcast({ type: 'SITUATION_UPDATE', state: gameState });
+
+            if (wPlayer) {
+                checkGameEnd(wPlayer);
+            } else {
+                setTimeout(() => startRound(), 3500);
             }
         }
 
@@ -3256,6 +3981,7 @@
                             console.log("New Round Detected:", data.state.round);
                             lastRoundId = data.state.round;
                             // Reset local round state
+                            hideRouletteModal();
                             hasSwappedThisRound = false;
                             resetSwapUI(true);
                             selectedCards = [];
@@ -3278,6 +4004,12 @@
                             if (gameState) gameState.players = data.players;
                             updateTableUI();
                         }
+                        break;
+                    case 'START_ROULETTE':
+                        showRouletteModal(data.payload);
+                        break;
+                    case 'CLOSE_ROULETTE':
+                        hideRouletteModal();
                         break;
                     case 'GAME_OVER':
                         // Client receives end game
