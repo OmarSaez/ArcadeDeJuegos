@@ -221,9 +221,35 @@
         .piece.dragging {
             z-index: 1000 !important;
             opacity: 0.95;
-            filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.3));
             transition: none;
             will-change: transform, left, top;
+        }
+
+        .piece.remote-moving {
+            z-index: 1000 !important;
+            opacity: 0.95;
+            transition: none;
+            will-change: left, top;
+        }
+
+        .piece.remote-moving .stroke-path {
+            stroke: var(--peer-color, #3b82f6) !important;
+        }
+
+        .piece-stroke {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .piece-stroke .stroke-path {
+            stroke-width: 6px;
+            stroke-linejoin: round;
+            fill: none;
         }
 
         /* Win Modal */
@@ -415,6 +441,7 @@
         <span id="room-display"
             style="display:none; font-weight:bold; margin-right:10px; color:#6d28d9; background:#ede9fe; padding:4px 8px; border-radius:6px; border:1px solid #8b5cf6;">
             Sala: <span id="room-code-display" style="font-family:monospace; font-size:1.1em;"></span>
+            <span id="my-color-dot" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#3b82f6; margin-left:6px; vertical-align:middle; border:1px solid rgba(0,0,0,0.25);" title="Tu color de jugador"></span>
         </span>
         <label for="upload" class="custom-file-upload hides-on-minimize">📂 <span
                 style="display:none; @media(min-width:600px){display:inline}">Subir Img</span></label>
@@ -1268,6 +1295,31 @@
         const gameSurface = document.getElementById('game-surface');
 
         // --- MULTIPLAYER P2P SETUP ---
+        const PLAYER_COLORS = [
+            '#3b82f6', // 1. Azul brillante (Host)
+            '#ef4444', // 2. Rojo
+            '#10b981', // 3. Esmeralda
+            '#f59e0b', // 4. Ámbar
+            '#8b5cf6', // 5. Púrpura
+            '#ec4899', // 6. Rosa
+            '#06b6d4', // 7. Cian
+            '#84cc16', // 8. Lima
+            '#f97316', // 9. Naranja
+            '#14b8a6', // 10. Turquesa
+            '#a855f7', // 11. Violeta
+            '#eab308', // 12. Amarillo
+            '#0284c7', // 13. Azul cielo
+            '#e11d48', // 14. Carmesí
+            '#22c55e', // 15. Verde brillante
+            '#6366f1', // Índigo
+            '#d946ef', // 17. Fucsia
+            '#f43f5e', // 18. Fresa
+            '#2dd4bf', // 19. Aguamarina
+            '#fb923c'  // 20. Coral
+        ];
+        let myPlayerColor = PLAYER_COLORS[0];
+        let nextColorIndex = 1;
+
         let peer = null;
         let myConn = null; // Si soy cliente, mi conexión con el Host
         let connectedPeers = []; // Si soy Host, lista de conexiones
@@ -1308,6 +1360,8 @@
                 // Mostrar código de sala en la barra superior
                 document.getElementById('room-display').style.display = 'inline-block';
                 document.getElementById('room-code-display').innerText = id;
+                const dot = document.getElementById('my-color-dot');
+                if (dot) dot.style.backgroundColor = myPlayerColor;
 
                 if (isHost) {
                     document.getElementById('p2p-step-1').style.display = 'none';
@@ -1340,6 +1394,10 @@
         function createRoom() {
             if (typeof Peer === 'undefined') { alert('Error: La librería PeerJS no se cargó. Verifica tu conexión o las restricciones de seguridad (Google Drive puede bloquear scripts externos).'); return; }
             isHost = true;
+            myPlayerColor = PLAYER_COLORS[0];
+            nextColorIndex = 1;
+            const dot = document.getElementById('my-color-dot');
+            if (dot) dot.style.backgroundColor = myPlayerColor;
             initPeer();
         }
 
@@ -1352,6 +1410,8 @@
             // Mostrar código en la barra superior (asumimos éxito, si falla se puede alertar)
             document.getElementById('room-display').style.display = 'inline-block';
             document.getElementById('room-code-display').innerText = code;
+            const dot = document.getElementById('my-color-dot');
+            if (dot) dot.style.backgroundColor = myPlayerColor;
 
             peer = new Peer();
             peer.on('open', () => {
@@ -1368,6 +1428,12 @@
                 console.log("Conexión abierta con", conn.peer);
                 if (isHost) {
                     connectedPeers.push(conn);
+                    // Asignar color al nuevo jugador de la lista de 20 colores
+                    const assignedColor = PLAYER_COLORS[nextColorIndex % PLAYER_COLORS.length];
+                    nextColorIndex++;
+                    conn.assignedColor = assignedColor;
+                    try { conn.send({ type: 'ASSIGN_COLOR', color: assignedColor }); } catch (e) { }
+
                     // AUTO-SYNC: Send full state immediately when a peer connects
                     // No waiting for acceptance.
                     startSyncWithPeer(conn);
@@ -1389,6 +1455,11 @@
                         delete retryIntervals[conn.peer];
                     }
                 }
+                // Limpiar resaltado de piezas si un jugador se desconecta
+                document.querySelectorAll('.piece').forEach(p => {
+                    p.classList.remove('remote-moving');
+                    clearPieceHighlight(p);
+                });
             });
 
             conn.on('error', (err) => console.error("Error conex:", err));
@@ -1422,7 +1493,8 @@
                         type: 'FULL_STATE',
                         config: { rows, cols, img: imgUrl },
                         pieces: gatherPieceState(),
-                        stats: { s: seconds, m: moves }
+                        stats: { s: seconds, m: moves },
+                        yourColor: conn.assignedColor
                     });
                 } catch (e) { console.error("Error enviando state:", e); }
             };
@@ -1437,7 +1509,20 @@
             if (data.type !== 'MOVE') console.log("Recibido evento:", data.type);
             switch (data.type) {
                 case 'HELLO':
-                    if (isHost) startSyncWithPeer(senderConn);
+                    if (isHost) {
+                        if (senderConn && senderConn.assignedColor) {
+                            try { senderConn.send({ type: 'ASSIGN_COLOR', color: senderConn.assignedColor }); } catch (e) { }
+                        }
+                        startSyncWithPeer(senderConn);
+                    }
+                    break;
+
+                case 'ASSIGN_COLOR':
+                    if (data.color) {
+                        myPlayerColor = data.color;
+                        const dot = document.getElementById('my-color-dot');
+                        if (dot) dot.style.backgroundColor = myPlayerColor;
+                    }
                     break;
 
                 case 'ACK_FULL_STATE':
@@ -1460,6 +1545,11 @@
                         moves = data.stats.m;
                         document.getElementById('timer').innerText = formatTime(seconds);
                     }
+                    if (data.yourColor) {
+                        myPlayerColor = data.yourColor;
+                        const dot = document.getElementById('my-color-dot');
+                        if (dot) dot.style.backgroundColor = myPlayerColor;
+                    }
                     senderConn.send({ type: 'ACK_FULL_STATE' });
                     break;
 
@@ -1478,6 +1568,10 @@
 
                 case 'GAME_CONFIG':
                     initGame(data.config);
+                    if (isHost) broadcastData(data, senderConn);
+                    break;
+                case 'GRAB':
+                    handleRemoteGrab(data);
                     if (isHost) broadcastData(data, senderConn);
                     break;
                 case 'MOVE':
@@ -1750,6 +1844,20 @@
                     const path = getJigsawPath(shape, tileW, tabSize);
                     piece.style.clipPath = `path('${path}')`;
 
+                    // SVG contour for multiplayer highlights (immune to clip-path, solid 3px border)
+                    const strokeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    strokeSvg.setAttribute("class", "piece-stroke");
+                    strokeSvg.setAttribute("viewBox", `0 0 ${pieceSize} ${pieceSize}`);
+                    const strokePathElem = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    strokePathElem.setAttribute("d", path);
+                    strokePathElem.setAttribute("stroke", "none");
+                    strokePathElem.setAttribute("stroke-width", "6");
+                    strokePathElem.setAttribute("fill", "none");
+                    strokePathElem.setAttribute("stroke-linejoin", "round");
+                    strokePathElem.setAttribute("class", "stroke-path");
+                    strokeSvg.appendChild(strokePathElem);
+                    piece.appendChild(strokeSvg);
+
                     setupPieceEvents(piece);
                     pieces.push(piece);
                 }
@@ -1893,6 +2001,7 @@
         let dragStartX = 0, dragStartY = 0;
         let isDragging = false;
         let pendingDrag = false;
+        let grabHoldTimer = null;
         let dragSavedState = null;
         // Cached dimensions to avoid reflows during drag
         let cachedPieceHalfW = 0, cachedPieceHalfH = 0;
@@ -1905,6 +2014,9 @@
 
             draggedPiece = e.currentTarget;
             try { draggedPiece.setPointerCapture(e.pointerId); } catch (err) { }
+            draggedPiece.classList.remove('remote-moving');
+            clearPieceHighlight(draggedPiece);
+            draggedPiece.style.filter = '';
 
             const rect = draggedPiece.getBoundingClientRect();
             dragStartX = e.clientX;
@@ -1920,6 +2032,18 @@
             pendingDrag = true;
             isDragging = false;
 
+            if (grabHoldTimer) {
+                clearTimeout(grabHoldTimer);
+                grabHoldTimer = null;
+            }
+            grabHoldTimer = setTimeout(() => {
+                if (pendingDrag && draggedPiece) {
+                    pendingDrag = false;
+                    isDragging = true;
+                    startVisualDrag(dragStartX, dragStartY);
+                }
+            }, 180);
+
             // USE GLOBAL LISTENERS (More robust against DOM moves/Capture loss)
             document.addEventListener('pointermove', onPieceMove, { passive: false });
             document.addEventListener('pointerup', onPieceUp);
@@ -1928,6 +2052,13 @@
 
         function startVisualDrag(pointerX, pointerY) {
             if (!draggedPiece) return;
+
+            // Send GRAB event to peers immediately
+            sendData({
+                type: 'GRAB',
+                id: draggedPiece.dataset.correctPos,
+                color: myPlayerColor
+            });
 
             // Cache dimensions ONCE at drag start to avoid reflows during drag
             cachedPieceHalfW = draggedPiece.offsetWidth / 2;
@@ -1944,6 +2075,9 @@
 
             const rot = draggedPiece.dataset.currentRotation || 0;
             draggedPiece.style.transform = `rotate(${rot}deg) scale(1.1)`;
+
+            // Reset netThrottle to 0 to send the initial grab MOVE immediately
+            netThrottle = 0;
 
             // Immediate update
             updatePiecePosition(pointerX, pointerY);
@@ -2005,7 +2139,8 @@
                     type: 'MOVE',
                     id: draggedPiece.dataset.correctPos,
                     x: localX,
-                    y: localY
+                    y: localY,
+                    color: myPlayerColor
                 });
                 netThrottle = now;
             }
@@ -2019,6 +2154,10 @@
                 // 5px Tolerance for "Click" vs "Drag"
                 const dist = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
                 if (dist > 5) {
+                    if (grabHoldTimer) {
+                        clearTimeout(grabHoldTimer);
+                        grabHoldTimer = null;
+                    }
                     pendingDrag = false;
                     isDragging = true;
                     startVisualDrag(e.clientX, e.clientY);
@@ -2033,6 +2172,10 @@
         }
 
         function onPieceUp(e) {
+            if (grabHoldTimer) {
+                clearTimeout(grabHoldTimer);
+                grabHoldTimer = null;
+            }
             if (!draggedPiece) return;
 
             document.removeEventListener('pointermove', onPieceMove);
@@ -2136,6 +2279,34 @@
 
         // --- HELPERS FOR REMOTE ---
 
+        function setPieceHighlight(piece, color) {
+            if (!piece) return;
+            const peerColor = color || '#3b82f6';
+            piece.style.setProperty('--peer-color', peerColor);
+            const strokePath = piece.querySelector('.stroke-path');
+            if (strokePath) {
+                strokePath.setAttribute('stroke', peerColor);
+            }
+        }
+
+        function clearPieceHighlight(piece) {
+            if (!piece) return;
+            piece.style.removeProperty('--peer-color');
+            const strokePath = piece.querySelector('.stroke-path');
+            if (strokePath) {
+                strokePath.setAttribute('stroke', 'none');
+            }
+        }
+
+        function handleRemoteGrab(data) {
+            const p = document.getElementById(`piece-${data.id}`);
+            if (p && !p.classList.contains('dragging')) {
+                setPieceHighlight(p, data.color || '#3b82f6');
+                p.classList.add('remote-moving');
+                p.style.zIndex = 1000;
+            }
+        }
+
         // Remote move buffering: batch into requestAnimationFrame for performance
         let _pendingRemoteMoves = {};
         let _remoteMoveRAF = 0;
@@ -2166,6 +2337,12 @@
                     p.style.zIndex = 1000;
                     p.style.willChange = 'left, top';
 
+                    // Resaltado con contorno de color del jugador remoto
+                    if (data.color) {
+                        setPieceHighlight(p, data.color);
+                    }
+                    p.classList.add('remote-moving');
+
                     if (p.parentElement !== gameWorld) {
                         gameWorld.appendChild(p);
                         p.classList.remove('in-slot');
@@ -2179,6 +2356,9 @@
             if (!p) return;
             p.style.zIndex = '';
             p.style.willChange = '';
+            p.classList.remove('remote-moving');
+            clearPieceHighlight(p);
+            p.style.filter = '';
 
             if (data.inSlot) {
                 const slot = document.querySelector(`.slot[data-pos="${data.slotId}"]`);
@@ -2225,6 +2405,9 @@
             piecesData.forEach((d) => {
                 const p = document.getElementById(`piece-${d.id}`) || pieces.find(pc => pc.dataset.correctPos === d.id);
                 if (p) {
+                    p.classList.remove('remote-moving');
+                    clearPieceHighlight(p);
+                    p.style.filter = '';
                     p.dataset.currentRotation = d.rot;
                     if (d.inSlot) {
                         const slot = document.querySelector(`.slot[data-pos="${d.slotId}"]`);
