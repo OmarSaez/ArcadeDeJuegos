@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#070a14">
+    <title>Tesis Master | Filogenómica, Inferencia y Agrupamiento</title>
+    <meta name="description" content="Simulador y juego interactivo para dominar los conceptos teóricos, algoritmos y preguntas trampa de la tesis sobre filogenómica de S. eubayanus.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onclick="">
+
+<div class="app-container">
+
+    <!-- Top Navigation Bar -->
+    <header class="top-navbar">
+        <a href="../../index.html" class="brand-section" title="Volver al Arcade de Juegos">
+            <div class="brand-icon">🧬</div>
+            <div>
+                <div class="brand-title">Tesis Master</div>
+                <div class="brand-subtitle">Filogenómica & Minería de Datos</div>
+            </div>
+        </a>
+
+        <div class="nav-actions">
+            <button class="nav-btn desktop-nav-btn" onclick="startOralMode()" title="Interrogación oral sin alternativas">
+                <span>🎤</span> <span>Defensa Oral</span>
+            </button>
+            <button class="nav-btn desktop-nav-btn" onclick="switchView('flashcards')" title="Modo Flashcards Mnemotécnicas">
+                <span>🎴</span> <span>Flashcards</span>
+            </button>
+            <button class="nav-btn desktop-nav-btn" onclick="switchView('cheatsheet')" title="Tabla Comparativa de Métodos">
+                <span>📊</span> <span>Tablas</span>
+            </button>
+            <button class="nav-btn desktop-nav-btn" onclick="switchView('study')" title="Compendio Completo">
+                <span>📖</span> <span>Estudio</span>
+            </button>
+            <button id="sound-toggle-btn" class="nav-btn sound-toggle-btn" onclick="toggleSound()" title="Silenciar Efectos">
+                🔊
+            </button>
+            <a href="../../index.html" class="nav-btn" style="color: var(--accent); border-color: rgba(6, 182, 212, 0.3);" title="Regresar al Menú Arcade">
+                🕹️ <span class="hide-mobile">Arcade</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 1: DASHBOARD                                        -->
+    <!-- ======================================================== -->
+    <main id="view-dashboard" class="fade-in">
+        <!-- Hero Section -->
+        <section class="hero-banner glass-card">
+            <div class="hero-badge">🧬 S. eubayanus • 471 Cepas</div>
+            <h1 class="hero-title">Domina tu Defensa de Tesis</h1>
+            <p class="hero-desc">
+                Entrena tu memoria a largo plazo con preguntas dinámicas, trampas de comisión examinadora, tarjetas 3D y comparativas de algoritmos.
+            </p>
+        </section>
+
+        <!-- Stats Strip -->
+        <section class="stats-strip">
+            <div class="stat-box">
+                <span id="dash-stat-tests" class="stat-val">0</span>
+                <span class="stat-lbl">Tests Realizados</span>
+            </div>
+            <div class="stat-box">
+                <span id="dash-stat-score" class="stat-val highlight">0%</span>
+                <span class="stat-lbl">Mejor Precisión</span>
+            </div>
+            <div class="stat-box">
+                <span id="dash-stat-mastered" class="stat-val">0 / 16</span>
+                <span class="stat-lbl">Tarjetas Dominadas</span>
+            </div>
+        </section>
+
+        <!-- Detector de Mala Memoria (Áreas Débiles) -->
+        <section class="glass-card" style="padding: 20px 24px; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="font-size: 1.05rem; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+                    <span>🧠</span> Rendimiento por Temas (Detector de Olvidos)
+                </h3>
+                <button onclick="resetAllStats()" style="background: none; border: none; color: var(--text-dim); font-size: 0.75rem; cursor: pointer; text-decoration: underline;">
+                    Reiniciar progreso
+                </button>
+            </div>
+            <div id="weak-areas-list">
+                <!-- Inyectado por JS -->
+            </div>
+        </section>
+
+        <!-- Modos de Juego Principales -->
+        <div class="section-title-wrap">
+            <h2 class="section-title"><span>🎮</span> Modos de Entrenamiento</h2>
+        </div>
+
+        <section class="modes-grid">
+            <!-- Modo 1: Práctica Rápida -->
+            <button class="mode-card" style="--card-accent: var(--primary); --card-glow: var(--primary-glow);" onclick="startMode('quick')">
+                <div>
+                    <div class="mode-card-header">
+                        <div class="mode-icon-circle">⚡</div>
+                        <span class="mode-badge badge-quick">3 Minutos</span>
+                    </div>
+                    <div class="mode-title">Práctica Rápida</div>
+                    <p class="mode-desc">10 preguntas aleatorias con retroalimentación instantánea de trampas y respuestas correctas.</p>
+                </div>
+            </button>
+
+            <!-- Modo 2: Simulación Examen de Grado -->
+            <button class="mode-card" style="--card-accent: var(--danger); --card-glow: rgba(239, 68, 68, 0.25);" onclick="startMode('defense')">
+                <div>
+                    <div class="mode-card-header">
+                        <div class="mode-icon-circle">🎓</div>
+                        <span class="mode-badge badge-defense">15 Min • Examen</span>
+                    </div>
+                    <div class="mode-title">Defensa de Tesis</div>
+                    <p class="mode-desc">Simulacro oficial de 20 preguntas con temporizador, ponderación y veredicto formal de la comisión.</p>
+                </div>
+            </button>
+
+            <!-- Modo 3: Trampas de Comisión -->
+            <button class="mode-card" style="--card-accent: var(--warning); --card-glow: rgba(245, 158, 11, 0.25);" onclick="startMode('traps')">
+                <div>
+                    <div class="mode-card-header">
+                        <div class="mode-icon-circle">🪤</div>
+                        <span class="mode-badge badge-trap">Zona de Riesgo</span>
+                    </div>
+                    <div class="mode-title">Trampas Mortales</div>
+                    <p class="mode-desc">Enfocado en las sutilezas donde cae el 90% de los estudiantes (K-means en no euclidiano, k en MST, etc.).</p>
+                </div>
+            </button>
+
+            <!-- Modo 4: Flashcards 3D -->
+            <button class="mode-card" style="--card-accent: var(--bio-green); --card-glow: var(--bio-green-glow);" onclick="switchView('flashcards')">
+                <div>
+                    <div class="mode-card-header">
+                        <div class="mode-icon-circle">🎴</div>
+                        <span class="mode-badge badge-flash">Mnemotecnia</span>
+                    </div>
+                    <div class="mode-title">Tarjetas de Memoria</div>
+                    <p class="mode-desc">Tarjetas interactivas 3D con conceptos, fórmulas y trucos mnemotécnicos para memorizar rápido.</p>
+                </div>
+            </button>
+
+            <!-- Modo 5: Defensa Oral (Sin Alternativas) -->
+            <button class="mode-card" style="--card-accent: var(--accent); --card-glow: var(--accent-glow); grid-column: 1 / -1;" onclick="startOralMode()">
+                <div>
+                    <div class="mode-card-header">
+                        <div class="mode-icon-circle">🎤</div>
+                        <span class="mode-badge badge-cheat">Simulador Oral • Sin Opciones</span>
+                    </div>
+                    <div class="mode-title">Defensa Oral Frente a la Comisión</div>
+                    <p class="mode-desc">Sin alternativas visibles: te enfrentarás a las preguntas formuladas por la comisión, ensayarás tu explicación en voz alta o por escrito y contrastarás tus argumentos con el checklist oficial de conceptos indispensables.</p>
+                </div>
+            </button>
+        </section>
+
+        <!-- Herramientas Complementarias -->
+        <div class="section-title-wrap">
+            <h2 class="section-title"><span>📚</span> Material de Repaso Directo</h2>
+        </div>
+
+        <section class="tools-row">
+            <div class="tool-card" onclick="switchView('cheatsheet')">
+                <div class="tool-icon">📊</div>
+                <div class="tool-info">
+                    <h4>Tablas Comparativas</h4>
+                    <p>Inferencia (NJ, MP, ML, Bayes) y Agrupamiento con sus complejidades O(n).</p>
+                </div>
+            </div>
+
+            <div class="tool-card" onclick="switchView('study')">
+                <div class="tool-icon">📖</div>
+                <div class="tool-info">
+                    <h4>Compendio de Estudio</h4>
+                    <p>Revisa las más de 35 preguntas con respuestas y explicaciones de trampas.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 2: QUIZ / EXAMEN INTERACTIVO                        -->
+    <!-- ======================================================== -->
+    <main id="view-quiz" class="glass-card hidden">
+        <div class="quiz-header">
+            <div class="quiz-header-top">
+                <button class="btn btn-secondary btn-sm" onclick="exitQuizConfirm()">✕ Salir</button>
+                <div class="progress-track">
+                    <div id="quiz-progress-bar" class="progress-fill"></div>
+                </div>
+                <div id="quiz-timer" class="timer-pill hidden">
+                    <span>⏱️</span> <span id="timer-text">15:00</span>
+                </div>
+            </div>
+            <div class="quiz-header-sub">
+                <span id="quiz-counter-text" class="quiz-counter-badge">Pregunta 1 de 10</span>
+                <button id="quiz-blind-toggle" class="nav-btn btn-sm" onclick="toggleBlindMode()" title="Oculta temporalmente las opciones para forzarte a pensar y formular la respuesta antes de mirar">
+                    🙈 Pensar Primero
+                </button>
+            </div>
+        </div>
+
+        <div class="question-meta">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <span id="q-category" class="q-category-tag">Conceptos Filogenéticos</span>
+                <span class="badge-complexity complexity-low" title="Las alternativas cambian de lugar aleatoriamente en cada partida">🔀 Alternativas Aleatorias</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <span id="q-priority-badge" class="badge-complexity complexity-extreme hidden">⭐ Doble Ponderación</span>
+                <span id="q-trap-badge" class="q-trap-tag hidden">⚠️ Pregunta Trampa</span>
+            </div>
+        </div>
+
+        <h2 id="q-text" class="q-text">Cargando pregunta...</h2>
+
+        <!-- Botón para revelar opciones si el modo pensar primero está activo -->
+        <button id="blind-reveal-btn" class="blind-overlay-btn hidden" onclick="revealBlindOptions()">
+            💡 Formulé mi respuesta mentalmente ➔ Ver Alternativas (Mezcladas)
+        </button>
+
+        <div id="options-container" class="options-list">
+            <!-- Opciones A, B, C, D inyectadas por JS -->
+        </div>
+
+        <!-- Retroalimentación inline (para práctica rápida y trampas) -->
+        <div id="inline-feedback-container" class="hidden"></div>
+
+        <div class="quiz-controls">
+            <button id="quiz-prev-btn" class="btn btn-secondary" onclick="prevQuestion()">
+                ◂ Anterior
+            </button>
+            <button id="quiz-next-btn" class="btn btn-primary" onclick="nextQuestion()" disabled>
+                Siguiente ➔
+            </button>
+        </div>
+    </main>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 3: RESULTADOS & VEREDICTO DE LA COMISIÓN            -->
+    <!-- ======================================================== -->
+    <main id="view-results" class="glass-card hidden">
+        <section class="results-hero">
+            <div id="results-orb" class="score-orb">
+                <div class="score-orb-content">
+                    <div id="results-percent" class="score-percent">0%</div>
+                </div>
+            </div>
+
+            <h2 id="verdict-title" class="verdict-title">Evaluando...</h2>
+            <p id="verdict-desc" class="verdict-feedback"></p>
+
+            <div class="stats-strip" style="max-width: 480px; margin: 0 auto 28px;">
+                <div class="stat-box">
+                    <span id="results-points" class="stat-val">0 / 0 pts</span>
+                    <span class="stat-lbl">Puntaje Ponderado</span>
+                </div>
+                <div class="stat-box">
+                    <span id="results-time" class="stat-val">0m 0s</span>
+                    <span class="stat-lbl">Tiempo Empleado</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="startMode(state.mode)">
+                    🔄 Reintentar Modo
+                </button>
+                <button class="btn btn-secondary" onclick="switchView('flashcards')">
+                    🎴 Repasar Flashcards
+                </button>
+                <button class="btn btn-secondary" onclick="switchView('dashboard')">
+                    🏠 Volver al Inicio
+                </button>
+            </div>
+        </section>
+
+        <section style="border-top: 1px solid var(--border-color); padding-top: 24px;">
+            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; text-align: left;">
+                📋 Desglose y Explicación de Cada Pregunta
+            </h3>
+            <div id="results-review-list">
+                <!-- Tarjetas de revisión inyectadas por JS -->
+            </div>
+        </section>
+    </main>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 4: FLASHCARDS 3D                                    -->
+    <!-- ======================================================== -->
+    <main id="view-flashcards" class="hidden">
+        <div class="fc-top-bar">
+            <div class="fc-top-actions">
+                <button class="btn btn-secondary btn-sm" onclick="switchView('dashboard')">
+                    ◂ Volver
+                </button>
+                <button id="fc-master-btn" class="btn btn-secondary btn-sm" onclick="toggleMasteredFlashcard(event)">
+                    ☆ Marcar como Dominada
+                </button>
+            </div>
+            <div id="fc-counter" class="fc-counter-pill">
+                Tarjeta 1 de 16
+            </div>
+        </div>
+
+        <div class="flashcards-container">
+            <div id="fc-wrapper" class="flashcard-wrapper" onclick="flipFlashcard()">
+                <!-- Front Side -->
+                <div class="flashcard-face flashcard-front">
+                    <div class="fc-meta">
+                        <span id="fc-category" class="fc-category">Conceptos</span>
+                        <span>Toca la tarjeta para voltear 🔄</span>
+                    </div>
+
+                    <div id="fc-front-text" class="fc-main-text">
+                        Cargando tarjeta...
+                    </div>
+
+                    <div class="fc-hint">
+                        💡 Presiona <kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">Espacio</kbd> o haz clic para ver la respuesta
+                    </div>
+                </div>
+
+                <!-- Back Side -->
+                <div class="flashcard-face flashcard-back">
+                    <div class="fc-meta">
+                        <span style="color: var(--bio-green); font-weight: 700;">RESPUESTA & FUNDAMENTO</span>
+                        <span>Girar de nuevo 🔄</span>
+                    </div>
+
+                    <div id="fc-back-text" class="fc-main-text">
+                        Respuesta...
+                    </div>
+
+                    <div id="fc-trick-box" class="fc-trick-box">
+                        <strong id="fc-trick-text"></strong>
+                    </div>
+
+                    <div class="fc-hint" style="color: var(--primary-light);">
+                        Usa las flechas ◀ ▶ del teclado para cambiar de tarjeta
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flashcard-nav">
+                <button id="fc-prev-btn" class="btn btn-secondary" onclick="prevFlashcard()">
+                    ◂ Anterior
+                </button>
+                <button class="btn btn-primary" onclick="flipFlashcard()">
+                    🔄 Voltear Tarjeta
+                </button>
+                <button id="fc-next-btn" class="btn btn-secondary" onclick="nextFlashcard()">
+                    Siguiente ▸
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 5: CHEAT SHEET / COMPARATIVAS DE MÉTODOS           -->
+    <!-- ======================================================== -->
+    <main id="view-cheatsheet" class="hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <button class="btn btn-secondary" onclick="switchView('dashboard')">
+                ◂ Volver al Inicio
+            </button>
+            <h2 style="font-size: 1.3rem; font-weight: 800;">📊 Tablas Comparativas de la Tesis</h2>
+            <div style="width: 80px;"></div>
+        </div>
+
+        <div class="cheatsheet-section">
+            <!-- Tabla 1: Inferencia Filogenética -->
+            <div class="glass-card" style="padding: 24px;">
+                <div style="margin-bottom: 16px;">
+                    <span style="color: var(--primary-light); font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+                        Tabla 2.1 de la Tesis
+                    </span>
+                    <h3 style="font-size: 1.25rem; font-weight: 700; color: #ffffff;">
+                        Criterios de Inferencia Filogenética
+                    </h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">
+                        Comparativa de principios operativos, costos matemáticos y tipo de solución según Felsenstein (2004).
+                    </p>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="academic-table">
+                        <thead>
+                            <tr>
+                                <th>Método</th>
+                                <th>Principio Base</th>
+                                <th>Complejidad</th>
+                                <th>Tipo de Solución</th>
+                                <th>Clave para la Comisión</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-inferencia-body">
+                            <!-- Inyectado por JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabla 2: Métodos de Agrupamiento -->
+            <div class="glass-card" style="padding: 24px;">
+                <div style="margin-bottom: 16px;">
+                    <span style="color: var(--accent); font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+                        Tabla 2.2 de la Tesis
+                    </span>
+                    <h3 style="font-size: 1.25rem; font-weight: 700; color: #ffffff;">
+                        Métodos de Agrupamiento (Clustering)
+                    </h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">
+                        Comparativa de los 5 paradigmas analizados, complejidades asintóticas y definición del parámetro <em>k</em>.
+                    </p>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="academic-table">
+                        <thead>
+                            <tr>
+                                <th>Método</th>
+                                <th>Principio Operativo</th>
+                                <th>Complejidad</th>
+                                <th>Definición de <em>k</em></th>
+                                <th>Aplicabilidad en Filogenómica</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-agrupamiento-body">
+                            <!-- Inyectado por JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 14px; line-height: 1.45;">
+                    <strong>Nota matemática:</strong> <em>n</em> = número de árboles génicos ortólogos, <em>k</em> = número de clústeres o vecinos según el algoritmo, <em>d</em> = dimensionalidad, <em>i</em> = número de iteraciones hasta la convergencia.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 6: MODO ESTUDIO / COMPENDIO COMPLETO               -->
+    <!-- ======================================================== -->
+    <main id="view-study" class="hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <button class="btn btn-secondary" onclick="switchView('dashboard')">
+                ◂ Volver
+            </button>
+            <h2 style="font-size: 1.3rem; font-weight: 800;">📖 Compendio de Preguntas de Examen</h2>
+            <div id="study-count-text" style="font-size: 0.82rem; color: var(--text-muted);">
+                Mostrando 0 preguntas
+            </div>
+        </div>
+
+        <div class="study-search-bar">
+            <input type="text" id="study-search-input" class="search-input" placeholder="🔍 Buscar por palabra clave, fórmula o algoritmo..." oninput="renderStudyMode()">
+            <select id="study-filter-select" class="filter-select" onchange="renderStudyMode()">
+                <option value="all">Todas las Categorías</option>
+                <option value="conceptos">Conceptos Filogenéticos</option>
+                <option value="inferencia">Inferencia Filogenética</option>
+                <option value="distancia">Métricas de Distancia</option>
+                <option value="agrupamiento">Métodos de Agrupamiento</option>
+                <option value="complejidades">Complejidad & Algoritmos</option>
+                <option value="trampas">Trampas de Comisión</option>
+            </select>
+        </div>
+
+        <div id="study-questions-list">
+            <!-- Inyectado por JS -->
+        </div>
+    </main>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 7: SIMULADOR DE DEFENSA ORAL (SIN ALTERNATIVAS)      -->
+    <!-- ======================================================== -->
+    <main id="view-oral" class="glass-card hidden">
+        <div class="quiz-header">
+            <button class="btn btn-secondary" onclick="switchView('dashboard')">✕ Salir</button>
+            <div style="flex: 1; margin: 0 10px; text-align: center;">
+                <span id="oral-counter-text" style="font-size: 0.85rem; font-weight: 700; color: var(--accent);">Pregunta Oral 1 de 20</span>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Formula tu argumento antes de revelar la respuesta</div>
+            </div>
+            <button class="nav-btn" onclick="nextOralQuestion(false)" title="Pasar a la siguiente pregunta">Saltar ➔</button>
+        </div>
+
+        <div class="examiner-quote-box">
+            <div class="examiner-avatar">
+                <div class="examiner-avatar-icon">👨‍🏫</div>
+                <span>Comisión Examinadora Pregunta:</span>
+            </div>
+            <h2 id="oral-question-title" class="oral-question-text">¿Pregunta?</h2>
+        </div>
+
+        <div id="oral-prompt-stage">
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 8px;">
+                ✍️ <strong>Tu espacio de ensayo:</strong> Escribe aquí tus notas o formula tu respuesta en voz alta como si estuvieras defendiendo tu tesis:
+            </p>
+            <textarea id="oral-notes-input" class="oral-notes-area" placeholder="Ej: Empezaría diciendo que un árbol no enraizado se modela formalmente como T=(V,E)... luego aclararía que no define clados monofiléticos estrictos porque carece de raíz ancestral..."></textarea>
+            
+            <button id="oral-reveal-btn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 16px; font-size: 1.05rem;" onclick="revealOralDossier()">
+                🗣️ Comprobar mi Explicación y Argumentos Clave ➔
+            </button>
+        </div>
+
+        <!-- Dossier de Defensa Revelado -->
+        <div id="oral-dossier-box" class="oral-dossier hidden">
+            <div class="dossier-section">
+                <div class="dossier-title" style="color: var(--bio-green);">
+                    <span>🎯</span> Respuesta de Excelencia para la Comisión
+                </div>
+                <div id="oral-target-answer" style="font-size: 0.95rem; line-height: 1.5; color: #ffffff; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 14px;">
+                </div>
+            </div>
+
+            <div class="dossier-section">
+                <div class="dossier-title" style="color: var(--accent);">
+                    <span>📋</span> Checklist de Conceptos Indispensables (Lo que debiste decir)
+                </div>
+                <div id="oral-checklist" class="checklist-container">
+                </div>
+            </div>
+
+            <div id="oral-trap-section" class="dossier-section">
+                <div class="dossier-title" style="color: var(--warning);">
+                    <span>🚨</span> La Trampa del Evaluador y Cómo Desarmarla
+                </div>
+                <div id="oral-trap-content" class="trap-callout" style="font-size: 0.9rem;">
+                </div>
+            </div>
+
+            <div class="dossier-section" style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-bottom: 0;">
+                <div style="font-size: 0.8rem; color: var(--text-dim); display: flex; justify-content: space-between;">
+                    <span>📚 <strong>Referencia Bibliográfica Formal:</strong> <span id="oral-citation-text" style="color: #cbd5e1;"></span></span>
+                </div>
+            </div>
+
+            <div class="oral-scoring-bar">
+                <span style="width: 100%; text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">
+                    ¿Cómo fue tu explicación oral?
+                </span>
+                <button class="btn btn-secondary" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;" onclick="scoreOralQuestion(false)">
+                    ❌ Se me olvidaron puntos clave
+                </button>
+                <button class="btn btn-primary" style="background: linear-gradient(135deg, var(--bio-green), #059669);" onclick="scoreOralQuestion(true)">
+                    ✅ Lo expliqué con precisión (+1)
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Mobile Bottom Tab Bar (iOS Native Style) -->
+    <nav class="mobile-tab-bar" id="mobile-tab-bar">
+        <button class="tab-item active" id="tab-dashboard" onclick="switchView('dashboard')">
+            <span class="tab-icon">🏠</span>
+            <span class="tab-label">Inicio</span>
+        </button>
+        <button class="tab-item" id="tab-quick" onclick="startMode('quick')">
+            <span class="tab-icon">⚡</span>
+            <span class="tab-label">Práctica</span>
+        </button>
+        <button class="tab-item" id="tab-oral" onclick="startOralMode()">
+            <span class="tab-icon">🎤</span>
+            <span class="tab-label">Oral</span>
+        </button>
+        <button class="tab-item" id="tab-flashcards" onclick="switchView('flashcards')">
+            <span class="tab-icon">🎴</span>
+            <span class="tab-label">Tarjetas</span>
+        </button>
+        <button class="tab-item" id="tab-cheatsheet" onclick="switchView('cheatsheet')">
+            <span class="tab-icon">📊</span>
+            <span class="tab-label">Tablas</span>
+        </button>
+        <button class="tab-item" id="tab-study" onclick="switchView('study')">
+            <span class="tab-icon">📖</span>
+            <span class="tab-label">Estudio</span>
+        </button>
+    </nav>
+
+</div>
+
+<!-- Scripts -->
+<script src="questions.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
