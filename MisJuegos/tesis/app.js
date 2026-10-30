@@ -24,6 +24,7 @@ const state = {
     oralRevealed: false,
     oralNotes: {},
     oralScores: { correct: 0, total: 0 },
+    oralFilterEnsayo: false,
     
     startTime: null,
     timerInterval: null,
@@ -277,7 +278,7 @@ function prepareQuestionWithShuffledOptions(rawQ) {
 // ==========================================
 // MODOS DE JUEGO & INICIO DE QUIZ
 // ==========================================
-function startMode(modeName, category = null) {
+function startMode(modeName, category = null, count = null) {
     sfx.click();
     state.mode = modeName;
     state.selectedCategory = category;
@@ -294,8 +295,14 @@ function startMode(modeName, category = null) {
     }
 
     if (modeName === 'quick') {
-        // 10 preguntas aleatorias con alternativas mezcladas
-        state.questions = pool.sort(() => Math.random() - 0.5).slice(0, 10).map(prepareQuestionWithShuffledOptions);
+        // Soporta cantidad flexible: 10 (por defecto), 25, o 'all' (todas las 63 preguntas)
+        let limit = 10;
+        if (count === 'all' || count >= pool.length) {
+            limit = pool.length;
+        } else if (typeof count === 'number' && count > 0) {
+            limit = count;
+        }
+        state.questions = pool.sort(() => Math.random() - 0.5).slice(0, limit).map(prepareQuestionWithShuffledOptions);
     } else if (modeName === 'defense') {
         // Examen de grado completo: 20 preguntas con temporizador de 15 minutos y opciones mezcladas
         state.questions = pool.sort(() => Math.random() - 0.5).slice(0, 20).map(prepareQuestionWithShuffledOptions);
@@ -304,6 +311,10 @@ function startMode(modeName, category = null) {
     } else if (modeName === 'traps') {
         // Modo solo trampas de examen con opciones mezcladas
         state.questions = pool.filter(q => q.isTrap).sort(() => Math.random() - 0.5).slice(0, 12).map(prepareQuestionWithShuffledOptions);
+    } else if (modeName === 'ensayo') {
+        // Modo Banco Oficial del Ensayo Real del Profesor (25 preguntas)
+        // Se barajan las opciones para evaluar comprensión conceptual pura sin memorizar letras
+        state.questions = pool.filter(q => q.isProfessorEnsayo).sort(() => Math.random() - 0.5).map(prepareQuestionWithShuffledOptions);
     }
 
     state.view = 'quiz';
@@ -553,7 +564,7 @@ function exitQuizConfirm() {
 // ==========================================
 // MODO DEFENSA ORAL (SIN ALTERNATIVAS)
 // ==========================================
-function startOralMode() {
+function startOralMode(onlyEnsayo = null) {
     sfx.click();
     state.mode = 'oral';
     state.oralIndex = 0;
@@ -561,10 +572,39 @@ function startOralMode() {
     state.oralNotes = {};
     state.oralScores = { correct: 0, total: 0 };
     
-    // Barajar preguntas de examen
-    state.oralQuestions = [...thesisQuestions].sort(() => Math.random() - 0.5);
+    if (onlyEnsayo !== null) {
+        state.oralFilterEnsayo = onlyEnsayo;
+    }
+
+    let pool = [...thesisQuestions];
+    if (state.oralFilterEnsayo) {
+        pool = pool.filter(q => q.isProfessorEnsayo);
+    }
     
+    // Barajar preguntas de examen
+    state.oralQuestions = pool.sort(() => Math.random() - 0.5);
+    updateOralPoolButtonState();
     switchView('oral');
+}
+
+function toggleOralFilterEnsayo() {
+    state.oralFilterEnsayo = !state.oralFilterEnsayo;
+    startOralMode(state.oralFilterEnsayo);
+}
+
+function updateOralPoolButtonState() {
+    const btn = document.getElementById('oral-toggle-pool-btn');
+    if (btn) {
+        if (state.oralFilterEnsayo) {
+            btn.innerHTML = '🎯 Solo Profe (Activo)';
+            btn.style.borderColor = '#f43f5e';
+            btn.style.color = '#fda4af';
+        } else {
+            btn.innerHTML = '📚 Todas las Preguntas';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+        }
+    }
 }
 
 function renderOralQuestion() {
@@ -722,6 +762,14 @@ function finishQuiz() {
         }
         state.stats.categoryStats[q.category].total++;
         if (isCorrect) state.stats.categoryStats[q.category].correct++;
+
+        if (q.isProfessorEnsayo) {
+            if (!state.stats.categoryStats['ensayo_profesor']) {
+                state.stats.categoryStats['ensayo_profesor'] = { correct: 0, total: 0 };
+            }
+            state.stats.categoryStats['ensayo_profesor'].total++;
+            if (isCorrect) state.stats.categoryStats['ensayo_profesor'].correct++;
+        }
     });
 
     const percent = Math.round((totalScore / maxPoints) * 100);
@@ -996,7 +1044,8 @@ function renderStudyMode() {
     const filterCat = document.getElementById('study-filter-select')?.value || 'all';
 
     let filtered = thesisQuestions.filter(q => {
-        const matchesCat = filterCat === 'all' || q.category === filterCat;
+        const matchesCat = filterCat === 'all' || 
+            (filterCat === 'ensayo' ? q.isProfessorEnsayo : q.category === filterCat);
         const matchesSearch = !searchTerm || 
             q.question.toLowerCase().includes(searchTerm) || 
             q.keyTakeaway.toLowerCase().includes(searchTerm) ||
@@ -1069,10 +1118,17 @@ function renderStatsDisplay() {
     if (weakList) {
         const stats = state.stats.categoryStats;
         const categories = [
+            { id: 'ensayo_profesor', name: '🎯 Ensayo Real del Profesor (Evaluador)' },
+            { id: 'contexto', name: 'Contexto y Motivación de la Tesis' },
+            { id: 'kdd', name: 'Metodología KDD & Fases' },
+            { id: 'preprocesamiento', name: 'Preprocesamiento & Filtro SNPs' },
             { id: 'conceptos', name: 'Conceptos Filogenéticos' },
             { id: 'inferencia', name: 'Inferencia (NJ, MP, ML, Bayes)' },
-            { id: 'distancia', name: 'Métricas de Distancia (RF vs QD)' },
-            { id: 'agrupamiento', name: 'Agrupamiento (K-Means, FANNY, MST)' },
+            { id: 'distancia', name: 'Métricas de Distancia (RF, QD, Kendall)' },
+            { id: 'agrupamiento', name: 'Agrupamiento (MST, DBSCAN, etc.)' },
+            { id: 'validacion', name: 'Validación, Parámetros & STRING' },
+            { id: 'visualizacion', name: 'Visualización & MDS (Kruskal)' },
+            { id: 'defensa_actitud', name: 'Estrategia & Actitud en Defensa' },
             { id: 'complejidades', name: 'Complejidades y Algoritmos' }
         ];
 

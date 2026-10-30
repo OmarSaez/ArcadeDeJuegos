@@ -711,6 +711,485 @@ const thesisQuestions = [
         trapExplanation: "Teorema de Bayes: Posterior = (Verosimilitud * Prior) / Evidencia. Tomar solo el prior ignoraría la evidencia de las secuencias observadas.",
         academicReference: "Nhan et al. (2017) / Felsenstein (2004)",
         keyTakeaway: "Bayes: Probabilidad Posterior = Priors + Verosimilitud de los datos (vía MCMC)."
+    },
+
+    // ==========================================
+    // 7. PREGUNTAS DEL ENSAYO REAL DEL PROFESOR EVALUADOR
+    // ==========================================
+    {
+        id: 39,
+        category: "contexto",
+        categoryLabel: "Contexto y Motivación",
+        question: "¿Cuál es el verdadero propósito ('el para qué') de realizar un análisis filogenético a escala de genoma completo en Saccharomyces eubayanus?",
+        options: {
+            a: "Aislar cepas vivas en biorreactores para optimizar industrialmente el perfil aromático de la cerveza.",
+            b: "Demostrar si la co-evolución y congruencia topológica entre árboles de genes permite descubrir módulos funcionales celulares sin sesgo a priori.",
+            c: "Calcular la secuencia de ADN consenso para diseñar terapias genéticas mediante CRISPR.",
+            d: "Clasificar las cepas según su origen geográfico patagónico para patentar linajes comerciales."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "¡Trampa típica de ensayo! Los evaluadores advierten: la tesis es bioinformática y computacional; no aisló cepas ni optimizó procesos cerveceros en laboratorio. Su fin es demostrar si la congruencia topológica entre árboles génicos revela módulos funcionales sin sesgo a priori.",
+        academicReference: "Observaciones del Profesor Evaluador / Ensayo de Defensa",
+        keyTakeaway: "Propósito: Demostrar si la co-evolución y congruencia topológica entre árboles génicos descubre módulos funcionales celulares sin sesgo a priori."
+    },
+    {
+        id: 40,
+        category: "contexto",
+        categoryLabel: "Contexto y Motivación",
+        question: "¿Por qué es un error grave afirmar en la defensa que la tesis sirve 'para que en el laboratorio sepan qué genes optimizar o mejorar en la cerveza'?",
+        options: {
+            a: "Porque la levadura Saccharomyces eubayanus no se utiliza en ningún tipo de fermentación cervecera.",
+            b: "Porque la tesis es de ingeniería informática/bioinformática, analizó genes computacionalmente y excluyó explícitamente el trabajo experimental con cepas y la optimización en laboratorio.",
+            c: "Porque optimizar genes en levaduras requiere obligatoriamente algoritmos de deep learning y GPUs.",
+            d: "Porque las matrices de distancia topológica solo pueden aplicarse a bacterias y virus, no a levaduras."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "En los alcances de la memoria (Sección 1.4.3) y en las observaciones del profesor se enfatiza que la tesis agrupó genes computacionalmente y no evaluó fenotipos ni intervino cepas; sostener que 'optimiza la cerveza' carece de sustento experimental.",
+        academicReference: "Sección 1.4.3 de la Memoria / Feedback Docente",
+        keyTakeaway: "Alcance computacional estricto: la tesis agrupa genes in silico; no incluye optimización experimental cervecera ni manipulación en laboratorio."
+    },
+    {
+        id: 41,
+        category: "contexto",
+        categoryLabel: "Contexto y Motivación",
+        question: "¿Qué problema conceptual se genera al comenzar la presentación mostrando directamente el nombre técnico de la levadura sin contextualizar?",
+        options: {
+            a: "Provoca que el software de presentación no renderice las diapositivas con codificación UTF-8.",
+            b: "Impide que la comisión entienda de entrada qué organismo se estudia (un hongo unicelular) y cuál es su relevancia biológica o industrial.",
+            c: "Invalida automáticamente el cálculo de las matrices de disimilitud filogenética.",
+            d: "Obliga a cambiar el marco metodológico KDD por CRISP-DM durante la misma defensa."
+        },
+        answer: ["b"],
+        priority: 1,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "En el ensayo, el profesor y los compañeros señalaron que entrar de golpe con un nombre técnico desorienta al evaluador; es necesario partir explicando qué es la levadura (hongo unicelular, parental de la levadura lager S. pastorianus) para dar contexto antes de la técnica.",
+        academicReference: "Recomendaciones de Oratoria y Contexto Docente",
+        keyTakeaway: "Regla de inicio: Contextualizar siempre primero el organismo (hongo unicelular, ancestro salvaje de híbridos lager) antes de profundizar en la técnica."
+    },
+    {
+        id: 42,
+        category: "kdd",
+        categoryLabel: "Metodología KDD",
+        question: "¿Cuál es la principal debilidad metodológica del marco KDD tradicional que el profesor destacó en el audio?",
+        options: {
+            a: "Que no permite procesar más de 100 archivos en formato PHYLIP de manera simultánea.",
+            b: "Que es una metodología esencialmente lineal, carece de una fase inicial explícita de comprensión del problema/negocio y no contempla el despliegue final.",
+            c: "Que prohíbe el uso de algoritmos basados en teoría de grafos como MST-kNN.",
+            d: "Que exige obligatoriamente entrenar redes neuronales convolucionales en la etapa de minería."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "El profesor explica que KDD puro es de los años 90 y tiene una estructura rígida y lineal; a diferencia de metodologías más modernas como CRISP-DM, no incluye la comprensión del problema/negocio al inicio ni la fase de despliegue al final.",
+        academicReference: "Fayyad et al. (1996) / Observaciones del Profesor",
+        keyTakeaway: "Debilidad de KDD: Estructura lineal y rígida, sin fase explícita inicial de comprensión del negocio/problema ni fase final de despliegue."
+    },
+    {
+        id: 43,
+        category: "kdd",
+        categoryLabel: "Metodología KDD",
+        question: "¿Cómo se debe justificar técnicamente la elección de KDD en la tesis sin caer en respuestas vagas como 'porque era lo mejor'?",
+        options: {
+            a: "Afirmando que fue la única metodología permitida por el reglamento de titulación de la universidad.",
+            b: "Argumentando que el pipeline experimental del proyecto sigue etapas analíticas bien acotadas y secuenciales (Selección, Transformación, Minería y Evaluación).",
+            c: "Sosteniendo que KDD es la única metodología que admite bases de datos de interacción proteína-proteína como STRING.",
+            d: "Indicando que KDD fue diseñada específicamente para la reconstrucción de árboles filogenéticos no enraizados."
+        },
+        answer: ["b"],
+        priority: 1,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "La justificación correcta ante el comité es explicar que el experimento bioinformático posee un alcance cerrado con fases de flujo de datos muy bien delimitadas: preparación de secuencias, inferencia de árboles, cálculo de distancias y clustering, y evaluación biológica.",
+        academicReference: "Metodología de la Investigación / KDD Process",
+        keyTakeaway: "Justificación de KDD: Fases analíticas nítidas y secuenciales de flujo de datos (Selección -> Transformación -> Minería -> Evaluación)."
+    },
+    {
+        id: 44,
+        category: "preprocesamiento",
+        categoryLabel: "Preprocesamiento y Filtrado",
+        question: "¿Qué riesgo biológico se corre al eliminar los genes que presentan menos de 70 polimorfismos (SNPs)?",
+        options: {
+            a: "Se sobrecarga la memoria RAM al momento de calcular el Árbol Generador Mínimo (MST).",
+            b: "Se pueden descartar genes altamente conservados que cumplen funciones metabólicas vitales y que forman parte central de módulos funcionales.",
+            c: "Se altera el límite superior teórico de la métrica Robinson-Foulds transformándolo en 471.",
+            d: "Se obliga a que el algoritmo Neighbor Joining genere árboles ultramétricos enraizados."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "¡Ojo biológico! Los genes con muy pocos SNPs suelen estar ultraconservados porque mutaciones en ellos son letales para la célula. Al filtrarlos por baja variabilidad estadística para facilitar la inferencia filogenética, se corre el riesgo de eliminar componentes clave de complejos esenciales.",
+        academicReference: "Discusión de Preprocesamiento / Observaciones del Profesor",
+        keyTakeaway: "Riesgo de filtrar <70 SNPs: Se descartan genes altamente conservados y esenciales cuya preservación evolutiva es crítica para la célula."
+    },
+    {
+        id: 45,
+        category: "preprocesamiento",
+        categoryLabel: "Preprocesamiento y Filtrado",
+        question: "Cuando una secuencia corta o con datos faltantes genera un árbol multifurcado o anómalo en Máxima Verosimilitud, ¿cuál es la explicación matemática rigurosa?",
+        options: {
+            a: "El algoritmo generativo 'alucinó' debido a una sobreparametrización del modelo GTR.",
+            b: "La escasez de sitios variables reduce la señal estadística, impidiendo resolver biparticiones con alto soporte y colapsando ramas en politomías.",
+            c: "El procesador sufrió un desbordamiento de punto flotante en la biblioteca Biopython.",
+            d: "El número de cepas aumentó temporalmente de 471 a 936 durante la fase de transformación."
+        },
+        answer: ["b"],
+        priority: 1,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "Los métodos filogenéticos son probabilísticos y estadísticos; si la secuencia es muy corta o tiene gaps, no hay suficiente evidencia filogenética para bifurcar con soporte estadístico y las ramas de longitud cero colapsan en politomías (árbol multifurcado).",
+        academicReference: "Felsenstein (2004) / Yang (2014)",
+        keyTakeaway: "Politomías por falta de SNPs: Señal estadística insuficiente para resolver biparticiones con soporte -> colapso de ramas en nodos multifurcados."
+    },
+    {
+        id: 46,
+        category: "distancia",
+        categoryLabel: "Métricas de Distancia",
+        question: "¿Cómo se calcula la distancia máxima teórica de Robinson-Foulds (RF) para árboles no enraizados de n cepas?",
+        options: {
+            a: "Multiplicando el número total de genes por el logaritmo de las cepas: G · log(n).",
+            b: "Calculando el número de combinaciones de cuartetos posibles: C(n, 4).",
+            c: "Mediante la fórmula 2n - 6, que para 471 cepas resulta exactamente en 936.",
+            d: "Elevando al cuadrado el valor del índice de silueta global: Silueta²."
+        },
+        answer: ["c"],
+        priority: 2,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "Un árbol no enraizado de n hojas tiene como máximo n - 3 ramas internas (biparticiones). La métrica RF cuenta biparticiones no compartidas: 2 * (n - 3) = 2n - 6. Para 471 cepas: 2(471) - 6 = 942 - 6 = 936.",
+        academicReference: "Robinson & Foulds (1981) / Semple & Steel (2003)",
+        keyTakeaway: "Máximo teórico RF no enraizado: 2(n - 3) = 2n - 6. Con n=471 cepas: exactamente 936."
+    },
+    {
+        id: 47,
+        category: "distancia",
+        categoryLabel: "Métricas de Distancia",
+        question: "¿Qué significa empíricamente que la distancia Robinson-Foulds alcance el valor de 936 entre dos árboles génicos?",
+        options: {
+            a: "Que ambos árboles provienen de cepas geográficamente idénticas.",
+            b: "Que la métrica se saturó completamente: los dos árboles no comparten ninguna bipartición interna.",
+            c: "Que el clustering MST-kNN ha encontrado un módulo funcional perfecto de alta cohesión.",
+            d: "Que la inferencia de Máxima Verosimilitud alcanzó un valor de soporte UFBoot del 100%."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "El valor 936 indica saturación total de la métrica: disimilitud topológica del 100%, ni una sola bipartición interna compartida. Evidencia la limitación de RF, que satura muy rápidamente ante divergencias menores.",
+        academicReference: "Robinson & Foulds (1981) / Observaciones del Profesor",
+        keyTakeaway: "RF = 936 (máximo teórico): Saturación total de la métrica, cero biparticiones internas en común entre ambos árboles génicos."
+    },
+    {
+        id: 48,
+        category: "distancia",
+        categoryLabel: "Métricas de Distancia",
+        question: "¿Por qué la métrica Quartet Distance (QD) ofrece una mayor resolución analítica que Robinson-Foulds en este proyecto?",
+        options: {
+            a: "Porque Quartet Distance incorpora la velocidad de mutación y el tiempo geológico en sus aristas.",
+            b: "Porque evalúa subconjuntos de 4 taxones, permitiendo capturar similitudes topológicas intermedias aunque el clado global se rompa.",
+            c: "Porque reduce la complejidad computacional de O(n³) a O(1) en la biblioteca SciPy.",
+            d: "Porque exige que los árboles estén obligatoriamente enraizados mediante un grupo externo (outgroup)."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "RF es binaria y rígida: si un solo taxón se mueve (rogue taxon), destruye la bipartición completa. QD analiza las C(n,4) sub-topologías de 4 taxones; si la mayoría conserva su relación, la distancia es baja y gradual, ofreciendo alta resolución.",
+        academicReference: "Sand et al. (2014) / Mailund et al. (2006)",
+        keyTakeaway: "Ventaja de QD: Alta resolución y degradación gradual al evaluar C(n,4) cuartetos; robusto frente a taxones desplazados (rogue taxa)."
+    },
+    {
+        id: 49,
+        category: "distancia",
+        categoryLabel: "Métricas de Distancia",
+        question: "¿Cuáles son los métodos adicionales de distancia entre árboles filogenéticos que el profesor nombró explícitamente en el audio?",
+        options: {
+            a: "Distancia Euclidiana, Distancia Manhattan y Distancia Mahalanobis.",
+            b: "Path Length Difference, Quadratic Path Difference (al cuadrado) y Kendall-Colijn.",
+            c: "Distancia Hamming, Distancia Levenshtein y Divergencia Jukes-Cantor.",
+            d: "Índice Jaccard, Coeficiente Dice y Similitud Coseno."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "En el audio, el profesor enfatiza que en la literatura existen por lo menos seis métricas más y cita textualmente Path Length Difference, su variante de diferencia al cuadrado (Quadratic Path Difference) y Kendall-Colijn.",
+        academicReference: "Grabación Ensayo Defensa / Steel & Penny (1993) / Kendall & Colijn (2016)",
+        keyTakeaway: "Métricas adicionales citadas por el profesor: Path Length Difference, Quadratic Path Difference y Kendall-Colijn."
+    },
+    {
+        id: 50,
+        category: "distancia",
+        categoryLabel: "Métricas de Distancia",
+        question: "¿Cuál fue la justificación técnica clave del profesor para descartar las métricas de distancia basadas en ramas?",
+        options: {
+            a: "Porque demandan tarjetas gráficas de última generación que no estaban disponibles en el servidor.",
+            b: "Porque esas métricas incorporan la longitud de las ramas (tasas de mutación), lo cual confunde la historia evolutiva cuando genes co-funcionales mutan a distinta velocidad.",
+            c: "Porque el lenguaje de programación Python no posee bibliotecas que lean árboles en formato Newick.",
+            d: "Porque la distancia de ramas solo funciona si el número de genes es inferior a 100."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "Las longitudes de rama reflejan cantidad de sustituciones/mutaciones. Dos genes pueden ser miembros del mismo complejo funcional y compartir la misma topología de parentesco, pero tener tasas evolutivas muy distintas; una métrica de ramas los consideraría lejanos erróneamente.",
+        academicReference: "Fundamento Teórico / Observaciones del Profesor",
+        keyTakeaway: "Descarte de distancias de ramas: Confunden tasas de mutación con topología. Genes co-funcionales pueden tener topología idéntica pero longitudes de rama muy distintas."
+    },
+    {
+        id: 51,
+        category: "distancia",
+        categoryLabel: "Métricas de Distancia",
+        question: "¿Por qué no es aplicable la métrica de Kendall-Colijn a los árboles filogenéticos generados en este trabajo?",
+        options: {
+            a: "Porque la métrica de Kendall-Colijn está patentada y no se puede usar con licencias académicas.",
+            b: "Porque requiere árboles estrictamente enraizados (rooted), midiendo distancias al ancestro común desde la raíz, mientras que los árboles del pipeline son sin raíz (unrooted).",
+            c: "Porque fue diseñada exclusivamente para comparar secuencias de ARN ribosomal bacteriano.",
+            d: "Porque no admite matrices de más de 10x10 elementos."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "La métrica de Kendall-Colijn construye vectores de distancias topológicas y de ramas tomando como punto de partida y referencia la raíz (ancestro común). Al ser árboles unrooted sin outgroup temporal, no se puede calcular.",
+        academicReference: "Kendall & Colijn (2016)",
+        keyTakeaway: "Kendall-Colijn: Inaplicable porque exige árboles enraizados (rooted); el pipeline genera árboles no enraizados (unrooted)."
+    },
+    {
+        id: 52,
+        category: "agrupamiento",
+        categoryLabel: "Métodos de Agrupamiento",
+        question: "¿Por qué se descartaron los algoritmos particionales como K-Means y Fuzzy C-Means en la fase de agrupamiento?",
+        options: {
+            a: "Porque no funcionan en sistemas operativos basados en Linux (Ubuntu).",
+            b: "Porque operan sobre espacios vectoriales calculando centroides promedio y exigen definir el número de clústeres 'k' de forma fija a priori.",
+            c: "Porque tardan meses en ejecutarse sobre árboles filogenéticos no binarios.",
+            d: "Porque impiden el posterior cálculo del enriquecimiento funcional en la base de datos STRING."
+        },
+        answer: ["b"],
+        priority: 1,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "K-Means requiere puntos en un espacio vectorial continuo para calcular el promedio geométrico (centroide) de cada cluster, lo cual no existe en una matriz de distancias topológicas relacionales sin proyección. Además, forzar un k fijo contradice el descubrimiento autónomo.",
+        academicReference: "Inostroza-Ponta (2008) / Kaufman & Rousseeuw (1990)",
+        keyTakeaway: "K-Means descartado: Requiere espacio vectorial con centroides promedio euclidianos y fuerza un k fijo a priori."
+    },
+    {
+        id: 53,
+        category: "agrupamiento",
+        categoryLabel: "Métodos de Agrupamiento",
+        question: "¿Cuál es la salida matemática natural de un algoritmo de Clustering Jerárquico aglomerativo?",
+        options: {
+            a: "Una lista de etiquetas independientes sin relación estructural entre sí.",
+            b: "Una única estructura conexa en forma de árbol (dendrograma) que agrupa todos los elementos del conjunto de datos.",
+            c: "Una red bipartita con pesos probabilísticos en las aristas.",
+            d: "Un hiperplano óptimo de separación con margen máximo."
+        },
+        answer: ["b"],
+        priority: 1,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "El clustering jerárquico no entrega particiones separadas por defecto: genera un dendrograma completo que une el 100% de los elementos en una jerarquía continua anidada. Para obtener grupos se debe aplicar un corte arbitrario.",
+        academicReference: "Murtagh & Contreras (2012) / Observaciones del Profesor",
+        keyTakeaway: "Salida del Jerárquico: Un dendrograma conexo único que anida todos los elementos; no particiones directas sin corte."
+    },
+    {
+        id: 54,
+        category: "agrupamiento",
+        categoryLabel: "Métodos de Agrupamiento",
+        question: "¿Por qué el Clustering Jerárquico con Quartet Distance generó tres grupos de 1 solo gen y dos macrogrupos gigantes al pedirle 5 grupos?",
+        options: {
+            a: "Por un desbordamiento de memoria al generar la matriz en formato TSV.",
+            b: "Porque un corte a una altura global única aísla primero los árboles atípicos (outliers) como grupos individuales y colapsa el resto en macrogrupos densos.",
+            c: "Porque el método Neighbor Joining eliminó todas las ramas con UFBoot menor al 95%.",
+            d: "Porque la métrica Quartet Distance genera valores enteros idénticos en todas las comparaciones."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "Al cortar un dendrograma a un único umbral horizontal para forzar 5 grupos, si existen 3 genes muy divergentes en la periferia, estos absorben 3 cortes aislándose en clusters unitarios (G1=1, G2=1, G5=1), mientras que la masa central de datos queda dividida en solo dos bloques masivos.",
+        academicReference: "Resultados Experimentales de la Tesis / Observaciones del Profesor",
+        keyTakeaway: "Efecto corte jerárquico: Umbral global aísla outliers en clusters unitarios (1 gen) y colapsa la masa principal en macrogrupos."
+    },
+    {
+        id: 55,
+        category: "agrupamiento",
+        categoryLabel: "Métodos de Agrupamiento",
+        question: "¿Cómo funciona conceptualmente el algoritmo MST-kNN seleccionado como propuesta metodológica central?",
+        options: {
+            a: "Calcula las componentes principales de los genes y traza hiperplanos ortogonales de separación.",
+            b: "Construye un Árbol Generador Mínimo sobre el grafo de los k vecinos más cercanos y poda las aristas que no cumplen el criterio de conectividad local mutua.",
+            c: "Agrupa iterativamente los puntos calculando el centro geométrico de cada clúster hasta converger.",
+            d: "Genera 1.000 árboles filogenéticos aleatorios y selecciona el que tenga menor parsimonia."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "MST-kNN combina la conectividad global del Árbol Generador Mínimo (MST) con la proximidad local del grafo k-NN. Al intersectarlos, las aristas que unen regiones con densidades distintas o conexiones débiles se podan, dejando componentes conexas como clústeres automáticos.",
+        academicReference: "Inostroza-Ponta (2008)",
+        keyTakeaway: "MST-kNN: Intersección MST (estructura global) ∩ k-NN (vecindad local) -> Poda de aristas inconsistentes -> Componentes conexas automáticas."
+    },
+    {
+        id: 56,
+        category: "agrupamiento",
+        categoryLabel: "Métodos de Agrupamiento",
+        question: "¿Cuál es la principal ventaja de MST-kNN sobre el algoritmo basado en densidad DBSCAN en este proyecto?",
+        options: {
+            a: "MST-kNN se adapta a densidades locales heterogéneas, mientras que DBSCAN requiere un radio fijo (ε) que falla cuando conviven módulos densos y dispersos.",
+            b: "MST-kNN solo puede utilizarse si las secuencias de ADN fueron alineadas con Clustal Omega.",
+            c: "DBSCAN no admite matrices precalculadas de distancia entre objetos biológicos.",
+            d: "MST-kNN garantiza matemáticamente un índice de silueta superior a 0,9 en todos los experimentos."
+        },
+        answer: ["a"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "En el genoma conviven complejos compactos (pocos genes muy conservados) y rutas celulares dispersas. DBSCAN usa un radio épsilon global rígido: si es muy bajo envía casi todo a ruido, y si es muy alto colapsa todo en un supergrupo. MST-kNN evalúa vecindades relativas adaptándose a densidades locales.",
+        academicReference: "Inostroza-Ponta (2008) / Ester et al. (1996)",
+        keyTakeaway: "Ventaja de MST-kNN sobre DBSCAN: Capacidad de adaptarse a densidades heterogéneas sin imponer un radio métrico global (ε) rígido."
+    },
+    {
+        id: 57,
+        category: "validacion",
+        categoryLabel: "Validación y Parámetros",
+        question: "¿Por qué el profesor criticó duramente la forma en que se seleccionaron los valores de 'k' (ej. k=2 hasta k=5) en el ensayo?",
+        options: {
+            a: "Porque los valores impares de 'k' están prohibidos en la teoría de grafos bioinformáticos.",
+            b: "Porque se eligieron 'al ojo' y de forma subjetiva cortando para que los grupos cupieran en el límite de la API de STRING, sin una métrica matemática de calidad.",
+            c: "Porque no se demostró que 'k' fuera un número primo relativo con el número de cepas (471).",
+            d: "Porque el valor de 'k' en MST-kNN debe ser obligatoriamente igual a la mitad del número de genomas."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "El profesor señala que ir achicando grupos para que quepan en STRING es forzar y picar los datos con un criterio artificial. La forma rigurosa es evaluar sistemáticamente diferentes valores de k y justificar el óptimo mediante estabilidad de componentes conexas o métricas de calidad interna.",
+        academicReference: "Grabación Ensayo Defensa / Observaciones del Profesor",
+        keyTakeaway: "Selección de k: Nunca justificar 'para que cupiera en STRING'; debe justificarse con métricas de calidad de partición y estabilidad de componentes."
+    },
+    {
+        id: 58,
+        category: "validacion",
+        categoryLabel: "Validación y Parámetros",
+        question: "¿Qué métrica matemática interna debió reportarse para evaluar objetivamente la calidad de los agrupamientos obtenidos?",
+        options: {
+            a: "El valor de p de máxima verosimilitud (Log-Likelihood score).",
+            b: "El Índice de Silueta, que evalúa de forma combinada la homogeneidad interna de los grupos y su separación externa.",
+            c: "El porcentaje de guaninas y citosinas (%GC) en el genoma de la levadura.",
+            d: "La tasa de falsos positivos en la alineación con IQ-TREE2."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "Un agrupamiento se juzga internamente por dos fuerzas contrapuestas: cohesión/homogeneidad interna (qué tan cercanos están los genes del mismo clúster) y separación externa (qué tan alejados están de otros grupos). El Índice de Silueta (Rousseeuw 1987) sintetiza ambas en [-1, 1].",
+        academicReference: "Rousseeuw (1987) / Métricas de Validación Interna",
+        keyTakeaway: "Métrica interna clave: Índice de Silueta (cohesión intra-cluster vs separación inter-cluster en [-1, 1])."
+    },
+    {
+        id: 59,
+        category: "validacion",
+        categoryLabel: "Validación y Parámetros",
+        question: "¿Por qué el 'PPI enrichment p-value' obtenido de la plataforma STRING no constituye una validación estructural del clustering?",
+        options: {
+            a: "Porque la base de datos STRING contiene exclusivamente secuencias de mamíferos y plantas superiores.",
+            b: "Porque evalúa si las proteínas comparten más interacciones biológicas conocidas de lo esperado por azar, lo cual depende de la literatura previa y no de la geometría del agrupamiento.",
+            c: "Porque STRING redondea todos los valores de p a cero cuando hay más de 100 genes involucrados.",
+            d: "Porque el p-value de STRING solo es válido si los árboles filogenéticos fueron construidos con parsimonia estricta."
+        },
+        answer: ["b"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "STRING evalúa coherencia biológica externa frente a lo que se ha investigado en laboratorio previamente. Si un grupo no tiene enriquecimiento significativo, puede deberse a falta de literatura previa y no a que el clustering matemático haya fallado; por eso se debe separar validación estructural de biológica.",
+        academicReference: "Szklarczyk et al. (2021) / Discusión Metodológica",
+        keyTakeaway: "STRING es validación biológica externa (depende del sesgo de literatura previa), NO validación estructural geométrica del clustering."
+    },
+    {
+        id: 60,
+        category: "validacion",
+        categoryLabel: "Validación y Parámetros",
+        question: "¿Cuál es la función del modelo nulo por permutaciones implementado en la fase de validación de los módulos funcionales?",
+        options: {
+            a: "Sustituir los nucleótidos de las secuencias por caracteres aleatorios antes de inferir los árboles.",
+            b: "Generar 1.000 agrupamientos aleatorios de igual tamaño para demostrar empíricamente que la conectividad observada en los módulos no es producto del azar.",
+            c: "Permutar las filas y columnas de la matriz de distancias hasta alcanzar un valor máximo de 936.",
+            d: "Eliminar el 5% de los genes más largos para normalizar el tiempo de cálculo."
+        },
+        answer: ["b"],
+        priority: 1,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "Para validar estadísticamente que un módulo encontrado no es un agrupamiento casual, se contrasta su puntaje biológico contra la distribución empírica de 1.000 grupos de genes del mismo tamaño seleccionados al azar del mismo genoma.",
+        academicReference: "Sección de Validación y Pruebas de Hipótesis",
+        keyTakeaway: "Modelo nulo por permutaciones: 1.000 conjuntos aleatorios de igual tamaño para probar significancia estadística contra el azar."
+    },
+    {
+        id: 61,
+        category: "visualizacion",
+        categoryLabel: "Visualización y Proyección",
+        question: "¿Por qué es conceptualmente erróneo afirmar que una proyección MDS es mejor porque su nube de puntos se ve 'menos esférica y más natural'?",
+        options: {
+            a: "Porque la forma visual de la proyección depende de la distorsión al reducir dimensiones; la calidad debe medirse objetivamente con el Stress de Kruskal.",
+            b: "Porque en biología todas las distribuciones de genes en el espacio euclidiano deben ser círculos exactos.",
+            c: "Porque la función de proyección MDS en Scikit-learn normaliza obligatoriamente los datos a una esfera unitaria.",
+            d: "Porque la esfericidad solo se puede calcular en matrices generadas con Neighbor Joining."
+        },
+        answer: ["a"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "No se puede juzgar un método 'al ojo' por cómo se ve la gráfica 2D. Proyectar una matriz de miles de dimensiones en 2 dimensiones genera una inevitable pérdida de información que debe medirse formalmente con el valor de Stress de Kruskal o Diagrama de Shepard.",
+        academicReference: "Kruskal (1964) / Observaciones del Profesor",
+        keyTakeaway: "MDS no se evalúa al ojo: La distorsión dimensional se mide formalmente con el Stress de Kruskal o Diagrama de Shepard."
+    },
+    {
+        id: 62,
+        category: "defensa_actitud",
+        categoryLabel: "Estrategia y Actitud en Defensa",
+        question: "Si un miembro de la comisión te pregunta: '¿Por qué eligió este umbral o este método?', ¿qué respuesta debes EVITAR a toda costa?",
+        options: {
+            a: "Explicar el fundamento algorítmico y respaldarlo con citas de la literatura especializada.",
+            b: "Reconocer las limitaciones del método y argumentar según las propiedades de los datos analizados.",
+            c: "Responder: 'Porque el profesor guía me dijo que lo pusiera así' o 'porque era lo que necesitaba el trabajo'.",
+            d: "Pausar unos segundos, beber agua para serenarse y responder con calma la justificación técnica."
+        },
+        answer: ["c"],
+        priority: 2,
+        isTrap: true,
+        isProfessorEnsayo: true,
+        trapExplanation: "Responder 'porque me dijeron' o dar evasivas circulares denota falta de dominio, inseguridad y desaprobación inmediata; ante la comisión se debe argumentar siempre con fundamentos matemáticos y referencias bibliográficas.",
+        academicReference: "Recomendaciones Docentes para la Defensa de Tesis",
+        keyTakeaway: "Regla capital de defensa: NUNCA digas 'porque mi profesor me dijo'. Argumenta siempre con fundamentos matemáticos y bibliográficos."
+    },
+    {
+        id: 63,
+        category: "defensa_actitud",
+        categoryLabel: "Estrategia y Actitud en Defensa",
+        question: "¿Qué recomendación dio el profesor para enfrentar momentos de tensión o preguntas complejas durante la defensa?",
+        options: {
+            a: "Interrumpir al profesor inmediatamente para defender la postura sin dejar que termine de hablar.",
+            b: "Aceptar que el resultado dio error y pedir pasar a la siguiente diapositiva sin responder.",
+            c: "Hacer una pausa estratégica, beber un sorbo de agua o pedir que reiteren la pregunta para ganar 30 segundos y ordenar la respuesta.",
+            d: "Improvisar fórmulas matemáticas complejas en la pizarra aunque no tengan relación directa con el tema."
+        },
+        answer: ["c"],
+        priority: 1,
+        isTrap: false,
+        isProfessorEnsayo: true,
+        trapExplanation: "El profesor aconseja escuchar activamente, no ponerse a la defensiva, tomarse una pausa breve tomando agua para calmar el ritmo cardíaco y ordenar los conceptos antes de responder de forma pausada y fundamentada.",
+        academicReference: "Consejos Prácticos del Profesor Evaluador",
+        keyTakeaway: "Táctica de control emocional: Pausa estratégica con agua para calmar la adrenalina y estructurar mentalmente una respuesta sólida."
     }
 ];
 
@@ -829,6 +1308,62 @@ const thesisFlashcards = [
         front: "Newick y librerías Python en la tesis",
         back: "Newick = texto plano con anidación de paréntesis para jerarquías y bifurcaciones. En Python = Biopython y ETE Toolkit para estructuras de grafos de árboles y cálculo masivo de matrices.",
         trick: "⚠️ Herramientas computacionales clave citadas en el texto: Biopython y ETE Toolkit."
+    },
+    {
+        id: "fc-17",
+        category: "Contexto",
+        front: "Propósito Real de la Tesis: El 'Para Qué'",
+        back: "Demostrar computacionalmente si la congruencia topológica entre árboles génicos revela módulos funcionales celulares sin sesgo a priori.",
+        trick: "⚠️ NUNCA digas 'para mejorar o intervenir la cerveza en laboratorio'. La tesis es 100% bioinformática/computacional in silico."
+    },
+    {
+        id: "fc-18",
+        category: "Distancia",
+        front: "Límite Máximo Teórico de Robinson-Foulds (RF)",
+        back: "Fórmula: 2(n - 3) = 2n - 6. Para 471 cepas: 2(471) - 6 = 936. Significa saturación total (cero biparticiones internas compartidas).",
+        trick: "⚠️ 936 es el valor de saturación total en tu tesis. Evidencia la extrema rigidez de RF frente a QD."
+    },
+    {
+        id: "fc-19",
+        category: "Distancia",
+        front: "¿Por qué se descartaron Kendall-Colijn y distancias de ramas?",
+        back: "Kendall-Colijn exige árboles ENRAIZADOS (rooted desde la raíz). Las distancias de ramas incorporan tasas de mutación, confundiendo la historia evolutiva compartida.",
+        trick: "⚠️ Genes del mismo complejo celular pueden mutar a velocidades distintas teniendo la misma topología de parentesco."
+    },
+    {
+        id: "fc-20",
+        category: "Agrupamiento",
+        front: "Jerárquico: ¿Por qué generó 3 grupos de 1 gen y 2 macrogrupos?",
+        back: "Porque cortar un dendrograma con un umbral horizontal global aísla primero los outliers divergentes en clusters unitarios y colapsa la masa central en macrobloques.",
+        trick: "⚠️ Demuestra la limitación del corte global estático frente al particionamiento adaptativo de MST-kNN."
+    },
+    {
+        id: "fc-21",
+        category: "Agrupamiento",
+        front: "MST-kNN vs DBSCAN: ¿Por qué DBSCAN falla en este genoma?",
+        back: "DBSCAN exige un radio global fijo (ε) que colapsa ante la densidad heterogénea del genoma (módulos compactos vs rutas dispersas). MST-kNN se adapta localmente.",
+        trick: "⚠️ Si el profesor pregunta por DBSCAN: 'DBSCAN impone un épsilon global que destruye la heterogeneidad de densidades de módulos biológicos'."
+    },
+    {
+        id: "fc-22",
+        category: "Validación",
+        front: "Validación Estructural (Silueta) vs Biológica (STRING)",
+        back: "Estructural: Mide homogeneidad interna y separación externa (Índice de Silueta en [-1, 1]). Biológica: Evalúa anotaciones conocidas (STRING PPI p-value, sesgado por literatura previa).",
+        trick: "⚠️ No confundas calidad matemática del agrupamiento con cobertura de bases de datos biomédicas."
+    },
+    {
+        id: "fc-23",
+        category: "Visualización",
+        front: "Evaluación de Proyecciones MDS: ¿Cómo se mide?",
+        back: "NUNCA al ojo (ej. 'se ve menos esférica'). Se evalúa objetivamente con el Stress de Kruskal o Diagrama de Shepard para medir la distorsión al proyectar a 2D.",
+        trick: "⚠️ Cualquier afirmación visual sin reportar el Stress de Kruskal será refutada de inmediato por la comisión."
+    },
+    {
+        id: "fc-24",
+        category: "Defensa",
+        front: "Regla de Oro ante Preguntas Difíciles de la Comisión",
+        back: "1) NUNCA responder 'porque mi profesor me dijo'. 2) Pausa táctica con un sorbo de agua para calmar el pulso y ordenar ideas. 3) Responder con fundamentos algorítmicos y referencias.",
+        trick: "⚠️ El agua te da 15-30 segundos para estructurar tu argumento: 'La literatura (Inostroza-Ponta 2008) establece que...'."
     }
 ];
 

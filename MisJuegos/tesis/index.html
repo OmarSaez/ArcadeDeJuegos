@@ -77,7 +77,7 @@
                 <span class="stat-lbl">Mejor Precisión</span>
             </div>
             <div class="stat-box">
-                <span id="dash-stat-mastered" class="stat-val">0 / 16</span>
+                <span id="dash-stat-mastered" class="stat-val">0 / 24</span>
                 <span class="stat-lbl">Tarjetas Dominadas</span>
             </div>
         </section>
@@ -103,17 +103,40 @@
         </div>
 
         <section class="modes-grid">
-            <!-- Modo 1: Práctica Rápida -->
-            <button class="mode-card" style="--card-accent: var(--primary); --card-glow: var(--primary-glow);" onclick="startMode('quick')">
+            <!-- Modo 0: Ensayo Real del Profesor (25 Preguntas Oficiales) -->
+            <button class="mode-card" style="--card-accent: #f43f5e; --card-glow: rgba(244, 63, 94, 0.35); border: 1.5px solid rgba(244, 63, 94, 0.4);" onclick="startMode('ensayo')">
+                <div>
+                    <div class="mode-card-header">
+                        <div class="mode-icon-circle" style="background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.4);">🎯</div>
+                        <span class="mode-badge" style="background: rgba(244, 63, 94, 0.2); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.4);">25 Preguntas • Ensayo Real</span>
+                    </div>
+                    <div class="mode-title" style="color: #ffffff;">Ensayo del Profesor Evaluador</div>
+                    <p class="mode-desc">Las 25 preguntas y trampas críticas extraídas de la grabación del ensayo de defensa (KDD, RF 936, DBSCAN vs MST, STRING, etc.).</p>
+                </div>
+            </button>
+
+            <!-- Modo 1: Práctica Rápida & Maratón Total -->
+            <div class="mode-card" style="--card-accent: var(--primary); --card-glow: var(--primary-glow); cursor: pointer;" onclick="startMode('quick', null, 10)">
                 <div>
                     <div class="mode-card-header">
                         <div class="mode-icon-circle">⚡</div>
-                        <span class="mode-badge badge-quick">3 Minutos</span>
+                        <span class="mode-badge badge-quick">Práctica Flexible</span>
                     </div>
-                    <div class="mode-title">Práctica Rápida</div>
-                    <p class="mode-desc">10 preguntas aleatorias con retroalimentación instantánea de trampas y respuestas correctas.</p>
+                    <div class="mode-title">Práctica Rápida / Entrenar Todo</div>
+                    <p class="mode-desc">Entrena con retroalimentación inmediata y alternativas mezcladas. Elige cuántas preguntas deseas resolver:</p>
+                    <div class="quick-chips-row" style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;" onclick="event.stopPropagation()">
+                        <button class="nav-btn btn-sm" style="font-size: 0.76rem; padding: 6px 11px; background: rgba(99,102,241,0.22); border-color: rgba(99,102,241,0.45); color: #c7d2fe;" onclick="startMode('quick', null, 10)">
+                            ⚡ 10 Preguntas
+                        </button>
+                        <button class="nav-btn btn-sm" style="font-size: 0.76rem; padding: 6px 11px; background: rgba(99,102,241,0.22); border-color: rgba(99,102,241,0.45); color: #c7d2fe;" onclick="startMode('quick', null, 25)">
+                            🎯 25 Preguntas
+                        </button>
+                        <button class="nav-btn btn-sm" style="font-size: 0.76rem; padding: 6px 11px; background: rgba(16,185,129,0.22); border-color: var(--bio-green); color: #6ee7b7; font-weight: 700;" onclick="startMode('quick', null, 'all')">
+                            ♾️ Todas (63 Preguntas)
+                        </button>
+                    </div>
                 </div>
-            </button>
+            </div>
 
             <!-- Modo 2: Simulación Examen de Grado -->
             <button class="mode-card" style="--card-accent: var(--danger); --card-glow: rgba(239, 68, 68, 0.25);" onclick="startMode('defense')">
@@ -465,13 +488,20 @@
         <div class="study-search-bar">
             <input type="text" id="study-search-input" class="search-input" placeholder="🔍 Buscar por palabra clave, fórmula o algoritmo..." oninput="renderStudyMode()">
             <select id="study-filter-select" class="filter-select" onchange="renderStudyMode()">
-                <option value="all">Todas las Categorías</option>
+                <option value="all">Todas las Categorías (63)</option>
+                <option value="ensayo">🎯 Ensayo Real del Profesor (25)</option>
+                <option value="contexto">Contexto y Motivación (Memoria)</option>
+                <option value="kdd">Metodología KDD & Fases</option>
+                <option value="preprocesamiento">Preprocesamiento & Filtro SNPs</option>
                 <option value="conceptos">Conceptos Filogenéticos</option>
                 <option value="inferencia">Inferencia Filogenética</option>
-                <option value="distancia">Métricas de Distancia</option>
-                <option value="agrupamiento">Métodos de Agrupamiento</option>
-                <option value="complejidades">Complejidad & Algoritmos</option>
-                <option value="trampas">Trampas de Comisión</option>
+                <option value="distancia">Métricas de Distancia (RF, QD, Kendall)</option>
+                <option value="agrupamiento">Métodos de Agrupamiento (MST, DBSCAN, etc.)</option>
+                <option value="validacion">Validación, Parámetros & STRING</option>
+                <option value="visualizacion">Visualización & MDS (Kruskal)</option>
+                <option value="defensa_actitud">Estrategia & Actitud en Defensa</option>
+                <option value="complejidades">Complejidad Computacional</option>
+                <option value="trampas">Trampas Mortales de Comisión</option>
             </select>
         </div>
 
@@ -484,13 +514,18 @@
     <!-- VIEW 7: SIMULADOR DE DEFENSA ORAL (SIN ALTERNATIVAS)      -->
     <!-- ======================================================== -->
     <main id="view-oral" class="glass-card hidden">
-        <div class="quiz-header">
-            <button class="btn btn-secondary" onclick="switchView('dashboard')">✕ Salir</button>
-            <div style="flex: 1; margin: 0 10px; text-align: center;">
+        <div class="quiz-header" style="flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" onclick="switchView('dashboard')">✕ Salir</button>
+            <div style="flex: 1; min-width: 140px; margin: 0 4px; text-align: center;">
                 <span id="oral-counter-text" style="font-size: 0.85rem; font-weight: 700; color: var(--accent);">Pregunta Oral 1 de 20</span>
-                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Formula tu argumento antes de revelar la respuesta</div>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Formula tu argumento antes de revelar</div>
             </div>
-            <button class="nav-btn" onclick="nextOralQuestion(false)" title="Pasar a la siguiente pregunta">Saltar ➔</button>
+            <div style="display: flex; gap: 6px;">
+                <button id="oral-toggle-pool-btn" class="nav-btn btn-sm" onclick="toggleOralFilterEnsayo()" title="Alternar entre todas las preguntas o solo las del ensayo del profesor">
+                    🎯 Solo Profe
+                </button>
+                <button class="nav-btn btn-sm" onclick="nextOralQuestion(false)" title="Pasar a la siguiente pregunta">Saltar ➔</button>
+            </div>
         </div>
 
         <div class="examiner-quote-box">

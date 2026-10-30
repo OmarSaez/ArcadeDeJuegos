@@ -625,6 +625,8 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+    margin-top: 18px;
+    margin-bottom: 32px;
 }
 
 .btn {
@@ -1089,6 +1091,7 @@ body {
     gap: 12px;
     justify-content: center;
     margin-top: 20px;
+    margin-bottom: 36px;
     flex-wrap: wrap;
 }
 
@@ -1160,7 +1163,7 @@ button:active, .btn:active, .option-btn:active, .mode-card:active {
 
     .app-container {
         padding-top: max(8px, var(--sat));
-        padding-bottom: max(96px, calc(var(--sab) + 84px));
+        padding-bottom: max(112px, calc(var(--sab) + 96px));
         padding-left: max(12px, var(--sal));
         padding-right: max(12px, var(--sar));
     }
