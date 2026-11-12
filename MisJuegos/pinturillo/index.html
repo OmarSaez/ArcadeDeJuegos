@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pinturillo Arcade</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../sounds.js"></script>
     <style>
         /* --- ESTILOS GENERALES (TEMA PINTURILLO) --- */
         :root {
@@ -748,6 +749,7 @@
         let amIDrawing = false;
 
         // --- PEERJS ---
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
         let peer;
         let hostConn; // Cliente: Conexion al host
         let clientConns = {}; // Host: Mapa de conexiones {peerId: conn}
@@ -942,7 +944,7 @@
                     // Confetti only for winner? Or for everyone? Let's do everyone for celebration.
                     startConfetti();
                     if (winner.id === myId) {
-                        // Extra fancy?
+                        playSound('victory');
                     }
                     break;
                 case 'LOBBY_RETURN':
@@ -971,6 +973,7 @@
                     document.getElementById('overlay-word-select').classList.add('hidden');
 
                     if (amIDrawing) {
+                        playSound('turn');
                         document.getElementById('tools-panel').classList.remove('hidden');
                         showWordSelection(data.words);
                         addChatMessage(null, "¡ES TU TURNO! Elige una palabra.", "system");
@@ -992,12 +995,15 @@
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     break;
                 case 'CHAT_MSG':
+                    if (data.style === 'correct') playSound('ding');
+                    else if (data.sender) playSound('chat');
                     addChatMessage(data.sender, data.text, data.style);
                     break;
                 case 'PLAYER_CORRECT':
                     playSound('ding');
                     break;
                 case 'ROUND_END':
+                    playSound('round_end');
                     document.getElementById('word-display').innerText = data.word; // Reveal
                     break;
             }
@@ -1169,6 +1175,7 @@
             const interval = setInterval(() => {
                 t--;
                 el.innerText = t;
+                if (t <= 5 && t > 0) playSound('tick');
                 if (t <= 0) clearInterval(interval);
             }, 1000);
         } function resetRound() {
@@ -1352,12 +1359,25 @@
 
         function clearCanvasAction() {
             if (!amIDrawing) return;
+            playSound('clear');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (isHost) broadcastExcluding(myId, { type: 'CLEAR_CANVAS' });
             else hostConn.send({ type: 'CLEAR_CANVAS' });
         }
 
-        function playSound() { }
+        function playSound(type) {
+            if (!window.ArcadeAudio) return;
+            switch (type) {
+                case 'ding': ArcadeAudio.correct(); break;
+                case 'victory': ArcadeAudio.victory(); break;
+                case 'turn': ArcadeAudio.notification(); break;
+                case 'tick': ArcadeAudio.tick(); break;
+                case 'clear':
+                case 'round_end': ArcadeAudio.back(); break;
+                case 'chat': ArcadeAudio.hover(); break;
+                default: ArcadeAudio.click(); break;
+            }
+        }
 
         // ==========================================
         // CONFETTI LOGIC

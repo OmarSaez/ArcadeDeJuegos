@@ -567,7 +567,9 @@
         </div>
     </div>
 
+    <script src="../../sounds.js"></script>
     <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
         // --- CONFIG P2P & MODO ---
         let peer, conn, isHost = false, isLocalMode = false, myId, myColor = '';
         let totalWins = { host: 0, guest: 0 };
@@ -707,6 +709,7 @@
                 } else if (data.type === 'REMATCH_REQ' && isHost) {
                     handleRematch();
                 } else if (data.type === 'CHAT') {
+                    if (window.ArcadeAudio) ArcadeAudio.notification();
                     showChatToast(`Rival: ${data.msg}`, 'rival');
                 }
             });
@@ -778,6 +781,7 @@
         }
 
         function selectPiece(r, c) {
+            if (window.ArcadeAudio) ArcadeAudio.hover();
             if (selectedSquare && selectedSquare.r === r && selectedSquare.c === c) {
                 selectedSquare = null; validMoves = [];
             } else {
@@ -1043,8 +1047,15 @@
             selectedSquare = null;
             validMoves = [];
 
+            if (window.ArcadeAudio) {
+                if (move.castling) ArcadeAudio.snap();
+                else if (didCapture) ArcadeAudio.hit();
+                else ArcadeAudio.place();
+            }
+
             // Verificar Coronación de Peón (con elección de pieza)
             if (p.type === 'p' && (nr === 0 || nr === 7)) {
+                if (window.ArcadeAudio) ArcadeAudio.notification();
                 openPromotionModal(nr, nc, p.color, role);
                 renderBoard();
                 return;
@@ -1083,6 +1094,7 @@
             stats[role].promotions++;
             pendingPromotion = null;
             document.getElementById('promotion-modal').style.display = 'none';
+            if (window.ArcadeAudio) ArcadeAudio.snap();
             finalizeTurn(role);
         }
 
@@ -1199,6 +1211,7 @@
             }
 
             if (isInCheck(turn)) {
+                if (window.ArcadeAudio) ArcadeAudio.error();
                 showNotification("¡JAQUE!");
             }
         }
@@ -1214,6 +1227,12 @@
                     : ((winnerColor === myColor) ? myRole : rivalRole);
                 totalWins[winnerRole]++;
                 lastWinner = winnerRole;
+            }
+
+            if (window.ArcadeAudio) {
+                if (winnerColor === 'draw') ArcadeAudio.back();
+                else if (isLocalMode || winnerRole === myRole) ArcadeAudio.victory();
+                else ArcadeAudio.defeat();
             }
 
             const time = Math.floor((Date.now() - startTime) / 1000);

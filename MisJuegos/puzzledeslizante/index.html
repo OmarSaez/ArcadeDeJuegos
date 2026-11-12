@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Puzzle Deslizante - Arcade</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../sounds.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600;700&display=swap"
         rel="stylesheet">
     <style>
@@ -639,38 +640,13 @@
     </div>
 
     <script>
-        // --- AUDIO SINTETIZADO (Web Audio API) ---
-        let soundEnabled = true;
-        let audioCtx = null;
-
-        function playTone(freq = 440, duration = 0.06, type = 'sine', gainVal = 0.08) {
-            if (!soundEnabled) return;
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = type;
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                osc.stop(audioCtx.currentTime + duration);
-            } catch (e) { }
-        }
-
-        function playWinFanfare() {
-            const notes = [523.25, 659.25, 783.99, 1046.5];
-            notes.forEach((n, idx) => setTimeout(() => playTone(n, 0.18, 'triangle', 0.14), idx * 110));
-        }
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
 
         function toggleSound() {
-            soundEnabled = !soundEnabled;
+            const isMuted = window.ArcadeAudio ? ArcadeAudio.toggleMute() : false;
             const btn = document.getElementById('btn-sound');
-            btn.innerText = soundEnabled ? '🔊' : '🔇';
-            btn.classList.toggle('active-toggle', soundEnabled);
+            btn.innerText = !isMuted ? '🔊' : '🔇';
+            btn.classList.toggle('active-toggle', !isMuted);
         }
 
         // --- ESTADO DEL JUEGO ---
@@ -1061,14 +1037,21 @@
             }
 
             let curr = emptyPos;
+            let slidCount = 0;
+            let landedCorrect = false;
             while (curr !== clickedIndex) {
                 const next = curr + step;
                 [tiles[curr], tiles[next]] = [tiles[next], tiles[curr]];
+                if (tiles[curr] === curr) landedCorrect = true;
                 curr = next;
+                slidCount++;
             }
             emptyPos = clickedIndex;
             moves++;
-            playTone(320 + (moves % 6) * 35, 0.05, 'triangle', 0.07);
+            if (window.ArcadeAudio) {
+                if (landedCorrect) ArcadeAudio.snap();
+                else ArcadeAudio.slide(slidCount);
+            }
 
             renderBoard();
             sendProgressP2P();
@@ -1128,7 +1111,7 @@
 
             gameActive = false;
             clearInterval(timerInterval);
-            playWinFanfare();
+            if (window.ArcadeAudio) ArcadeAudio.victory();
 
             const isNewRecord = saveBestRecord();
             loadBestRecord();
@@ -1259,6 +1242,7 @@
                 } else if (data.type === 'I_WON') {
                     gameActive = false;
                     clearInterval(timerInterval);
+                    if (window.ArcadeAudio) ArcadeAudio.defeat();
                     updateRivalUI(100, data.moves);
                     showEndModal(false, `Tu rival completó el puzzle en ${formatTime(data.time)} (${data.moves} movs).`);
                 }

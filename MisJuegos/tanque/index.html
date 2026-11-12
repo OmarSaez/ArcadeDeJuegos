@@ -951,7 +951,9 @@
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../sounds.js"></script>
     <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
         // --- CONSTANTES & CONFIG ---
         const RED_PALETTE = [
             '#b71c1c', '#ff5252', '#880e4f', '#ec407a', '#ff80ab', // Reds & Pinks (Dark Red, Red, Dark Pink, Pink, Light Pink)
@@ -1759,6 +1761,7 @@
 
 
         function triggerAirstrike(latX, ownerId) {
+            if (window.ArcadeAudio) ArcadeAudio.alarm();
             broadcast({ type: 'FLOAT_TEXT', x: latX, y: 100, text: "⚠ AIRSTRIKE ⚠", color: '#ff9800' });
             // Spawn 3 missiles
             for (let k = 0; k < 3; k++) {
@@ -1776,6 +1779,7 @@
         }
 
         function explode(x, y, type, ownerId) {
+            if (window.ArcadeAudio) ArcadeAudio.hit();
             let r = 40;
             if (type === 'BIG' || type === 'AIR_MISSILE') r = 80;
             if (type === 'CLUSTER_FRAG') r = 20;
@@ -1834,6 +1838,7 @@
 
                     if (t.hp <= 0 && !t.dead) {
                         t.dead = true;
+                        if (window.ArcadeAudio) ArcadeAudio.sink();
                         broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "¡BAJA!", color: '#f00' });
                         broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y });
 
@@ -1914,6 +1919,8 @@
 
 
         function fireWeapon(tank, power) {
+            if (window.ArcadeAudio) ArcadeAudio.shoot();
+            broadcast({ type: 'SHOOT_SFX' });
             const type = tank.specialWeapon;
             tank.specialWeapon = null; // Consume
             const spawn = (off) => {
@@ -1934,6 +1941,7 @@
 
 
         function collectItemHost(tank, idx) {
+            if (window.ArcadeAudio) ArcadeAudio.coin();
             const it = items[idx];
             items.splice(idx, 1);
             let txt = it.type; let col = '#ffeb3b';
@@ -2040,6 +2048,7 @@
 
         function gameOver(winner, stats, duration) {
             gameState = 'GAMEOVER';
+            if (window.ArcadeAudio) ArcadeAudio.victory();
             document.getElementById('ui-layer').style.pointerEvents = 'auto'; // Re-enable UI clicks
             document.getElementById('game-over-screen').style.display = 'block';
             document.getElementById('winner-text').innerText = "GANADOR: " + winner;
@@ -2500,13 +2509,18 @@
                     data.tanks.forEach(s => { const l = tanks.find(t => t.id === s.id); if (l) { l.x = s.x; l.y = s.y; l.angle = s.angle; l.hp = s.hp; l.fuel = s.fuel; l.dead = s.dead; l.specialWeapon = s.sw; l.hasShield = s.hs; l.poison = s.psn; } });
                     projectiles = data.projectiles; turnIndex = data.turnIndex; turnTimer = data.timer;
                 }
+                else if (data.type === 'SHOOT_SFX') {
+                    if (window.ArcadeAudio) ArcadeAudio.shoot();
+                }
                 else if (data.type === 'EXPLOSION') {
                     console.log("[CLIENT] EXP Received:", data);
+                    if (window.ArcadeAudio) ArcadeAudio.hit();
                     applyTerrainExplosion(data.x, data.y, data.r, data.expType);
                     explosions.push({ x: data.x, y: data.y, r: data.r, life: 30 });
                 }
                 else if (data.type === 'TANK_DEATH') {
                     // Big Boom
+                    if (window.ArcadeAudio) ArcadeAudio.sink();
                     explosions.push({ x: data.x, y: data.y, r: 80, life: 50 });
                     // Smoke
                     for (let i = 0; i < 20; i++) {
@@ -2521,10 +2535,16 @@
                     }
                 }
                 else if (data.type === 'FLOAT_TEXT') { floatTexts.push({ x: data.x, y: data.y, text: data.text, color: data.color, life: 60 }); }
-                else if (data.type === 'SYNC_ITEMS' || data.type === 'ITEM_COLLECT') { items = data.items; if (data.tankId) { const t = tanks.find(x => x.id === data.tankId); if (t) { t.hp = data.hp; t.specialWeapon = data.sw; t.hasShield = data.hs; t.poison = data.psn; } } }
+                else if (data.type === 'SYNC_ITEMS' || data.type === 'ITEM_COLLECT') {
+                    if (data.type === 'ITEM_COLLECT' && window.ArcadeAudio) ArcadeAudio.coin();
+                    items = data.items; if (data.tankId) { const t = tanks.find(x => x.id === data.tankId); if (t) { t.hp = data.hp; t.specialWeapon = data.sw; t.hasShield = data.hs; t.poison = data.psn; } }
+                }
                 else if (data.type === 'GAME_START') { initGameClient(data); }
                 else if (data.type === 'LOBBY_UPDATE') { players = data.players; updateLobbyUI(); }
-                else if (data.type === 'GAME_START_COUNTDOWN') { document.getElementById('start-timer').innerText = data.sec === "CANCELADO" ? "" : "INICIANDO EN " + data.sec; }
+                else if (data.type === 'GAME_START_COUNTDOWN') {
+                    if (typeof data.sec === 'number' && data.sec > 0 && window.ArcadeAudio) ArcadeAudio.tick();
+                    document.getElementById('start-timer').innerText = data.sec === "CANCELADO" ? "" : "INICIANDO EN " + data.sec;
+                }
                 else if (data.type === 'GAMEOVER') { gameState = 'GAMEOVER'; gameOver(data.winner, data.stats, data.duration); }
                 else if (data.type === 'RETURN_TO_LOBBY') {
                     resetToLobby();

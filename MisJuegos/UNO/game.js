@@ -3,6 +3,7 @@
  */
 
 const COLORS = ['red', 'blue', 'green', 'yellow'];
+if (window.ArcadeAudio) ArcadeAudio.bindUI();
 const ACTIONS = {
     SKIP: 'skip',
     REVERSE: 'reverse',
@@ -466,6 +467,7 @@ class Game {
                     if (this.hasAnimated && (cardIdx >= prevSize)) {
                         cardEl.classList.add('drawing');
                         cardEl.style.animationDelay = `${(cardIdx - prevSize) * 0.1}s`;
+                        if (window.ArcadeAudio && cardIdx === prevSize) ArcadeAudio.card();
                     }
 
                     if (!player.isMe) {
@@ -522,6 +524,7 @@ class Game {
                     }
                 }
                 cardEl.classList.add('playing');
+                if (window.ArcadeAudio) ArcadeAudio.card();
             }
             cardEl.dataset.cardId = currentCardId;
 
@@ -607,10 +610,13 @@ class Game {
         if (this.canPlay(card)) {
             if (card.color === 'black') {
                 this.pendingWildCardIdx = cardIdx;
+                if (window.ArcadeAudio) ArcadeAudio.click();
                 document.getElementById('color-picker').classList.remove('hidden');
             } else {
                 this.sendAction({ type: 'PLAY', cardIdx: cardIdx });
             }
+        } else {
+            if (window.ArcadeAudio) ArcadeAudio.error();
         }
     }
 
@@ -836,6 +842,7 @@ class Game {
 
         if (isValidCall) {
             this.lastValidUnoTime = now;
+            if (window.ArcadeAudio) ArcadeAudio.alarm();
             this.syncState();
             
             // Set a timeout to render again after 1 second to hide the button
@@ -846,6 +853,7 @@ class Game {
             }, 1000);
         } else {
             // False UNO Call! Penalty: Draw 2 cards
+            if (window.ArcadeAudio) ArcadeAudio.error();
             this.forceDraw(this.players.indexOf(caller), 2);
             caller.falseUnoCalled = true;
             this.syncState();
@@ -862,6 +870,10 @@ class Game {
 
     showWinScreen(winner) {
         const msg = winner.isMe ? "¡HAS GANADO!" : `¡${winner.nickname} ha ganado!`;
+        if (window.ArcadeAudio) {
+            if (winner.isMe) ArcadeAudio.victory();
+            else ArcadeAudio.defeat();
+        }
         document.getElementById('winner-msg').innerText = msg;
         document.getElementById('winner-name').innerText = winner.nickname;
 
@@ -956,6 +968,7 @@ class Game {
                 const now = Date.now();
                 if (now - lastVisualUpdateTime > 140) {
                     lastVisualUpdateTime = now;
+                    if (window.ArcadeAudio) ArcadeAudio.card();
                     const cards = deckEl.querySelectorAll('.deck-card');
                     cards.forEach(card => {
                         const rx = (Math.random() - 0.5) * 55;

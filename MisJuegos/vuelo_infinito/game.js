@@ -1,5 +1,6 @@
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
+if (window.ArcadeAudio) ArcadeAudio.bindUI();
 
 // UI Elements
 const uiOverlay = document.getElementById('ui-overlay');
@@ -424,6 +425,7 @@ function showUpgradeDetail(type) {
 }
 
 function lockLaunchAngle() {
+    if (window.ArcadeAudio) ArcadeAudio.click();
     launchPhase = 'POWER';
     document.getElementById('phase-angle').classList.add('hidden');
     document.getElementById('phase-power').classList.remove('hidden');
@@ -536,10 +538,13 @@ function buyUpgrade(type) {
     const cost = UPGRADE_COSTS[type][level];
 
     if (playerData.totalCoins >= cost && level < 10) {
+        if (window.ArcadeAudio) ArcadeAudio.snap();
         playerData.totalCoins -= cost;
         playerData.upgrades[type]++;
         saveData();
         updateUIStrings();
+    } else {
+        if (window.ArcadeAudio) ArcadeAudio.error();
     }
 }
 
@@ -650,6 +655,7 @@ function launch() {
 
     // Perfect Launch Check (Above 98%)
     if (launchPower > 98) {
+        if (window.ArcadeAudio) ArcadeAudio.correct();
         isLaunchingPerfect = true;
         screenShake = 15;
 
@@ -658,6 +664,7 @@ function launch() {
 
         // Delay the actual takeoff for dramatic effect
         setTimeout(() => {
+            if (window.ArcadeAudio) ArcadeAudio.transition();
             isLaunchingPerfect = false;
             finalPower *= 1.5; // Bonus 50% for Perfect (buffed from 40%)
             screenShake = 40; // Massive impact shake
@@ -672,6 +679,7 @@ function launch() {
         }, 1200);
 
     } else {
+        if (window.ArcadeAudio) ArcadeAudio.transition();
         screenShake = 10;
         plane.vx = Math.cos(rad) * finalPower;
         plane.vy = Math.sin(rad) * finalPower;
@@ -681,6 +689,7 @@ function launch() {
 }
 
 function calculateResults() {
+    if (window.ArcadeAudio) ArcadeAudio.victory();
     const distanceBonus = Math.floor(distance / 10);
     const initialBase = sessionCoins + distanceBonus; 
 
@@ -1370,6 +1379,7 @@ function update(dt) {
             }
 
             if (dist < 40) {
+                if (window.ArcadeAudio) ArcadeAudio.coin();
                 const valueLvl = playerData.upgrades.coinValue || 0;
                 const coinBonus = valueLvl * 2.5;
                 sessionCoins += 10 + coinBonus;
@@ -1403,15 +1413,18 @@ function update(dt) {
 
             if (dist < 35) {
                 if (obstacles[i].type === 'balloon') {
+                    if (window.ArcadeAudio) ArcadeAudio.bounce();
                     plane.vy = isLegendaryPowerActive() ? -12 : -6; // Powerful boost if legendary and active
                     createExplosion(obstacles[i].x, obsScreenY, '#ef4444', 10);
                 } else {
                     if (activeShields > 0 && shieldCooldown <= 0) {
+                        if (window.ArcadeAudio) ArcadeAudio.bounce();
                         activeShields--;
                         updateShieldHUD();
                         shieldCooldown = 60; // 1 second cooldown
                         createExplosion(obstacles[i].x, obsScreenY, '#38bdf8', 20); // Shield effect
                     } else {
+                        if (window.ArcadeAudio) ArcadeAudio.hit();
                         plane.vx *= 0.5;
                         plane.vy += 2;
                         createExplosion(obstacles[i].x, obsScreenY, '#475569', 10);
@@ -1431,6 +1444,7 @@ function update(dt) {
             const bScreenY = canvas.height - 100 - (boosters[i].worldY - cameraY);
             const dist = Math.sqrt((plane.x - boosters[i].x) ** 2 + (plane.y - bScreenY) ** 2);
             if (dist < 50) {
+                if (window.ArcadeAudio) ArcadeAudio.bounce();
                 const isGodMode = isLegendaryPowerActive();
                 plane.vx += isGodMode ? 10 : 5;
                 plane.vy = isGodMode ? -10 : -5;
@@ -1444,6 +1458,7 @@ function update(dt) {
             const fScreenY = canvas.height - 100 - (fuelItems[i].worldY - cameraY);
             const dist = Math.sqrt((plane.x - fuelItems[i].x) ** 2 + (plane.y - fScreenY) ** 2);
             if (dist < 45) {
+                if (window.ArcadeAudio) ArcadeAudio.coin();
                 const refillPercent = 0.2 + Math.random() * 0.2; // 20% to 40%
                 plane.fuel = Math.min(plane.maxFuel, plane.fuel + plane.maxFuel * refillPercent);
                 createExplosion(fuelItems[i].x, fScreenY, '#ef4444', 8);
@@ -1470,6 +1485,7 @@ function update(dt) {
             trampolines[i].x -= plane.vx;
             const tScreenY = canvas.height - 100 + cameraY;
             if (Math.abs(plane.x - trampolines[i].x) < (trampolines[i].width / 2) && Math.abs(plane.y - tScreenY) < 40) {
+                if (window.ArcadeAudio) ArcadeAudio.bounce();
                 plane.vy = -13;
                 plane.vx += 2;
                 createExplosion(trampolines[i].x, tScreenY, '#22d3ee', 10);

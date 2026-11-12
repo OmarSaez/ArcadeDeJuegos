@@ -7,6 +7,7 @@
     <title>Conecta 4 Online - Arcade</title>
     <!-- PeerJS CDN -->
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../sounds.js"></script>
     <style>
         /* --- RESET & BASE STYLES --- */
         * {
@@ -647,6 +648,7 @@
         // --- DOM ---
         const uiBoard = document.getElementById('game-board');
         const uiStatus = document.getElementById('game-status');
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
 
         // ==========================================
         // P2P LOGIC (Based on Standard Fast-Dual)
@@ -720,6 +722,7 @@
                         break;
                     case 'Chat':
                     case 'CHAT':
+                        if (window.ArcadeAudio) ArcadeAudio.notification();
                         showChatBubble(data.msg, isHost ? 2 : 1);
                         break;
                     case 'RESTART_REQ':
@@ -876,7 +879,10 @@
 
             // Find valid row (lowest empty)
             const r = getLowestEmptyRow(c);
-            if (r === -1) return; // Column full
+            if (r === -1) {
+                if (window.ArcadeAudio) ArcadeAudio.error();
+                return; // Column full
+            }
 
             // Execute Move
             makeMove(r, c, myPlayerId);
@@ -910,6 +916,7 @@
 
         function handleMouseEnter(c) {
             if (!gameActive || !isMyTurn) return;
+            if (window.ArcadeAudio) ArcadeAudio.hover();
             showGhost(c, myPlayerId);
             if (conn && conn.open) conn.send({ type: 'HOVER', col: c });
         }
@@ -1017,6 +1024,7 @@
         function makeMove(r, c, playerId) {
             boardState[r][c] = playerId;
             pieceCounts[playerId]++;
+            if (window.ArcadeAudio) ArcadeAudio.dropDisc(r);
 
             // ANIMATE CELL
             const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
@@ -1049,11 +1057,16 @@
                     sessionWins[playerId]++;
                     lastLoser = (playerId === 1 ? 2 : 1); // Loser of this round starts next
                     fireConfetti(); // JUICE
+                    if (window.ArcadeAudio) {
+                        if (playerId === myPlayerId) ArcadeAudio.victory();
+                        else ArcadeAudio.defeat();
+                    }
                     showResult(playerId === myPlayerId ? "VICTORIA" : "DERROTA");
                 }, 600); // Wait for drop
             } else if (checkDraw()) {
                 gameActive = false;
                 lastLoser = 0; // Reset on draw so next start is random
+                if (window.ArcadeAudio) ArcadeAudio.back();
                 showResult("EMPATE");
             }
         }

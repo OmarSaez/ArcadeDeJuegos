@@ -1,4 +1,5 @@
 // Variables Globales de UI
+if (window.ArcadeAudio) ArcadeAudio.bindUI();
 let currentView = 'view-main';
 
 // Variables de Jugador y P2P
@@ -536,6 +537,7 @@ function handleCellClick(idx, action) {
 
         if (action === 'flag') {
             cell.isFlagged = !cell.isFlagged;
+            if (window.ArcadeAudio) ArcadeAudio.place();
             renderBoard();
             if (gameMode === 'comp') sendCompSync();
             return;
@@ -552,6 +554,7 @@ function handleCellClick(idx, action) {
         renderBoard();
 
         if (cell.isMine) {
+            if (window.ArcadeAudio) ArcadeAudio.sink();
             if (gameMode === 'comp') {
                 notifyCompStatus('Derrota 💀');
                 startSpectating();
@@ -559,6 +562,7 @@ function handleCellClick(idx, action) {
                 endGame(false);
             }
         } else {
+            if (window.ArcadeAudio) ArcadeAudio.slide();
             checkWinCondition();
         }
         if (gameMode === 'comp' && !isSpectator) sendCompSync();
@@ -582,6 +586,7 @@ function handleClientMove(playerId, x, y, action) {
     if (action === 'flag') {
         cell.isFlagged = !cell.isFlagged;
         cell.flaggedBy = cell.isFlagged ? playerId : null;
+        if (window.ArcadeAudio) ArcadeAudio.place();
         broadcast({ type: 'SYNC_BOARD', board: board });
         renderBoard();
         return; // No se pasa el turno al poner bandera
@@ -598,6 +603,7 @@ function handleClientMove(playerId, x, y, action) {
 
     if (cell.isMine) {
         // En Coop, si uno toca mina, pierden todos
+        if (window.ArcadeAudio) ArcadeAudio.sink();
         gameOver = true;
         revealAllMines();
         const p = players.find(p => p.id === playerId);
@@ -607,6 +613,7 @@ function handleClientMove(playerId, x, y, action) {
         renderBoard();
         endGame(false, loserName, coopStats);
     } else {
+        if (window.ArcadeAudio) ArcadeAudio.slide();
         broadcast({ type: 'SYNC_BOARD', board: board });
         renderBoard();
         if (!checkWinConditionCoop()) {
@@ -704,6 +711,12 @@ function endGame(win, extraName = null, stats = null) {
     gameOver = true;
     clearInterval(timerInterval);
     document.getElementById('spectator-controls').style.display = 'none';
+
+    if (window.ArcadeAudio) {
+        const iWon = win && (gameMode !== 'comp' || !extraName || extraName === myNickname);
+        if (iWon) ArcadeAudio.victory();
+        else ArcadeAudio.defeat();
+    }
 
     const statusEl = document.getElementById('game-status');
 

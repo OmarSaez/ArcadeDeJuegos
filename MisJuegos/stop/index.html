@@ -422,7 +422,9 @@
             style="width: 100%; margin-top: 10px; background:#7f8c8d; font-size: 1.2rem;">Volver al Arcade</button>
     </div>
 
+    <script src="../../sounds.js"></script>
     <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
         // --- GAME CONFIG ---
         const DEFAULT_CATEGORIES = ['Nombre', 'Apellido', 'Ciudad/País', 'Animal', 'Color', 'Fruta/Comida'];
         let categories = [...DEFAULT_CATEGORIES];
@@ -605,6 +607,7 @@
                     players = data.players;
                     updateLobbyUI();
                     showScreen('screen-lobby');
+                    if (window.ArcadeAudio) ArcadeAudio.victory();
                     showToast("¡Juego Terminado!");
                     break;
                 case 'READY_UPDATE':
@@ -707,6 +710,7 @@
         }
 
         function startGameUI() {
+            if (window.ArcadeAudio) ArcadeAudio.transition();
             showScreen('screen-game');
             document.getElementById('letter-display').innerText = gameState.letter;
             document.getElementById('round-current').innerText = gameState.round;
@@ -740,6 +744,7 @@
 
         function onStopCalled(stopperId, stopperName) {
             const name = stopperName || "Alguien"; // Fallback
+            if (window.ArcadeAudio) ArcadeAudio.alarm();
             showToast(`¡ ${name} ha dicho STOP !`);
 
             // 1. Lock Inputs IMMEDIATELY (Freeze state)
@@ -876,6 +881,9 @@
             voteInterval = setInterval(() => {
                 timeLeft--;
                 el.innerText = timeLeft + "s";
+                if (timeLeft > 0 && timeLeft <= 5 && window.ArcadeAudio) {
+                    ArcadeAudio.tick();
+                }
                 if (timeLeft <= 0) {
                     clearInterval(voteInterval);
                     if (isHost) requestNextRound();

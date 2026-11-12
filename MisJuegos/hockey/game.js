@@ -7,6 +7,8 @@ const LOGICAL_H = 1200;
 // Elementos HTML
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
+if (window.ArcadeAudio) ArcadeAudio.bindUI();
+let lastBounceSfx = 0;
 
 // --- ESTADO GLOBAL ---
 let myNick = localStorage.getItem('hockey_nick') || "Jugador" + Math.floor(Math.random()*100);
@@ -232,10 +234,15 @@ function handleClientData(data) {
         });
         
     } else if (data.type === 'START') {
+        if (window.ArcadeAudio) ArcadeAudio.transition();
         if (data.drawnPaths) drawnPaths = data.drawnPaths;
         showScreen('screen-game');
         document.getElementById('score-display').classList.remove('hidden');
         startGameLoop();
+    } else if (data.type === 'SFX') {
+        if (window.ArcadeAudio && typeof ArcadeAudio[data.sfx] === 'function') {
+            ArcadeAudio[data.sfx]();
+        }
     } else if (data.type === 'SYNC') {
         puckState = data.state.puck;
         scores = data.state.scores;
@@ -358,6 +365,13 @@ function initHostPhysics() {
                     handleGoal('B');
                 } else if (other.label === 'goalB') {
                     handleGoal('A');
+                } else {
+                    const now = Date.now();
+                    if (now - lastBounceSfx > 60) {
+                        lastBounceSfx = now;
+                        if (window.ArcadeAudio) ArcadeAudio.bounce();
+                        Object.values(clientConns).forEach(c => c.send({ type: 'SFX', sfx: 'bounce' }));
+                    }
                 }
             }
         });
@@ -436,6 +450,8 @@ function resetPuck() {
 function handleGoal(scoringTeam) {
     if (gameState !== 'PLAYING') return;
     scores[scoringTeam]++;
+    if (window.ArcadeAudio) ArcadeAudio.goal();
+    Object.values(clientConns).forEach(c => c.send({ type: 'SFX', sfx: 'goal' }));
     
     let elapsedSecs = Math.floor((Date.now() - matchStartTime) / 1000);
     let mins = String(Math.floor(elapsedSecs / 60)).padStart(2, '0');
@@ -495,6 +511,10 @@ function endGame(winningTeam) {
 }
 
 function showGameOverScreen(winner, stats) {
+    if (window.ArcadeAudio) {
+        if (winner === myTeam) ArcadeAudio.victory();
+        else ArcadeAudio.defeat();
+    }
     document.getElementById('score-display').classList.add('hidden');
     showScreen('screen-gameover');
     
@@ -577,6 +597,7 @@ function addPlayer(id, nick) {
 
 function startGame() {
     if (isHost) {
+        if (window.ArcadeAudio) ArcadeAudio.transition();
         gameState = 'PLAYING';
         scores = { A: 0, B: 0 };
         matchStartTime = Date.now();

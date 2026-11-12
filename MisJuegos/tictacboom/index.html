@@ -650,7 +650,9 @@
         </div>
     </div>
 
+    <script src="../../sounds.js"></script>
     <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
         // --- LOGICA DEL JUEGO ---
         let myId = null, myName = "Player";
         let isHost = false;
@@ -945,6 +947,7 @@
             }
             else if (data.type === 'NEW_TURN') {
                 show('screen-game');
+                if (window.ArcadeAudio) ArcadeAudio.transition();
                 const sd = document.getElementById('syllable-display');
                 sd.innerText = data.syllable;
                 sd.style.transform = "scale(1)"; // Reset tras explosión
@@ -954,6 +957,7 @@
                 startTicking();
             }
             else if (data.type === 'WORD_ACCEPTED') {
+                if (window.ArcadeAudio) ArcadeAudio.correct();
                 const div = document.createElement('div');
                 div.className = 'used-word-item';
                 div.innerText = data.word;
@@ -966,6 +970,7 @@
                 updateGameUI();
             }
             else if (data.type === 'REJECT_WORD') {
+                if (window.ArcadeAudio) ArcadeAudio.error();
                 if (data.playerId === myId) {
                     const inp = document.getElementById('word-input');
                     inp.classList.add('input-error');
@@ -977,12 +982,14 @@
                 }
             }
             else if (data.type === 'PASS_BOMB') {
+                if (window.ArcadeAudio) ArcadeAudio.place();
                 players = data.list; // Sync remaining times
                 updateTurn(data.newPlayerId);
             }
             else if (data.type === 'EXPLOSION') {
                 const b = document.querySelector('.bomb-body');
                 stopTicking(); // Stop sound/spark but don't remove exploding class yet
+                if (window.ArcadeAudio) ArcadeAudio.sink();
                 b.classList.add('exploding');
                 document.body.classList.add('shake-screen');
 
@@ -1000,8 +1007,13 @@
                 document.getElementById('syllable-display').style.transform = "scale(1.5)";
             }
             else if (data.type === 'GAME_OVER') {
+                stopTicking();
                 show('screen-results');
                 document.getElementById('winner-text').innerText = data.winner;
+                if (window.ArcadeAudio) {
+                    if (data.winner === myName) ArcadeAudio.victory();
+                    else ArcadeAudio.defeat();
+                }
 
                 // Format Duration
                 const seconds = Math.floor((data.duration / 1000) % 60);
@@ -1171,12 +1183,28 @@
         }
 
         // --- ANIMATIONS ---
+        let bombSoundTimeout = null;
+        function scheduleBombTick() {
+            if (!bombSoundTimeout) return;
+            if (window.ArcadeAudio) ArcadeAudio.tick();
+            const b = document.querySelector('.bomb-body');
+            let delay = 750;
+            if (b && b.classList.contains('critical-ticking')) delay = 220;
+            else if (b && b.classList.contains('fast-ticking')) delay = 420;
+            bombSoundTimeout = setTimeout(scheduleBombTick, delay);
+        }
         function startTicking() {
             document.getElementById('spark').style.display = 'block';
             const b = document.querySelector('.bomb-body');
             if (b) b.classList.remove('exploding'); // Forzar reset visual
+            if (bombSoundTimeout) clearTimeout(bombSoundTimeout);
+            bombSoundTimeout = setTimeout(scheduleBombTick, 500);
         }
         function stopTicking() {
+            if (bombSoundTimeout) {
+                clearTimeout(bombSoundTimeout);
+                bombSoundTimeout = null;
+            }
             document.getElementById('spark').style.display = 'none';
             const b = document.querySelector('.bomb-body');
             if (b) {

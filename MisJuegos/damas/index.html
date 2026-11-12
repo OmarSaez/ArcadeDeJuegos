@@ -473,7 +473,9 @@
         </div>
     </div>
 
+    <script src="../../sounds.js"></script>
     <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
         // --- CONFIGURACIÓN P2P ---
         let peer;
         let conn;
@@ -709,6 +711,7 @@
 
         function selectPiece(r, c) {
             if (currentTurn !== myColor) return;
+            if (window.ArcadeAudio) ArcadeAudio.hover();
 
             // Si hacemos click en la misma, deseleccionamos
             if (selectedSquare && selectedSquare.r === r && selectedSquare.c === c) {
@@ -780,6 +783,7 @@
             boardState[selectedSquare.r][selectedSquare.c] = null;
 
             // Si es captura, eliminar pieza comida
+            let crowned = false;
             if (move.type === 'capture') {
                 boardState[move.capR][move.capC] = null;
                 stats[roleKey].captured++; // Estadísticas: Capturas
@@ -789,10 +793,18 @@
             if (piece.color === 'red' && nr === 0 && !piece.king) {
                 piece.king = true;
                 stats[roleKey].kings++; // Estadísticas: Damas
+                crowned = true;
             }
             if (piece.color === 'black' && nr === 7 && !piece.king) {
                 piece.king = true;
                 stats[roleKey].kings++; // Estadísticas: Damas
+                crowned = true;
+            }
+
+            if (window.ArcadeAudio) {
+                if (crowned) ArcadeAudio.snap();
+                else if (move.type === 'capture') ArcadeAudio.hit();
+                else ArcadeAudio.place();
             }
 
             // Cambio de turno
@@ -833,7 +845,12 @@
             const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
             document.getElementById('modal').style.display = 'flex';
-            document.getElementById('win-title').innerText = (winnerRole === (isHost ? 'host' : 'guest')) ? '¡HAS GANADO!' : '¡HAS PERDIDO!';
+            const didWin = (winnerRole === (isHost ? 'host' : 'guest'));
+            document.getElementById('win-title').innerText = didWin ? '¡HAS GANADO!' : '¡HAS PERDIDO!';
+            if (window.ArcadeAudio) {
+                if (didWin) ArcadeAudio.victory();
+                else ArcadeAudio.defeat();
+            }
 
             const myWins = isHost ? totalWins.host : totalWins.guest;
             const rivalWins = isHost ? totalWins.guest : totalWins.host;

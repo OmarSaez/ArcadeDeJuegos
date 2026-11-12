@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Master Puzzle Deluxe: Real Table Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="../../sounds.js"></script>
     <script>
         /**
          * Minified by jsDelivr using Terser v5.37.0.
@@ -1284,6 +1285,7 @@
 
     </script>
     <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
         // --- VARIABLES GLOBALES ---
         let rows = 3, cols = 3;
         let imgUrl = '';
@@ -1761,6 +1763,7 @@
         }
 
         function startGameLogic(initialPieces = null) {
+            if (window.ArcadeAudio) ArcadeAudio.transition();
             clearInterval(timerInterval);
             seconds = 0; moves = 0;
             document.getElementById('timer').innerText = "00:00";
@@ -1990,6 +1993,7 @@
                 sendData({ type: 'ROTATE', id: piece.dataset.correctPos, rot: currentRot });
             }
             setPieceRotation(piece, currentRot);
+            if (window.ArcadeAudio) ArcadeAudio.place();
             if (isPlaying && remoteRot === null) moves++;
             checkWinCondition();
         }
@@ -2052,6 +2056,7 @@
 
         function startVisualDrag(pointerX, pointerY) {
             if (!draggedPiece) return;
+            if (window.ArcadeAudio) ArcadeAudio.hover();
 
             // Send GRAB event to peers immediately
             sendData({
@@ -2238,7 +2243,12 @@
 
                 dropData.inSlot = true;
                 dropData.slotId = slot.dataset.pos;
+                if (window.ArcadeAudio) {
+                    if (pid === slot.dataset.pos && parseInt(rot || 0) === 0) ArcadeAudio.snap();
+                    else ArcadeAudio.place();
+                }
             } else {
+                if (window.ArcadeAudio) ArcadeAudio.click();
                 // DROP ON TABLE
                 draggedPiece.classList.remove('in-slot');
                 gameWorld.appendChild(draggedPiece);
@@ -2483,6 +2493,7 @@
 
         function triggerWin(isRemote = false) {
             clearInterval(timerInterval);
+            if (window.ArcadeAudio) ArcadeAudio.victory();
             document.getElementById('final-time').innerText = formatTime(seconds);
             document.getElementById('final-moves').innerText = moves;
             document.getElementById('win-modal').style.display = 'flex';

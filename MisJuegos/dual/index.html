@@ -334,7 +334,9 @@
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../sounds.js"></script>
     <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
         // --- CONSTANTES ---
         const CANVAS = document.getElementById('game-canvas');
         const CTX = CANVAS.getContext('2d');
@@ -473,13 +475,21 @@
         // --- LÓGICA DE JUEGO ---
         function shoot() {
             // Check Jammed (Sin Munición)
-            if (player.bonuses.jammed > 0) return;
+            if (player.bonuses.jammed > 0) {
+                if (window.ArcadeAudio) ArcadeAudio.error();
+                return;
+            }
 
             // Check Broken (Arma Rota) - Necesita 3 taps para 1 bala
             if (player.bonuses.broken > 0) {
                 player.tapCount++;
-                if (player.tapCount % 3 !== 0) return; // Solo 1 de cada 3 intentos dispara
+                if (player.tapCount % 3 !== 0) {
+                    if (window.ArcadeAudio) ArcadeAudio.click();
+                    return; // Solo 1 de cada 3 intentos dispara
+                }
             }
+
+            if (window.ArcadeAudio) ArcadeAudio.shoot();
 
             // Configurar balas según bonus
             const speed = player.bonuses.rapid > 0 ? -0.025 : -0.0140; // Normal 5% mas lento
@@ -603,11 +613,13 @@
                         // Check Escudo
                         if (player.bonuses.shield > 0) {
                             // Bloqueado
+                            if (window.ArcadeAudio) ArcadeAudio.bounce();
                             bullets.splice(i, 1);
                             continue;
                         }
 
                         player.hp -= 10;
+                        if (window.ArcadeAudio) ArcadeAudio.hit();
 
                         // Enviar hit confirm al enemigo (por si tiene Robo de Vida)
                         if (conn) conn.send({ type: 'HIT_CONFIRM' });
@@ -780,9 +792,11 @@
 
             const title = document.getElementById('result-title');
             if (win) {
+                if (window.ArcadeAudio) ArcadeAudio.victory();
                 title.innerText = "¡VICTORIA!";
                 title.style.color = "#0f0";
             } else {
+                if (window.ArcadeAudio) ArcadeAudio.defeat();
                 title.innerText = "DERROTA";
                 title.style.color = "#f00";
                 // Avisar al otro que ganó
@@ -952,6 +966,7 @@
                     case 'HIT_CONFIRM':
                         // Le di al enemigo
                         matchStats.hits++;
+                        if (window.ArcadeAudio) ArcadeAudio.place();
 
                         // verificar VAMPIRISMO
                         if (player.bonuses.vamp > 0) {
@@ -1215,8 +1230,10 @@
                 const cInt = setInterval(() => {
                     countdownVal--;
                     if (countdownVal > 0) {
+                        if (window.ArcadeAudio) ArcadeAudio.tick();
                         count.innerText = countdownVal;
                     } else if (countdownVal === 0) {
+                        if (window.ArcadeAudio) ArcadeAudio.transition();
                         count.innerText = "YA!";
                     } else {
                         clearInterval(cInt);
@@ -1314,6 +1331,7 @@
 
                     if (dist < radius + 0.01) { // 0.01 margen bala
                         hit = true;
+                        if (window.ArcadeAudio) ArcadeAudio.coin();
 
                         // Efecto Hit
                         if (currentEvent.type === 'ORBS') {
@@ -1414,6 +1432,7 @@
 
         function eventWin() {
             if (!currentEvent || !currentEvent.active) return;
+            if (window.ArcadeAudio) ArcadeAudio.correct();
             matchStats.eventsWon++;
             const rewardName = currentEvent.bonus.name;
             const bonusId = currentEvent.bonus.id; // Capturar ID antes de limpiar evento

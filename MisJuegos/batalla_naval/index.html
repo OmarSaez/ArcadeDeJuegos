@@ -20,6 +20,7 @@
         //# sourceMappingURL=/sm/6de00f2697a1683b235e589897df757a94e6809643432a9e3ad259420752442d.map
     </script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="../../sounds.js"></script>
     <style>
         :root {
             --sea-color: #0f172a;
@@ -994,6 +995,8 @@
     </div>
 
     <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
+
         // --- DATA & STATE ---
         let gridSize = 10;
         // NEW CONFIG: each item has a 'matrix' (2D array of 0/1) instead of just Size
@@ -1488,6 +1491,7 @@
                     updateShipVisual(el, newM, tileSize);
                     placeShipOnBoard(el, gx, gy, newM, el.dataset.id);
                 } else {
+                    if (window.ArcadeAudio) ArcadeAudio.error();
                     el.classList.add('error');
                     setTimeout(() => el.classList.remove('error'), 200);
                 }
@@ -1757,6 +1761,7 @@
             document.getElementById('btn-rotate').disabled = false;
             selectShip(null, el); // Reactivate select
             dragEl = null;
+            if (window.ArcadeAudio) ArcadeAudio.place();
 
             checkSetupReady();
         }
@@ -1905,6 +1910,7 @@
 
         function sendShot(bx, by) {
             stopTurnTimer();
+            if (window.ArcadeAudio) ArcadeAudio.shoot();
             // Optimistic marker
             conn.send({ type: 'SHOT', x: bx, y: by });
             inputLocked = true; // Prevents spam while waiting for result
@@ -1994,6 +2000,14 @@
                 }
             }
 
+            if (sunkId) {
+                if (window.ArcadeAudio) ArcadeAudio.sink();
+            } else if (hit) {
+                if (window.ArcadeAudio) ArcadeAudio.hit();
+            } else {
+                if (window.ArcadeAudio) ArcadeAudio.splash();
+            }
+
             if (hit) {
                 enemyStats.hits++;
                 triggerShake();
@@ -2056,6 +2070,7 @@
             }
 
             if (sunkId) {
+                if (window.ArcadeAudio) ArcadeAudio.sink();
                 myStats.sunk++;
                 // Mark in manifest
                 const entry = document.getElementById(`enemy-manifest-${sunkId}`);
@@ -2076,6 +2091,10 @@
                     triggerShake(); // Sunk is a big hit
                 }
             } else {
+                if (window.ArcadeAudio) {
+                    if (hit) ArcadeAudio.hit();
+                    else ArcadeAudio.splash();
+                }
                 document.getElementById('game-info').innerText = hit ? "¡IMPACTO! 💥" : "Agua 🌊";
                 if (hit) triggerShake();
             }
@@ -2127,6 +2146,7 @@
             document.getElementById('stat-hits').innerText = myStats.hits;
 
             if (victory) {
+                if (window.ArcadeAudio) ArcadeAudio.victory();
                 const duration = 3000;
                 const end = Date.now() + duration;
 
@@ -2168,6 +2188,7 @@
         }
 
         function showChatMessage(msg, isMe = false) {
+            if (!isMe && window.ArcadeAudio) ArcadeAudio.notification();
             const toast = document.getElementById('chat-toast');
             toast.innerText = msg;
             toast.style.borderColor = isMe ? '#fbbf24' : '#22c55e';

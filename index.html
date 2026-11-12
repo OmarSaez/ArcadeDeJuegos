@@ -353,8 +353,32 @@
         <div id="transition-emoji" class="transition-emoji"></div>
     </div>
 
+    <script src="sounds.js"></script>
     <script>
+        ArcadeAudio.bindUI();
+
+        function resetTransitionOverlay() {
+            const overlay = document.getElementById('transition-overlay');
+            const emojiEl = document.getElementById('transition-emoji');
+            if (overlay) overlay.classList.remove('active');
+            if (emojiEl) emojiEl.innerText = '';
+        }
+
+        // Limpiar el overlay al volver con el botón "Atrás" del navegador (bfcache) o cambiar de pestaña
+        window.addEventListener('pageshow', resetTransitionOverlay);
+        window.addEventListener('popstate', resetTransitionOverlay);
+        window.addEventListener('pagehide', resetTransitionOverlay);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                resetTransitionOverlay();
+            }
+        });
+
         document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                ArcadeAudio.hover();
+            });
+
             card.addEventListener('click', function (e) {
                 e.preventDefault(); // Evitamos que cambie de página inmediatamente
 
@@ -364,10 +388,16 @@
                 const overlay = document.getElementById('transition-overlay');
                 const emojiEl = document.getElementById('transition-emoji');
 
+                // Sonido de clic + transición tipo portal
+                ArcadeAudio.click();
+                ArcadeAudio.transition();
+
                 // Ponemos el emoji del juego seleccionado en la pantalla de carga
                 emojiEl.innerText = icon;
 
-                // Activamos la animación
+                // Reiniciamos la animación por si acaso y la activamos
+                overlay.classList.remove('active');
+                void overlay.offsetWidth;
                 overlay.classList.add('active');
 
                 // Esperamos que termine la animación para cambiar de página
