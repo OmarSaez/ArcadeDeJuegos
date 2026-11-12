@@ -8,14 +8,19 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
-        body {
+        html, body {
             background-color: #000;
             color: #fff;
             margin: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
+            position: fixed;
             font-family: 'Orbitron', sans-serif;
             touch-action: none;
+            -webkit-user-select: none;
             user-select: none;
+            -webkit-touch-callout: none;
         }
 
         #ui-layer {
@@ -91,6 +96,7 @@
         #game-canvas {
             display: block;
             background: radial-gradient(circle at center, #111 0%, #000 100%);
+            touch-action: none;
         }
 
         #health-bar {
@@ -103,6 +109,7 @@
             background: #333;
             border: 1px solid #555;
             display: none;
+            pointer-events: none;
         }
 
         #health-fill {
@@ -152,6 +159,7 @@
             display: none;
             z-index: 15;
             text-align: center;
+            pointer-events: none;
         }
 
         @keyframes criticalPulse {
@@ -442,6 +450,15 @@
         CANVAS.addEventListener('pointerdown', (e) => {
             if (gameState === 'PLAYING') shoot();
         });
+
+        // Evitar zoom por toques rápidos en iPhone durante la partida
+        CANVAS.addEventListener('touchstart', (e) => {
+            if (gameState === 'PLAYING') e.preventDefault();
+        }, { passive: false });
+
+        CANVAS.addEventListener('touchend', (e) => {
+            if (gameState === 'PLAYING') e.preventDefault();
+        }, { passive: false });
 
         // Disparo: Barra Espaciadora (PC), W, S
         window.addEventListener('keydown', (e) => {

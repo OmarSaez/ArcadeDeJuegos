@@ -666,8 +666,100 @@
             });
         },
 
-        // 24. Auto-conectar sonidos de interfaz a botones de la página actual
+        // 24. Prevención global de zoom accidental en iOS / móviles (doble tap y pellizco)
+        preventZoom() {
+            if (global.__arcadeAntiZoomBound) return;
+            global.__arcadeAntiZoomBound = true;
+
+            // 1. Asegurar meta viewport sin escalado
+            let vp = document.querySelector('meta[name="viewport"]');
+            if (!vp) {
+                vp = document.createElement('meta');
+                vp.name = 'viewport';
+                if (document.head) document.head.appendChild(vp);
+            }
+            if (vp) {
+                vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+            }
+
+            // 2. Inyectar CSS global (touch-action NO se hereda en CSS, debe aplicarse a *)
+            if (!document.getElementById('arcade-ios-antizoom')) {
+                const style = document.createElement('style');
+                style.id = 'arcade-ios-antizoom';
+                style.textContent = `
+                    html, body, *, *::before, *::after {
+                        touch-action: manipulation;
+                        -webkit-text-size-adjust: 100%;
+                        -webkit-touch-callout: none;
+                    }
+                    canvas {
+                        touch-action: none !important;
+                        -webkit-user-select: none;
+                        user-select: none;
+                    }
+                `;
+                if (document.head) {
+                    document.head.appendChild(style);
+                } else {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        if (document.head) document.head.appendChild(style);
+                    }, { once: true });
+                }
+            }
+
+            // 3. Bloquear doble click nativo y gestos de zoom de WebKit (iOS Safari)
+            document.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+            }, { passive: false, capture: true });
+
+            ['gesturestart', 'gesturechange', 'gestureend'].forEach((evt) => {
+                document.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                }, { passive: false, capture: true });
+            });
+
+            // 4. Bloquear zoom con pellizco (multi-touch scale)
+            document.addEventListener('touchmove', (e) => {
+                if ((e.touches && e.touches.length > 1) || (typeof e.scale === 'number' && e.scale !== 1)) {
+                    e.preventDefault();
+                }
+            }, { passive: false, capture: true });
+
+            // 5. Bloquear zoom por toques repetidos rápidos en iOS (< 320ms) preservando clicks en UI
+            let lastTouchEnd = 0;
+            let touchStartX = 0;
+            let touchStartY = 0;
+
+            document.addEventListener('touchstart', (e) => {
+                if (e.touches && e.touches.length === 1) {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                }
+            }, { passive: true, capture: true });
+
+            document.addEventListener('touchend', (e) => {
+                const target = e.target;
+                const tag = target && target.tagName ? target.tagName.toUpperCase() : '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+                const now = Date.now();
+                if (now - lastTouchEnd <= 320) {
+                    e.preventDefault();
+                    if (e.changedTouches && e.changedTouches.length === 1 && tag !== 'CANVAS') {
+                        const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
+                        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+                        if (dx < 15 && dy < 15 && typeof target.click === 'function') {
+                            target.click();
+                        }
+                    }
+                }
+                lastTouchEnd = now;
+            }, { passive: false, capture: true });
+        },
+
+        // 25. Auto-conectar sonidos de interfaz a botones de la página actual
         bindUI() {
+            this.preventZoom();
             if (global.__arcadeUIBound) return;
             global.__arcadeUIBound = true;
 
@@ -694,5 +786,6 @@
     };
 
     global.ArcadeAudio = ArcadeAudio;
+    ArcadeAudio.preventZoom();
 })(window);
 
