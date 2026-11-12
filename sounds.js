@@ -729,15 +729,27 @@
             let lastTouchEnd = 0;
             let touchStartX = 0;
             let touchStartY = 0;
+            let isMultiTouchGesture = false;
 
             document.addEventListener('touchstart', (e) => {
-                if (e.touches && e.touches.length === 1) {
+                if (e.touches && e.touches.length > 1) {
+                    isMultiTouchGesture = true;
+                } else if (e.touches && e.touches.length === 1) {
+                    isMultiTouchGesture = false;
                     touchStartX = e.touches[0].clientX;
                     touchStartY = e.touches[0].clientY;
                 }
             }, { passive: true, capture: true });
 
             document.addEventListener('touchend', (e) => {
+                if (isMultiTouchGesture) {
+                    if (!e.touches || e.touches.length === 0) {
+                        isMultiTouchGesture = false;
+                    }
+                    lastTouchEnd = 0;
+                    return;
+                }
+
                 const target = e.target;
                 const tag = target && target.tagName ? target.tagName.toUpperCase() : '';
                 if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;

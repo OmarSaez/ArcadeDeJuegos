@@ -1698,6 +1698,12 @@
             // Touch Pinch
             gameSurface.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
+                    isPanning = false;
+                    if (pendingDrag) {
+                        if (grabHoldTimer) { clearTimeout(grabHoldTimer); grabHoldTimer = null; }
+                        pendingDrag = false;
+                        draggedPiece = null;
+                    }
                     lastDist = Math.hypot(
                         e.touches[0].clientX - e.touches[1].clientX,
                         e.touches[0].clientY - e.touches[1].clientY
