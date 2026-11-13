@@ -1292,6 +1292,783 @@ const thesisQuestions = [
         "trapExplanation": "El profesor aconseja escuchar activamente, no ponerse a la defensiva, tomarse una pausa breve tomando agua para calmar el ritmo cardíaco y ordenar los conceptos antes de responder de forma pausada y fundamentada.",
         "academicReference": "Consejos Prácticos del Profesor Evaluador",
         "keyTakeaway": "Táctica de control emocional: Pausa estratégica con agua para calmar la adrenalina y estructurar mentalmente una respuesta sólida."
+    },
+    {
+        "id": 64,
+        "category": "kdd",
+        "categoryLabel": "Metodología KDD & Fases",
+        "question": "De acuerdo con el mapa conceptual de la tesis, ¿por qué se descartó la metodología CRISP-DM frente a KDD?",
+        "options": {
+            "a": "Porque CRISP-DM prioriza el entendimiento del negocio y un despliegue comercial que no aplican al descubrimiento directo sobre árboles génicos.",
+            "b": "Porque CRISP-DM prohíbe ejecutar etapas de limpieza previa sobre matrices simétricas de distancias topológicas calculadas en formato numérico.",
+            "c": "Porque CRISP-DM exige formular un experimento controlado en laboratorio húmedo antes de procesar cualquier archivo de secuencias en Python.",
+            "d": "Porque CRISP-DM solo soporta algoritmos supervisados de clasificación con etiquetas previas, impidiendo aplicar clustering no supervisado en grafos."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "CRISP-DM centra su fase inicial en el 'Business Understanding' (entendimiento del negocio y retorno comercial). Aquí no se modela un negocio sino patrones evolutivos en datos genómicos, por lo que KDD va directo a la minería de datos.",
+        "academicReference": "Mapa Conceptual Actualizado / Memoria (Sección 1.5.1)",
+        "keyTakeaway": "CRISP-DM exige entendimiento del negocio; KDD va directo al descubrimiento de patrones mediante minería de datos."
+    },
+    {
+        "id": 65,
+        "category": "kdd",
+        "categoryLabel": "Metodología KDD & Fases",
+        "question": "¿Cuál es la razón metodológica para descartar el enfoque Hipotético-Deductivo frente a KDD en esta investigación?",
+        "options": {
+            "a": "No existe un algoritmo determinista capaz de verificar hipótesis evolutivas sobre archivos en formato PHYLIP sin paralelismo.",
+            "b": "No hay un experimento empírico controlado para formular hipótesis previas, pues se buscan patrones ocultos directo en los datos.",
+            "c": "No permite comparar matrices de disimilitud generadas por tqDist cuando el número de taxones supera el umbral de cien cepas.",
+            "d": "No admite el uso de pruebas estadísticas no paramétricas como Mann-Whitney o Kruskal-Wallis en la etapa final de evaluación."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 1,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "El método hipotético-deductivo parte de un diseño experimental para contrastar hipótesis causales formuladas a priori. Esta tesis es exploratoria y computacional sobre datos ya secuenciados, encajando naturalmente en KDD.",
+        "academicReference": "Mapa Conceptual Actualizado / Memoria (Sección 1.4.3 y 1.5.1)",
+        "keyTakeaway": "Sin experimento físico para plantear hipótesis a priori, KDD permite descubrir conocimiento inductivo directo desde los datos."
+    },
+    {
+        "id": 66,
+        "category": "kdd",
+        "categoryLabel": "Metodología KDD & Fases",
+        "question": "Al comparar Máxima Verosimilitud (3.806 genes) frente a Neighbor Joining (5.565 genes), ¿cómo se evitó el sesgo de tamaño muestral?",
+        "options": {
+            "a": "Se duplicaron aleatoriamente las filas de la matriz de ML mediante sobremuestreo sintético hasta igualar la dimensión de 5.565 genes.",
+            "b": "Se compararon directamente las matrices de distinta dimensión normalizando cada distancia topológica por el logaritmo de su cantidad.",
+            "c": "Se podó la matriz de Neighbor Joining para conservar exactamente los mismos 3.806 genes validados que superaron los filtros de ML.",
+            "d": "Se aplicó un análisis de componentes principales sobre ambas matrices para proyectarlas a un espacio común de trescientas variables."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "¡Cuidado con comparar universos dispares! Con 3.806 vs 5.565 genes habría un sesgo de confusión por secuencias cortas o con gaps en NJ. Fijando QD y MST-kNN (k=2), se podó NJ al universo exacto de 3.806 genes para evaluar Silueta limpiamente.",
+        "academicReference": "Mapa Conceptual / Memoria (Sección 3.4.3, Tabla 3.20)",
+        "keyTakeaway": "Comparación justa: tras fijar QD y MST-kNN, se poda NJ al universo exacto de 3.806 genes de ML antes de medir Silueta."
+    },
+    {
+        "id": 67,
+        "category": "preprocesamiento",
+        "categoryLabel": "Preprocesamiento & Filtro SNPs",
+        "question": "¿Cuál fue la estructura exacta de los datos de entrada recibidos desde el LGM y qué validación programática se aplicó en Python?",
+        "options": {
+            "a": "Fueron 5.574 archivos FASTQ crudos sometidos a ensamblaje de novo y llamado de variantes (variant calling) contra un genoma de referencia.",
+            "b": "Fueron 5.574 archivos VCF individuales validados mediante tablas hash para descartar mutaciones sinónimas antes de alinear las cepas.",
+            "c": "Fueron 5.574 grafos en formato GEXF exportados desde STRING para verificar que cada gen ortólogo conservara sus interacciones previas.",
+            "d": "Fueron 5.574 alineamientos PHYLIP de SNPs concatenados cuya extensión, peso > 0 KB, cabecera de 471 cepas y longitud real se verificaron."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 1,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "La tesis NO realiza variant calling sobre FASTQ/VCF crudos. Recibe 5.574 alineamientos .phylip de SNPs concatenados por gen y ejecuta un script de validación de 3 pasos (archivo/peso, cabecera y coincidencia exacta de longitud), logrando 0 errores.",
+        "academicReference": "Memoria (Sección 1.3 y Sección 3.2, Tablas 3.1-3.3)",
+        "keyTakeaway": "Entrada: 5.574 .phylip de SNPs concatenados (sin variant calling), validados en extensión, cabecera y longitud exacta (0 fallos)."
+    },
+    {
+        "id": 68,
+        "category": "preprocesamiento",
+        "categoryLabel": "Preprocesamiento & Filtro SNPs",
+        "question": "¿Qué fundamento combinatorio respalda fijar el umbral mínimo de longitud en ≥ 70 pb para un árbol no enraizado de n = 471 cepas?",
+        "options": {
+            "a": "Un árbol bifurcado de 471 hojas posee n − 3 = 468 ramas internas; con < 70 pb más del 85% de la topología carece de soporte directo.",
+            "b": "El algoritmo de IQ-TREE 2 requiere por especificación de memoria al menos 70 bytes contiguos para inicializar cada hebra de CPU.",
+            "c": "La métrica Robinson-Foulds arroja división por cero cuando el largo de la secuencia es inferior a la raíz cuadrada de las 471 cepas.",
+            "d": "El modelo evolutivo GTR+G necesita exactamente 70 pares de bases por cada parámetro libre de la matriz de tasas de sustitución."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Un árbol no enraizado bifurcado de n=471 hojas tiene n-3 = 468 ramas internas. Secuencias < 70 pb dejan >85% de biparticiones sin soporte directo de SNPs, degradando ML frente a homoplasias estocásticas; ≥ 70 pb elimina el pico ruidoso (moda 8 pb) reteniendo 76,8% del genoma.",
+        "academicReference": "Memoria (Sección 3.2, Figura 3.2)",
+        "keyTakeaway": "471 hojas implican n-3 = 468 ramas internas; < 70 pb deja >85% sin soporte directo, y ≥ 200 pb mutilaría >50% del genoma."
+    },
+    {
+        "id": 69,
+        "category": "preprocesamiento",
+        "categoryLabel": "Preprocesamiento & Filtro SNPs",
+        "question": "Según el embudo de filtrado actualizado (Tabla 3.7 y Mapa Conceptual), ¿cómo se pasa de 5.574 genes iniciales a 3.806 árboles en ML?",
+        "options": {
+            "a": "Se descartan 469 genes por longitud menor a 70 pb, 1.292 por falta de variación genética y 7 por superar el límite de 2.000 hojas.",
+            "b": "Se descartan 1.292 por longitud < 70 pb, 469 por cepas solo con gaps (-) y 7 por fallos de convergencia en IQ-TREE 2 (3.806 válidos).",
+            "c": "Se descartan 1.292 por secuencias vacías en NJ, 469 por errores de cabecera PHYLIP y 7 por generar ramas negativas en Biopython.",
+            "d": "Se descartan 9 genes por longitud menor a 70 pb, 1.292 por homoplasias en GTR+G y 467 por saturar la distancia de Robinson-Foulds."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Embudo exacto de ML: 5.574 iniciales − 1.292 (< 70 pb) = 4.282 − 469 (cepas compuestas enteramente de gaps '-') = 3.813 − 7 fallos de convergencia en IQ-TREE 2 (RVB1, YCK1, RFT1, FKS3, SPS22, DHR2, MUP1) = 3.806 árboles. NJ solo descarta 9 sin variación = 5.565.",
+        "academicReference": "Mapa Conceptual Actualizado / Memoria (Sección 3.2, Tablas 3.4-3.7)",
+        "keyTakeaway": "5.574 − 1.292 (<70 pb) − 469 (cepas con solo gaps) − 7 (fallos IQ-TREE) = 3.806 árboles ML; NJ conserva 5.565 (−9 sin variación)."
+    },
+    {
+        "id": 70,
+        "category": "preprocesamiento",
+        "categoryLabel": "Preprocesamiento & Filtro SNPs",
+        "question": "¿Qué falla matemática empírica demostró el conjunto 'ML de Control' (sin filtro de longitud ni gaps) al calcular la matriz Robinson-Foulds?",
+        "options": {
+            "a": "Colapsó la memoria RAM de 16 GB durante la lectura en Python porque los archivos .treefile duplicaron sus paréntesis de cierre Newick.",
+            "b": "Produjo una matriz completamente nula llena de ceros debido a que IQ-TREE 2 reemplazó las cepas con gaps por el árbol estrella sin ramas.",
+            "c": "Generó 785 árboles con menos de 471 hojas al eliminar secuencias vacías, rompiendo la normalización y disparando el máximo RF a 1.876.",
+            "d": "Redujo artificialmente la distancia máxima de Robinson-Foulds desde 936 hasta 120 al podar las biparticiones con soporte menor al 95%."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Sin el filtro de gaps, IQ-TREE descartó cepas vacías generando 785 árboles incompletos (< 471 hojas, hasta de 120 cepas). Al comparar árboles de distinto número de hojas, RF perdió su cota combinatoria 2n-6=936 y alcanzó un valor inválido de 1.876.",
+        "academicReference": "Memoria (Sección 3.3 y 3.4.1, Tablas 3.10 y 3.13)",
+        "keyTakeaway": "Validación empírica del preprocesamiento: sin filtrar gaps surgieron 785 árboles < 471 hojas y un RF espurio de 1.876 (> 936)."
+    },
+    {
+        "id": 71,
+        "category": "ingenieria",
+        "categoryLabel": "Ingeniería, Pipeline & Cómputo",
+        "question": "En la orquestación Bash del pipeline, ¿por qué IQ-TREE 2 y RF permitieron checkpoints (jornadas de 8 h) mientras tqDist exigió ejecución continua?",
+        "options": {
+            "a": "Porque IQ-TREE 2 opera en lenguaje Python interpretado con persistencia nativa, mientras tqDist depende de hilos efímeros de Scikit-learn.",
+            "b": "Porque tqDist cifra su archivo binario temporal en GPU y destruye el estado del cálculo si el proceso recibe una señal SIGTERM del kernel.",
+            "c": "Porque el formato .nwk utilizado en Quartet Distance no admite escritura incremental de filas hasta finalizar las cuatro etapas del KDD.",
+            "d": "Porque IQ-TREE 2 escribe cada árbol y fila de forma independiente en disco, mientras all_pairs_quartet_dist carga todo el bosque en RAM."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "La inferencia ML y las filas RF son embarazosamente paralelas e independientes por archivo/árbol, permitiendo checkpoints en Bash. En cambio, all_pairs_quartet_dist (tqDist) carga todo el archivo combinado en RAM para el cruce C++ todos-contra-todos sin checkpoints.",
+        "academicReference": "Memoria (Sección 3.3 y Sección 3.4.1)",
+        "keyTakeaway": "IQ-TREE y RF permiten checkpoints por procesar ítems independientes; tqDist carga todo el bosque en RAM en una sola corrida."
+    },
+    {
+        "id": 72,
+        "category": "ingenieria",
+        "categoryLabel": "Ingeniería, Pipeline & Cómputo",
+        "question": "Desde la ingeniería de rendimiento, ¿por qué el script Bash invocó `iqtree2` con el flag `-quiet` y `-nt AUTO` en la estación de 6 núcleos?",
+        "options": {
+            "a": "Para suprimir registros en consola evitando cuellos de botella de entrada/salida (I/O overhead) y aprovechar los 6 núcleos disponibles.",
+            "b": "Para comprimir automáticamente los archivos .treefile en formato binario y asignar memoria virtual swap cuando los 16 GB se agotan.",
+            "c": "Para desactivar la validación de cabeceras PHYLIP dentro de IQ-TREE y forzar el cálculo determinista de distancias p sin optimización.",
+            "d": "Para reducir de 1.000 a 100 las réplicas de Ultrafast Bootstrap cuando la longitud del gen supera el máximo empírico de 1.486 pb."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 1,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Al ejecutar miles de corridas consecutivas, imprimir logs continuos en stdout genera overhead de I/O; `-quiet` silencia IQ-TREE y delega el progreso al script Bash, mientras `-nt AUTO` asigna automáticamente los 6 hilos de la CPU.",
+        "academicReference": "Memoria (Sección 3.3 y 3.4.1)",
+        "keyTakeaway": "`-quiet` evita cuellos de botella por I/O en miles de ejecuciones; `-nt AUTO` satura paralelamente los 6 núcleos."
+    },
+    {
+        "id": 73,
+        "category": "ingenieria",
+        "categoryLabel": "Ingeniería, Pipeline & Cómputo",
+        "question": "¿Qué optimización matemática aprovecha `tqDist` al computar Quartet Distance y qué transformación posterior exige Scikit-learn/SciPy?",
+        "options": {
+            "a": "Almacena únicamente la diagonal principal y los 5 vecinos más cercanos en formato disperso CSR para reducir un 90% el uso de memoria.",
+            "b": "Calcula solo una matriz triangular superior aprovechando la simetría d(A,B)=d(B,A), la cual Bash desdobla en matriz cuadrada ortogonal.",
+            "c": "Proyecta los árboles directamente a coordenadas euclidianas 2D en C++ para evitar la construcción de matrices de disimilitud completas.",
+            "d": "Agrupa los cuartetos idénticos mediante tablas hash distribuidas en disco y exporta grafos pre-podados compatibles con STRING."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Aprovechando la simetría métrica d(A,B) = d(B,A), tqDist (en C++) calcula y exporta una matriz triangular ahorrando 50% de cómputo. Luego, el orquestador Bash ejecuta una subrutina de desdoblamiento a matriz cuadrada N×N simétrica para Scikit-learn y SciPy.",
+        "academicReference": "Memoria (Sección 3.4.1)",
+        "keyTakeaway": "tqDist exporta solo matriz triangular (50% ahorro); Bash la desdobla a matriz cuadrada N×N para Scikit-learn/SciPy."
+    },
+    {
+        "id": 74,
+        "category": "ingenieria",
+        "categoryLabel": "Ingeniería, Pipeline & Cómputo",
+        "question": "De las ~185 horas (11.101 min) totales de cómputo en el Intel i5-9400F (6 núcleos, 16 GB RAM), ¿qué revela el desglose de tiempos sobre la escalabilidad?",
+        "options": {
+            "a": "El clustering MST-kNN y las proyecciones MDS consumieron el 75% del tiempo total, evidenciando que O(n² log n) es el cuello de botella.",
+            "b": "La validación en STRING y el modelo nulo de 1.000 permutaciones concentraron 140 horas debido a la latencia de red en las consultas API.",
+            "c": "La inferencia, UFBoot y matrices de distancia tomaron 99,6% del tiempo (11.057 min), mientras clustering y MDS tomaron apenas 44 min.",
+            "d": "El cálculo de matrices Robinson-Foulds triplicó en tiempo al de Quartet Distance debido a la falta de optimización multihilo en IQ-TREE 2."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Desglose exacto (Sección 4.2): Inferencia 4.592 min (76,5h) + UFBoot 2.522 min (42h) + Matrices RF/QD 3.943 min (65,7h) = 11.057 min (99,6%), mientras Clustering + MDS fueron solo 44 min (0,4%). Escalar a HPC/GPU apunta directamente a inferencia y matrices.",
+        "academicReference": "Memoria (Sección 4.2 y Sección 4.3)",
+        "keyTakeaway": "Cuello de botella real: inferencia (4.592 m), matrices (3.943 m) y UFBoot (2.522 m) = 99,6% de 185 h; clustering+MDS solo 44 min."
+    },
+    {
+        "id": 75,
+        "category": "ingenieria",
+        "categoryLabel": "Ingeniería, Pipeline & Cómputo",
+        "question": "En la arquitectura de software del proyecto, ¿qué responsabilidad específica cumple SciPy que la diferencia de Scikit-learn y Biopython?",
+        "options": {
+            "a": "Leer los alineamientos PHYLIP y construir los árboles heurísticos Neighbor Joining mediante el módulo TreeConstruction basado en p-distance.",
+            "b": "Ejecutar la inferencia probabilística de Máxima Verosimilitud bajo el modelo GTR+G con soporte de remuestreo Ultrafast Bootstrap.",
+            "c": "Calcular en C++ nativo los cuartetos consensuados y no consensuados mediante la función optimizada all_pairs_quartet_dist en RAM.",
+            "d": "Implementar las pruebas de Spearman, Kruskal-Wallis y Mann-Whitney U, además de clustering jerárquico robusto ante matrices degeneradas."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 1,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Cada librería tiene un rol claro (Sección 1.5.3): IQ-TREE 2 (ML/UFBoot/RF), tqDist (QD en C++), Biopython (NJ y lectura/validación Newick), Scikit-learn (DBSCAN y consistencia k-NN), Pandas (gestión de matrices) y SciPy (dendrogramas/matrices degeneradas y pruebas estadísticas).",
+        "academicReference": "Memoria (Sección 1.5.3, 3.4.1 y 3.5.4)",
+        "keyTakeaway": "SciPy aporta pruebas estadísticas no paramétricas (Spearman, Kruskal-Wallis, Mann-Whitney) y manejo de matrices degeneradas."
+    },
+    {
+        "id": 76,
+        "category": "inferencia",
+        "categoryLabel": "Inferencia Filogenética",
+        "question": "Según el mapa conceptual, ¿qué dos criterios dejaron fuera a Máxima Parsimonia e Inferencia Bayesiana antes de la etapa experimental?",
+        "options": {
+            "a": "Se exigía un método que genere un único árbol sin información previa: Parsimonia ignora modelos y sufre LBA; Bayes genera >1 árbol con priors.",
+            "b": "Se exigía compatibilidad nativa con Biopython para exportar .nwk; ambos formatos propietarios impedían su lectura en el pipeline tqDist.",
+            "c": "Se exigía una complejidad asintótica menor a O(n²); ambos métodos superaban el límite de memoria RAM de 16 GB al procesar 3.806 genes.",
+            "d": "Se exigía optimizar verosimilitudes bajo GTR+G con p-distances aditivas; ninguno de los dos enfoques admite secuencias nucleotídicas SNP."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Criterio del Mapa Conceptual: 'se necesita un método que no requiera información previa de la población y que genere un solo árbol'. Parsimonia ignora modelos de sustitución y sufre Atracción de Ramas Largas (LBA); Bayes necesita priors y genera una muestra (>1 árbol) vía MCMC.",
+        "academicReference": "Mapa Conceptual Actualizado / Memoria (Sección 2.1.3 y 3.1)",
+        "keyTakeaway": "Filtro de inferencia: sin priors y 1 solo árbol. MP ignora modelos y sufre LBA; Bayes usa priors y genera >1 árbol."
+    },
+    {
+        "id": 77,
+        "category": "inferencia",
+        "categoryLabel": "Inferencia Filogenética",
+        "question": "¿Qué aporta el modelo `GTR+G` en IQ-TREE 2 y qué limitación empírica evidenció la auditoría con Ultrafast Bootstrap (`-B 1000`)?",
+        "options": {
+            "a": "GTR+G fija tasas de mutación idénticas en todo el gen; UFBoot arrojó 95% de ramas altamente confiables gracias a la baja divergencia.",
+            "b": "GTR+G modela sustituciones reversibles y heterogeneidad Gamma de tasas; solo 32,78% de ramas superó UFBoot ≥ 95% por baja densidad de SNPs.",
+            "c": "GTR+G aplica un reloj molecular estricto enraizado; UFBoot descartó el 67,22% de los árboles ML por tener longitudes de rama negativas.",
+            "d": "GTR+G reemplaza las secuencias con gaps mediante imputación bayesiana; UFBoot demostró que el conjunto de control superó al conjunto filtrado."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "GTR (General Time Reversible) permite tasas variables entre pares de bases y +G (Gamma) modela distintas velocidades de mutación por sitio. Con UFBoot (-B 1000), solo 32,78% de las 631.541 ramas alcanzó ≥95% (vs 18,30% en Control): honestamente, la señal de SNPs por gen individual es moderada.",
+        "academicReference": "Memoria (Sección 3.3, Tabla 3.9)",
+        "keyTakeaway": "GTR+G da realismo evolutivo, pero solo 32,78% de ramas superó UFBoot ≥ 95%, justificando analizar el bosque vía QD y no un árbol aislado."
+    },
+    {
+        "id": 78,
+        "category": "inferencia",
+        "categoryLabel": "Inferencia Filogenética",
+        "question": "Al validar los 5.565 árboles de Neighbor Joining en Python, 79 presentaron ramas negativas infinitesimales (ej. `-0,00477`). ¿Cuál es su causa y efecto?",
+        "options": {
+            "a": "Es un desbordamiento numérico de Biopython al leer cabeceras PHYLIP, obligando a descartar los 79 árboles antes de calcular la matriz RF.",
+            "b": "Es un error de convergencia del modelo GTR+G en genes conservados, lo que invierte el orden topológico de las hojas en el archivo Newick.",
+            "c": "Es un artefacto matemático esperado cuando p-distances cercanas no ajustan una matriz aditiva; al ser casi nulas no alteran la topología.",
+            "d": "Es una restricción de tqDist que codifica las politomías no resueltas como ramas negativas para diferenciarlas de las ramas terminales."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 1,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "En NJ, cuando distancias genéticas reales entre cepas muy próximas no cumplen exactamente la condición de aditividad de árbol, la resta algebraica produce ramas negativas mínimas (−0,00477 a −6×10⁻⁵). Como RF y QD son puramente topológicas (sin largo de rama), la topología sigue siendo válida.",
+        "academicReference": "Memoria (Sección 3.3, Tabla 3.11)",
+        "keyTakeaway": "Ramas negativas infinitesimales en 79 árboles NJ surgen por no-aditividad de p-distances cercanas y no alteran la topología."
+    },
+    {
+        "id": 79,
+        "category": "inferencia",
+        "categoryLabel": "Inferencia Filogenética",
+        "question": "Tras fijar QD y MST-kNN (`k = 2`) sobre los mismos 3.806 genes, ¿qué métrica inclinó la balanza definitiva a favor de ML frente a NJ?",
+        "options": {
+            "a": "El número total de clústeres colapsó a 3 grupos bien separados en ML mientras que NJ se fragmentó en 467 pares aislados sin estructura.",
+            "b": "El Estrés-1 de Kruskal fue significativamente menor en ML (21,4% frente a 48,9% en NJ), eliminando toda distorsión en la proyección MDS.",
+            "c": "El tiempo total de ejecución fue tres veces menor en ML (904 minutos frente a 2.938 minutos en NJ) gracias al flag -nt AUTO en IQ-TREE.",
+            "d": "El Coeficiente de Silueta fue superior en ML (−0,0604 frente a −0,0783 en NJ), quedando ~30% más cerca de la cohesión positiva."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "¡Ojo con los números! NJ tuvo menor tiempo (904 vs 2.938 min) y ligeramente menor Stress-1 MDS (33,7% vs 36,8%), PERO en el universo homogéneo de 3.806 genes ML obtuvo mejor Silueta (−0,0604 vs −0,0783), indicando estructura topológica ~30% más coherente.",
+        "academicReference": "Mapa Conceptual / Memoria (Sección 3.4.3, Tabla 3.20)",
+        "keyTakeaway": "ML ganó a NJ por Coeficiente de Silueta (−0,0604 vs −0,0783) en el universo podado de 3.806 genes, pese a mayor costo de cómputo."
+    },
+    {
+        "id": 80,
+        "category": "distancia",
+        "categoryLabel": "Métricas de Distancia",
+        "question": "En el mapa conceptual, ¿por qué se descartaron *Path Length Difference* (PLD) y *Quadratic Path Difference* (QPD) al exigir métricas sin longitud de ramas?",
+        "options": {
+            "a": "PLD separa genes homólogos por distintas tasas de mutación y QPD al elevar longitudes al cuadrado sobrepenaliza ramas largas y ruido.",
+            "b": "PLD exige árboles estrictamente enraizados y QPD requiere calcular matrices de covarianza que escalan en tiempo exponencial NP-hard.",
+            "c": "PLD solo opera sobre árboles binarios de máximo 50 taxones y QPD colapsa al saturarse en la cota combinatoria exacta de 2n − 6 = 936.",
+            "d": "PLD ignora las biparticiones internas del formato Newick y QPD convierte las distancias topológicas en probabilidades a priori bayesianas."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Exactamente como detalla el mapa conceptual: PLD compara distancias de caminos entre hojas (separando erróneamente genes homólogos solo por diferencias en tasas de mutación), mientras QPD eleva las longitudes de rama al cuadrado, sobrepenalizando ramas largas y magnificando ruido/artefactos.",
+        "academicReference": "Mapa Conceptual Actualizado",
+        "keyTakeaway": "PLD confunde tasa de mutación con divergencia topológica; QPD eleva longitudes al cuadrado amplificando ramas largas y ruido."
+    },
+    {
+        "id": 81,
+        "category": "distancia",
+        "categoryLabel": "Métricas de Distancia",
+        "question": "Además de usar información vinculada a la raíz, ¿qué otro sesgo estructural técnico invalidó la métrica Kendall-Colijn según el mapa conceptual?",
+        "options": {
+            "a": "Su complejidad algorítmica es cúbica respecto al número de cuartetos posibles y solo admite alineamientos proteicos validados en STRING.",
+            "b": "Su cálculo exige conocer una raíz fija (árboles enraizados) y resulta fuertemente sesgado por el balance o simetría geométrica del árbol.",
+            "c": "Su valor máximo teórico diverge hacia el infinito cuando dos árboles presentan una única politomía estrella en sus nodos terminales.",
+            "d": "Su implementación estándar en Scikit-learn prohíbe matrices con valores enteros y exige normalización previa mediante distancia euclidiana."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 1,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Dos argumentos técnicos del mapa conceptual contra Kendall-Colijn: 1) exige árboles estrictamente enraizados (nuestros árboles son unrooted), y 2) su cálculo está fuertemente sesgado por el balance del árbol (topologías tipo peine vs simétricas).",
+        "academicReference": "Mapa Conceptual Actualizado",
+        "keyTakeaway": "Kendall-Colijn queda descartada por exigir árboles enraizados y sufrir fuerte sesgo ante el desbalance topológico del árbol."
+    },
+    {
+        "id": 82,
+        "category": "distancia",
+        "categoryLabel": "Métricas de Distancia",
+        "question": "¿Cómo se validó matemáticamente la matriz de Quartet Distance (`n = 471`) y qué significa el máximo observado de ~`1,334 × 10⁹` en ML?",
+        "options": {
+            "a": "El máximo teórico es 2n−6 = 936×10⁶; observar 1,334×10⁹ evidencia un desbordamiento entero de 32 bits en las rutinas de tqDist.",
+            "b": "El máximo combinatorio es 471³ = 104.487.111; observar 1,334×10⁹ demuestra que un 85% de los cuartetos quedaron en estrella sin resolver.",
+            "c": "El máximo combinatorio es C(471,4) = 2.024.539.335; observar 1,334×10⁹ (~65,9%) valida el rango y refleja la cota aleatoria de 2/3.",
+            "d": "El máximo teórico equivale a 3^(471); el valor observado de 1,334×10⁹ confirma que todos los genes comparten exactamente el mismo árbol."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "C(471,4) = (471×470×469×468)/24 = 2.024.539.335 cuartetos. Ninguna distancia superó este límite (0 errores/overflows). Además, para 2 árboles no enraizados aleatorios, el 66,7% (2/3) de cuartetos difiere; el máximo de 65,9% revela alta heterogeneidad y saturación estocástica en los pares extremos.",
+        "academicReference": "Memoria (Sección 3.4.1, Ecuaciones 3.1-3.2 y Tabla 3.15)",
+        "keyTakeaway": "Tope QD = C(471,4) ≈ 2,02×10⁹; máximo ML ≈ 1,33×10⁹ (65,9%), consistente con el 2/3 teórico entre topologías independientes."
+    },
+    {
+        "id": 83,
+        "category": "distancia",
+        "categoryLabel": "Métricas de Distancia",
+        "question": "¿Qué reveló la correlación de Spearman (`scipy.stats.spearmanr`) entre la longitud del alineamiento SNP y la distancia topológica promedio?",
+        "options": {
+            "a": "Una correlación positiva perfecta (r = +0,95) que demuestra que los genes más largos divergen más rápido entre cepas de levadura.",
+            "b": "Ausencia total de correlación estadística (p > 0,50), probando que el filtro ≥ 70 pb eliminó por completo el efecto del tamaño del gen.",
+            "c": "Una correlación negativa exclusiva de Neighbor Joining (r = −0,85), mientras Máxima Verosimilitud resultó inmune a la longitud del SNP.",
+            "d": "Una correlación negativa significativa en todas las matrices, siendo casi el doble en ML con RF (r = −0,7325) que en ML con QD (−0,3711)."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "¡Dato clave de auditoría! Todas las matrices mostraron r < 0 (p < 0,001): genes más cortos tienen menos señal y quedan topológicamente más distantes del resto. Pero ML_RF tuvo r = −0,7325 vs ML_QD r = −0,3711: RF sufre casi el doble de sesgo por longitud de alineamiento.",
+        "academicReference": "Memoria (Sección 3.4.1, Tabla 3.16)",
+        "keyTakeaway": "Genes cortos tienen mayor distancia media por ruido (r < 0), pero RF sufre casi el doble de sesgo que QD (−0,7325 vs −0,3711)."
+    },
+    {
+        "id": 84,
+        "category": "visualizacion",
+        "categoryLabel": "Visualización & MDS (Kruskal)",
+        "question": "Además de un menor Stress-1 (36,79% vs 41,83%), ¿qué patrón en el Diagrama de Shepard demostró la superioridad de QD frente a RF?",
+        "options": {
+            "a": "RF presentó una acumulación vertical anómala en el techo RF = 936 destruyendo la monotonicidad, mientras QD mostró crecimiento continuo.",
+            "b": "QD generó un agrupamiento bimodal estrictamente discreto en los extremos 0 y 1, mientras RF dispersó los puntos en una espiral lineal.",
+            "c": "RF mostró correlación perfecta en la diagonal con cero dispersión residual, mientras QD presentó valores negativos en el eje de abscisas.",
+            "d": "QD colapsó todas las distancias menores a 500 millones sobre el eje vertical, facilitando la separación visual en dos macro-clústeres."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "En el Diagrama de Shepard (distancia original vs distancia proyectada en 2D), RF acumula una pared vertical de puntos en el valor saturado 936, obligando a MDS a dispersarlos artificialmente en el plano (Stress-1 = 0,4183). QD mantiene una relación monótona ascendente continua (Stress-1 = 0,3679).",
+        "academicReference": "Mapa Conceptual / Memoria (Sección 3.4.3, Figuras 3.6 y 3.7)",
+        "keyTakeaway": "Diagrama de Shepard: RF se apila verticalmente en la saturación 936; QD preserva monotonicidad continua con menor Stress-1."
+    },
+    {
+        "id": 85,
+        "category": "agrupamiento",
+        "categoryLabel": "Métodos de Agrupamiento",
+        "question": "Según el mapa conceptual, ¿qué tres limitaciones prácticas llevaron a descartar el algoritmo Fuzzy (FANNY) en la fase de minería de datos?",
+        "options": {
+            "a": "Exige espacio euclidiano continuo, colapsa ante matrices simétricas y requiere tiempo cúbico O(n³) incompatible con 3.806 árboles.",
+            "b": "Exige definir k grupos a priori, calibrar un exponente de borrosidad m y entrega grados de pertenencia en vez de grupos delimitados.",
+            "c": "Exige construir un árbol de expansión mínima previo, descarta el 75% del genoma como ruido y necesita árboles estrictamente enraizados.",
+            "d": "Exige cortes horizontales sobre un dendrograma jerárquico, sobrepenaliza ramas largas y falla si hay ramas negativas infinitesimales."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 1,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Aunque FANNY sí opera sobre matrices de distancia pura, el mapa conceptual lo descarta por 3 razones: 1) requiere k a priori, 2) requiere el parámetro fuzzy m para la 'borrosidad', y 3) entrega grados de pertenencia continuos u_iv ∈ [0,1] en lugar de delimitar grupos con certeza.",
+        "academicReference": "Mapa Conceptual Actualizado / Memoria (Sección 3.1)",
+        "keyTakeaway": "FANNY se descarta porque pide k a priori, parámetro de borrosidad m y no delimita clústeres discretos sino grados de pertenencia."
+    },
+    {
+        "id": 86,
+        "category": "agrupamiento",
+        "categoryLabel": "Métodos de Agrupamiento",
+        "question": "¿Por qué falló DBSCAN al calibrar `ε` mediante el método del codo en la curva de k-distancias (`k = 3`), originando el 'fenómeno de percolación'?",
+        "options": {
+            "a": "La presencia de distancias nulas en la diagonal impide que el parámetro MinPts forme núcleos densos cuando la cantidad de cepas es impar (471).",
+            "b": "La curva empírica presenta tres saltos discretos bruscos que obligan a Scikit-learn a dividir la memoria en submatrices triangulares incompatibles.",
+            "c": "La curva empírica presenta una gradiente continua sin codo nítido: ε pequeño genera 75–95% de ruido (−1) y ε de inflexión fusiona >96% en 1 bloque.",
+            "d": "El radio ε calculado en millones de cuartetos excede el tipo entero estándar de Python y colapsa la métrica de densidad en cero grupos válidos."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "En lugar de un 'codo' angular nítido, los datos presentan una gradiente continua (Tabla 3.17 y 3.18): un ε restrictivo manda 75%–95% de los genes a ruido (−1), mientras el ε de inflexión conecta todo por transitividad (fenómeno de percolación), absorbiendo >96% del genoma en un macro-clúster (3.677 genes en ML_QD).",
+        "academicReference": "Mapa Conceptual / Memoria (Sección 3.4.2, Fig. 3.3, Tablas 3.17-3.18)",
+        "keyTakeaway": "Sin codo en la curva k-distancia: DBSCAN oscila entre 75-95% ruido (ε bajo) o percolación de >96% del genoma en 1 grupo (ε medio)."
+    },
+    {
+        "id": 87,
+        "category": "agrupamiento",
+        "categoryLabel": "Métodos de Agrupamiento",
+        "question": "Al iterar el parámetro de vecindad `k` de MST-kNN entre `k = 2` y `k = 5` (Tabla 3.21), ¿qué definió el límite operativo inferior y superior?",
+        "options": {
+            "a": "En k=2 los grupos superan el máximo soportado por Biopython y en k=5 los valores de consistencia de vecindad caen por debajo del azar.",
+            "b": "En k=2 la complejidad O(n² log n) excede los 16 GB de RAM y en k=5 el algoritmo diverge generando ciclos infinitos dentro del árbol MST.",
+            "c": "En k=1 se generan 8 clústeres idénticos al nivel k=4 y en k=5 las componentes conexas quedan por debajo del umbral mínimo de 2.000 genes.",
+            "d": "En k=1 el grafo se fragmenta en pares aislados sin resolución y en k=5 colapsa absorbiendo 3.709 de 3.806 genes en un macro-clúster."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "k=1 fragmenta excesivamente en pares; k=2 es el mínimo viable (100 grupos de 3 a 370 genes); k=3 (33 grupos) y k=4 (8 grupos) mantienen estructura; pero en k=5 la red colapsa a solo 3 grupos con uno gigante de 3.709/3.806 genes. Por eso el análisis se acota a k ∈ [2, 4].",
+        "academicReference": "Memoria (Sección 3.4.2 y 3.4.3, Tabla 3.21)",
+        "keyTakeaway": "Rango operativo MST-kNN: k ∈ [2, 4] (de 100 a 8 grupos); k=1 sobre-fragmenta y k=5 colapsa 3.709/3.806 genes en un bloque."
+    },
+    {
+        "id": 88,
+        "category": "agrupamiento",
+        "categoryLabel": "Métodos de Agrupamiento",
+        "question": "¿Por qué el 'seudodendrograma' de la Figura 4.1 (`k = 5` a `k = 2`) NO equivale a un dendrograma jerárquico aglomerativo clásico (UPGMA/NJ)?",
+        "options": {
+            "a": "Porque sus bifurcaciones codifican umbrales discretos de k validados por 100% de contención hereditaria, no distancias evolutivas continuas.",
+            "b": "Porque se construye aplicando enlace completo (complete linkage) exclusivamente sobre la proyección 2D euclidiana calculada mediante MDS.",
+            "c": "Porque sus nodos terminales representan las 471 cepas de levadura en lugar de los 3.806 árboles génicos ortólogos del conjunto ML.",
+            "d": "Porque permite que un mismo gen pertenezca simultáneamente a dos ramas distintas del árbol mediante grados de membresía difusos u_iv."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "¡Distinción clave para ingenieros! Un dendrograma clásico fusiona pares por distancia continua. El seudodendrograma nace de particiones planas independientes de MST-kNN (k=2..5) y es matemáticamente válido solo porque empíricamente hubo 100% de contención hereditaria estricta al variar k.",
+        "academicReference": "Memoria (Sección 4.2, Figura 4.1)",
+        "keyTakeaway": "Seudodendrograma ≠ linkage continuo: es válido por 100% de anidamiento hereditario entre particiones discretas k=2..5."
+    },
+    {
+        "id": 89,
+        "category": "complejidades",
+        "categoryLabel": "Complejidades y Algoritmos",
+        "question": "Si MST-kNN tiene complejidad `O(n² log n)`, ¿por qué solo tomó ~44 minutos (con MDS) mientras calcular las matrices de distancia tomó 3.943 minutos?",
+        "options": {
+            "a": "Porque Scikit-learn ejecuta MST-kNN automáticamente en GPU mediante CUDA, mientras tqDist e IQ-TREE 2 están restringidos a un solo núcleo.",
+            "b": "Porque en el clustering n=3.806 vértices y la matriz precomputada está en RAM, mientras la matriz previa evalúa miles de árboles de 471 hojas.",
+            "c": "Porque MST-kNN descarta el 90% de las aristas antes de leer la matriz y solo ordena las distancias pertenecientes a los clústeres de STRING.",
+            "d": "Porque en las matrices de distancia la variable n corresponde a las 5.574 cepas por el cuadrado del promedio de longitud de los alineamientos."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Análisis asintótico práctico: en MST-kNN n=3.806 genes (n² ≈ 14,5M entradas en RAM), ejecutando en minutos; en cambio, construir la matriz QD implica ~7,24×10⁶ pares de árboles y en cada par evaluar la topología de C(471,4) ≈ 2,02×10⁹ cuartetos (o 468 splits en RF).",
+        "academicReference": "Memoria (Sección 2.1.5, 3.4.1 y 4.2)",
+        "keyTakeaway": "El costo de O(n² log n) sobre n=3.806 en RAM es ínfimo frente al costo interno de comparar árboles de 471 hojas en cada celda."
+    },
+    {
+        "id": 90,
+        "category": "complejidades",
+        "categoryLabel": "Complejidades y Algoritmos",
+        "question": "En la Fase 2 de MST-kNN, dada una arista `(u, v)` perteneciente al Árbol de Expansión Mínima (MST), ¿bajo qué condición lógica se conserva o se poda?",
+        "options": {
+            "a": "Se conserva solo si su peso wij supera el radio global ε de DBSCAN, y se poda en caso contrario para aislar el ruido estadístico.",
+            "b": "Se conserva únicamente cuando ambos árboles génicos u y v tienen una distancia Robinson-Foulds estrictamente inferior al umbral 936.",
+            "c": "Se conserva solo si u está entre los k vecinos más cercanos de v (o viceversa); si no cumple la regla k-NN se poda fragmentando el grafo.",
+            "d": "Se conserva siempre que u y v compartan al menos una interacción proteína-proteína confirmada en STRING con confianza mayor a 400."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Definición exacta del algoritmo (Sección 2.1.5): MST conecta todos los nodos sin ciclos; luego la intersección estructural conserva las aristas donde al menos un extremo está dentro de los k vecinos más cercanos del otro. Al podar las demás aristas, cada componente conexa resultante es un clúster.",
+        "academicReference": "Inostroza-Ponta (2008) / Memoria (Sección 2.1.5)",
+        "keyTakeaway": "Regla de poda MST-kNN: arista del MST sobrevive si satisface vecindad k-NN; las componentes conexas resultantes son los clústeres."
+    },
+    {
+        "id": 91,
+        "category": "validacion",
+        "categoryLabel": "Validación, Parámetros & STRING",
+        "question": "¿Qué restricción técnica de la plataforma STRING Database dictó diseñar la evaluación biológica con una estrategia descendente (`k = 4 → 3 → 2`)?",
+        "options": {
+            "a": "STRING solo permite validar árboles génicos enraizados cuando la vecindad k de MST-kNN es estrictamente superior a cinco componentes conexas.",
+            "b": "STRING rechaza identificadores de levaduras en formato texto plano y exige procesar bloques de máximo 100 proteínas por cada llamada HTTP.",
+            "c": "STRING calcula el coeficiente de Silueta interno en el servidor y colapsa cuando la matriz de distancias supera los 500 megabytes de RAM.",
+            "d": "STRING limita las consultas de redes a un máximo de 2.000 genes, obligando a descomponer macro-clústeres como el Clúster 1 de k=4."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 1,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Restricción técnica explícita (Sección 3.5): STRING Database es incapaz de procesar redes de más de 2.000 genes. Por ello el Clúster 1 de k=4 (>2.000 genes, con 2.614 en el mayor grupo) derivó a k=3, donde su Clúster 5 (1.955 genes, al límite) bajó a k=2.",
+        "academicReference": "Memoria (Sección 3.5 y 3.5.1)",
+        "keyTakeaway": "Límite técnico de STRING (≤ 2.000 genes) obligó a descomponer top-down los macro-grupos desde k=4 hacia k=3 y k=2."
+    },
+    {
+        "id": 92,
+        "category": "validacion",
+        "categoryLabel": "Validación, Parámetros & STRING",
+        "question": "Dado que STRING no soporta nativamente a *S. eubayanus*, ¿cómo se implementó el mapeo de genes y qué efecto tuvo sobre el Clúster 19 (`k = 2`)?",
+        "options": {
+            "a": "Se usó String Matching exacto de alias hacia S. cerevisiae (TaxID 4932); >11% de etiquetas DI49_ sin ortólogo impidió un grafo conexo.",
+            "b": "Se usó alineamiento BLAST contra Homo sapiens; en el Clúster 19 duplicó las interacciones falsas por homología remota en enzimas.",
+            "c": "Se entrenó un modelo de lenguaje en Python para traducir locus tags; el Clúster 19 alcanzó un 100% de mapeo sin secuencias huérfanas.",
+            "d": "Se consultó directamente la API taxonómica de NCBI filtrando cepas de Patagonia A; el Clúster 19 quedó descartado por tener < 5 genes."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Mapeo por ortología mediante coincidencia exacta de alias (String Matching) usando el archivo oficial de sinónimos de S. cerevisiae (TaxID 4932), logrando 85%–100% de mapeo. En el Clúster 19 (177 genes, 88,7% mapeados), >11% eran locus tags (DI49_) sin ortólogo, explicando la falta de grafo concluyente en STRING.",
+        "academicReference": "Memoria (Sección 3.5.4, Tabla 3.22)",
+        "keyTakeaway": "String Matching exacto contra S. cerevisiae (TaxID 4932); >11% de loci DI49_ no mapeados explica la ausencia de grafo en Clúster 19."
+    },
+    {
+        "id": 93,
+        "category": "validacion",
+        "categoryLabel": "Validación, Parámetros & STRING",
+        "question": "¿Cómo desenmascaró el modelo nulo (1.000 permutaciones sobre 3.806 genes) + FDR un falso positivo de STRING en el Clúster 4 (`k = 3`, 460 genes)?",
+        "options": {
+            "a": "STRING reportó p = 0,8500 por falta de mapeo, pero el modelo nulo descubrió 5.000 interacciones físicas ocultas tras ajustar el umbral a 900.",
+            "b": "STRING reportó p = 0,000213, pero el nulo esperó 1.721,5 PPI frente a 1.629 observados (p empírico = 0,7150), probando sesgo de tamaño.",
+            "c": "La corrección de Benjamini-Hochberg redujo el valor q del Clúster 4 a 0,0310, validándolo como el complejo físico más denso de todo el estudio.",
+            "d": "Las 1.000 permutaciones demostraron que el Clúster 4 contenía únicamente secuencias repetidas de menos de 70 pb que debían volver a filtrarse."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "¡Hallazgo estadístico clave! STRING usa todo el genoma de S. cerevisiae como background, inflando falsamente la significancia de grupos grandes (Clúster 4: p=0,000213). Al permutar sobre el universo real de 3.806 genes, 1.629 PPI < 1.721,5 esperados (p=0,7150). Solo micro-módulos 28 y 32 superaron el azar (p<0,05; q=0,165≤0,20).",
+        "academicReference": "Memoria (Sección 3.5.4, Tabla 3.22)",
+        "keyTakeaway": "El background completo de STRING sesga macro-grupos (Clúster 4: 1.629 obs < 1.721,5 esp, p=0,715); el nulo valida micro-módulos (28 y 32)."
+    },
+    {
+        "id": 94,
+        "category": "validacion",
+        "categoryLabel": "Validación, Parámetros & STRING",
+        "question": "Si la Consistencia de Vecindad k-NN dio 87,36% (`k=4`), 82,01% (`k=3`) y 79,45% (`k=2`), ¿por qué NO sirve como validación externa del método?",
+        "options": {
+            "a": "Porque exige proyectar primero los datos en dos dimensiones con MDS, heredando un error cuadrático proporcional al Stress-1 de Kruskal.",
+            "b": "Porque Scikit-learn calcula la consistencia k-NN asumiendo estrictamente distancia euclidiana L2 e ignora las entradas simétricas de QD.",
+            "c": "Porque al construirse MST-kNN optimizando exactamente los k vecinos, medir consistencia k-NN es circular y solo describe densidad interna.",
+            "d": "Porque un porcentaje inferior al 95% en k=2 demuestra estadísticamente que las componentes conexas están fragmentadas por ruido aleatorio."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Autocrítica metodológica impecable (Sección 3.5.4): como MST-kNN forma clústeres justamente preservando aristas k-NN, obtener ~79–87% de consistencia k-NN es esperable por diseño (circular). Por eso se reporta solo como descriptor topológico de bordes irregulares (12–25% transición), recayendo la validación independiente en STRING + modelo nulo.",
+        "academicReference": "Memoria (Sección 3.5.4, Tabla 3.24)",
+        "keyTakeaway": "Consistencia k-NN (~80-87%) describe densidad local pero es circular respecto a MST-kNN; la validación independiente es STRING + modelo nulo."
+    },
+    {
+        "id": 95,
+        "category": "validacion",
+        "categoryLabel": "Validación, Parámetros & STRING",
+        "question": "¿Qué determinaron las pruebas post-clustering de Kruskal-Wallis y Mann-Whitney U sobre el sesgo de longitud de alineamientos SNP?",
+        "options": {
+            "a": "Ambos test demostraron que el Clúster 32 del citoesqueleto es un artefacto de secuenciación originado por la falta de filtros de longitud.",
+            "b": "Kruskal-Wallis demostró que ningún clúster presenta diferencias de longitud (p=0,48), descartando la necesidad de aplicar Mann-Whitney U.",
+            "c": "Mann-Whitney U detectó que todos los macro-clústeres (3, 4, 7 y 17) se agruparon exclusivamente por tener secuencias mayores a 1.000 pb.",
+            "d": "Kruskal-Wallis confirmó heterogeneidad global (p<0,001), pero Mann-Whitney probó 7 de 10 clústeres limpios y sesgo en Clústeres 18, 19 y 28."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Auditoría de sesgo (Tablas 3.25 y 3.26): Kruskal-Wallis global dio p < 0,001 (el sesgo no desaparece globalmente), pero al auditar los 10 clústeres clave con Mann-Whitney U, 7 de 10 fueron limpios (p > 0,05: 3, 4, 7, 10, 17, 31, 32) y solo 3 (18, 19 y 28) presentaron secuencias significativamente más largas (p < 0,05).",
+        "academicReference": "Memoria (Sección 3.5.4, Tablas 3.25 y 3.26)",
+        "keyTakeaway": "Mann-Whitney U auditó sesgo por longitud: 7/10 clústeres limpios (p>0,05); Clústeres 18, 19 y 28 influidos por mayor longitud SNP."
+    },
+    {
+        "id": 96,
+        "category": "validacion",
+        "categoryLabel": "Validación, Parámetros & STRING",
+        "question": "¿Qué límite teórico fundamental de los algoritmos basados solo en distancias evolutivas reveló el Clúster 31 (`k = 2`, 23 genes, `SGE1`)?",
+        "options": {
+            "a": "Que cuando un gen funcional está incrustado en un bloque de sintenia conservado, sus distancias QD son idénticas a las de sus vecinos físicos.",
+            "b": "Que cuando un módulo supera los 20 genes en el nivel k=2, el algoritmo MST-kNN invierte el peso de las aristas fusionándolo con ruido de fondo.",
+            "c": "Que las bombas de eflujo como SGE1 carecen de sustituciones sinónimas en ADN y obligan a IQ-TREE 2 a producir topologías en estrella no resueltas.",
+            "d": "Que STRING Database bloquea automáticamente el análisis de genes de resistencia a toxinas cuando provienen de alineamientos PHYLIP podados."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": false,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Descubrimiento clave (Sección 3.5.3): el Clúster 31 retuvo la bomba de eflujo SGE1 unida a genes estructurales cromosómicos. Al estar físicamente ligados en un bloque de sintenia (co-herencia por proximidad física en el cromosoma), sus árboles tienen distancias topológicas indistinguibles, marcando el límite de la minería puramente topológica.",
+        "academicReference": "Memoria (Sección 3.5.3 y Glosario: Sintenia)",
+        "keyTakeaway": "Límite de sintenia: genes ligados físicamente en un bloque cromosómico tienen árboles casi idénticos y no se separan solo por topología."
+    },
+    {
+        "id": 97,
+        "category": "trampas",
+        "categoryLabel": "Trampas Mortales de Comisión",
+        "question": "TRAMPA DE MÉTRICAS: Un evaluador dice: 'NJ con QD logró Stress-1 de 33,7% frente a 36,8% de ML con QD; luego NJ es superior a ML'. ¿Cómo respondes?",
+        "options": {
+            "a": "Stress-1 evalúa únicamente el sesgo de longitud SNP mediante Spearman; NJ alcanzó 33,7% solo porque procesó 5.565 archivos sin podar.",
+            "b": "Stress-1 solo mide distorsión al proyectar a 2D en MDS, no calidad de clustering; en la matriz real ML obtuvo mejor Silueta (−0,0604 vs −0,0783).",
+            "c": "Stress-1 menor en NJ demuestra un error de convergencia en Scikit-learn al desdoblar la matriz triangular de tqDist en formato float64.",
+            "d": "Stress-1 es una métrica inversa donde valores más cercanos al 100% indican menor error geométrico, por lo que 36,8% supera directamente a 33,7%."
+        },
+        "answer": [
+            "b"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "¡Trampa clásica de ciencia de datos! Confundir bondad de proyección 2D (Kruskal Stress-1 de MDS) con calidad real de agrupamiento. Stress-1 más bajo significa que las distancias de NJ se aplastaron en 2D con menos error geométrico, pero la Silueta en el espacio métrico real probó que ML tiene clústeres ~30% más cohesivos.",
+        "academicReference": "Memoria (Sección 3.4.3, Tabla 3.20)",
+        "keyTakeaway": "Stress-1 mide fidelidad de proyección MDS 2D, no calidad del clustering; ML superó a NJ en Coeficiente de Silueta (−0,0604 vs −0,0783)."
+    },
+    {
+        "id": 98,
+        "category": "trampas",
+        "categoryLabel": "Trampas Mortales de Comisión",
+        "question": "TRAMPA ESTADÍSTICA: Si macro-clústeres como el 7 (`p = 0,281`) o el 18 (`p = 0,598`) no superaron el modelo nulo de PPI, ¿significa que el algoritmo falló?",
+        "options": {
+            "a": "Sí, confirma que MST-kNN mezcló aleatoriamente secuencias menores a 70 pb con genes largos por culpa del fenómeno de percolación en k=2.",
+            "b": "Sí, demuestra que la métrica Quartet Distance perdió sensibilidad al superar la cota máxima de 936 biparticiones entre cepas de Patagonia.",
+            "c": "No; el nulo mide densidad de interacción física directa PPI, mientras los macro-clústeres capturan vías metabólicas amplias y distribuidas.",
+            "d": "No; se debe exclusivamente a que el test de 1.000 permutaciones requiere al menos 10.000 iteraciones para alcanzar significancia en k=2."
+        },
+        "answer": [
+            "c"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "¡No es un fracaso, es un hallazgo de escala! La tesis delimita el alcance analítico del flujo: los micro-módulos acotados (5–15 genes, ej. Clústeres 28 y 32) capturan complejos físicos densos (p < 0,05), mientras que los macro-grupos representan redes metabólicas distribuidas (nitrógeno, autofagia, carbono) o co-evolución global.",
+        "academicReference": "Memoria (Sección 3.5.4 y 4.2)",
+        "keyTakeaway": "Resolución dependiente de escala: micro-clústeres aíslan complejos físicos densos (p<0,05); macro-clústeres reflejan vías distribuidas."
+    },
+    {
+        "id": 99,
+        "category": "trampas",
+        "categoryLabel": "Trampas Mortales de Comisión",
+        "question": "TRAMPA ALGORÍTMICA: Si fijas `k = 2` en MST-kNN, ¿por qué el grupo más grande tiene 370 genes en vez de un máximo de 3 nodos (`nodo + 2 vecinos`)?",
+        "options": {
+            "a": "Porque el Árbol de Expansión Mínima agrega un nivel de profundidad recursiva por cada iteración del modelo evolutivo GTR+G hasta estabilizarse.",
+            "b": "Porque la librería Scikit-learn multiplica automáticamente el parámetro k por el porcentaje de consistencia de vecindad antes de podar el grafo.",
+            "c": "Porque al usar distancia de cuartetos los nodos se agrupan en bloques mínimos de cuatro taxones que se multiplican por las 471 cepas del genoma.",
+            "d": "Porque k=2 limita los vecinos locales para conservar aristas del MST, pero la transitividad de componentes conexas forma cadenas de mayor tamaño."
+        },
+        "answer": [
+            "d"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Confusión típica entre grado/vecindad local y tamaño de componente conexa. k=2 solo restringe qué aristas del MST sobreviven (las que caen dentro de los 2 vecinos más cercanos de un extremo); al encadenarse por transitividad A—B—C—D..., emergen componentes conexas de 3 hasta 370 genes.",
+        "academicReference": "Memoria (Sección 2.1.5 y 3.4.2, Tabla 3.19)",
+        "keyTakeaway": "En MST-kNN, k acota la vecindad local por nodo, no el tamaño del clúster: las componentes conexas crecen por transitividad."
+    },
+    {
+        "id": 100,
+        "category": "trampas",
+        "categoryLabel": "Trampas Mortales de Comisión",
+        "question": "TRAMPA DE PREPROCESAMIENTO: ¿Por qué no subir el umbral de longitud desde `≥ 70 pb` a `≥ 200 pb` para eliminar de raíz el sesgo por secuencias cortas?",
+        "options": {
+            "a": "Porque con promedio de 159 pb un corte ≥ 200 pb descartaría >50% del genoma, destruyendo representatividad; el sesgo se mitiga con QD y se audita.",
+            "b": "Porque IQ-TREE 2 falla con error de segmentación si todas las secuencias del lote PHYLIP superan la moda empírica de 133 pares de bases.",
+            "c": "Porque los genes mayores a 200 pb contienen exclusivamente secuencias repetitivas no codificantes que anulan el mapeo por ortología en STRING.",
+            "d": "Porque la métrica Quartet Distance requiere al menos mil árboles de longitud menor a 150 pb para mantener la simetría de su matriz triangular."
+        },
+        "answer": [
+            "a"
+        ],
+        "priority": 2,
+        "isTrap": true,
+        "isInformaticaFocus": true,
+        "trapExplanation": "Trade-off ingenieril clave (Sección 3.2 y 3.5.4): la longitud media de SNPs es 158,97 pb (sesgada a la derecha). Cortar en ≥ 200 pb perdería >50% del core genome dejando solo genes hipervariables. Mantener ≥ 70 pb retiene 76,8%, QD reduce el sesgo Spearman a la mitad, y Mann-Whitney U audita qué clústeres quedan limpios.",
+        "academicReference": "Memoria (Sección 3.2 y 3.5.4)",
+        "keyTakeaway": "Trade-off ≥ 70 pb: preserva 76,8% del genoma (≥ 200 pb perdería >50%); el sesgo residual se atenúa con QD y se audita con Mann-Whitney."
     }
 ];
 

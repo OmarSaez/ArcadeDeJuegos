@@ -132,7 +132,10 @@
                             🎯 25 Preguntas
                         </button>
                         <button class="nav-btn btn-sm" style="font-size: 0.76rem; padding: 6px 11px; background: rgba(16,185,129,0.22); border-color: var(--bio-green); color: #6ee7b7; font-weight: 700;" onclick="startMode('quick', null, 'all')">
-                            ♾️ Todas (63 Preguntas)
+                            ♾️ Todas (100 Preguntas)
+                        </button>
+                        <button class="nav-btn btn-sm" style="font-size: 0.76rem; padding: 6px 11px; background: rgba(6,182,212,0.22); border-color: var(--accent); color: #67e8f9; font-weight: 700;" onclick="startMode('informatica')">
+                            💻 Nuevas Informática (37)
                         </button>
                     </div>
                 </div>
@@ -205,7 +208,7 @@
                 <div class="tool-icon">📖</div>
                 <div class="tool-info">
                     <h4>Compendio de Estudio</h4>
-                    <p>Revisa las más de 35 preguntas con respuestas y explicaciones de trampas.</p>
+                    <p>Revisa las 100 preguntas con respuestas y explicaciones de trampas.</p>
                 </div>
             </div>
         </section>
@@ -488,8 +491,10 @@
         <div class="study-search-bar">
             <input type="text" id="study-search-input" class="search-input" placeholder="🔍 Buscar por palabra clave, fórmula o algoritmo..." oninput="renderStudyMode()">
             <select id="study-filter-select" class="filter-select" onchange="renderStudyMode()">
-                <option value="all">Todas las Categorías (63)</option>
+                <option value="all">Todas las Categorías (100)</option>
+                <option value="informatica">💻 Nuevas Ingeniería Informática (37)</option>
                 <option value="ensayo">🎯 Ensayo Real del Profesor (25)</option>
+                <option value="ingenieria">Ingeniería, Pipeline & Cómputo</option>
                 <option value="contexto">Contexto y Motivación (Memoria)</option>
                 <option value="kdd">Metodología KDD & Fases</option>
                 <option value="preprocesamiento">Preprocesamiento & Filtro SNPs</option>

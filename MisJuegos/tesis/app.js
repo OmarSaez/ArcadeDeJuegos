@@ -295,7 +295,7 @@ function startMode(modeName, category = null, count = null) {
     }
 
     if (modeName === 'quick') {
-        // Soporta cantidad flexible: 10 (por defecto), 25, o 'all' (todas las 63 preguntas)
+        // Soporta cantidad flexible: 10 (por defecto), 25, o 'all' (todas las preguntas)
         let limit = 10;
         if (count === 'all' || count >= pool.length) {
             limit = pool.length;
@@ -315,6 +315,9 @@ function startMode(modeName, category = null, count = null) {
         // Modo Banco Oficial del Ensayo Real del Profesor (25 preguntas)
         // Se barajan las opciones para evaluar comprensión conceptual pura sin memorizar letras
         state.questions = pool.filter(q => q.isProfessorEnsayo).sort(() => Math.random() - 0.5).map(prepareQuestionWithShuffledOptions);
+    } else if (modeName === 'informatica') {
+        // Modo Tesis Actualizada & Enfoque Ingeniería Informática
+        state.questions = pool.filter(q => q.isInformaticaFocus).sort(() => Math.random() - 0.5).map(prepareQuestionWithShuffledOptions);
     }
 
     state.view = 'quiz';
@@ -770,6 +773,14 @@ function finishQuiz() {
             state.stats.categoryStats['ensayo_profesor'].total++;
             if (isCorrect) state.stats.categoryStats['ensayo_profesor'].correct++;
         }
+
+        if (q.isInformaticaFocus) {
+            if (!state.stats.categoryStats['informatica_tesis']) {
+                state.stats.categoryStats['informatica_tesis'] = { correct: 0, total: 0 };
+            }
+            state.stats.categoryStats['informatica_tesis'].total++;
+            if (isCorrect) state.stats.categoryStats['informatica_tesis'].correct++;
+        }
     });
 
     const percent = Math.round((totalScore / maxPoints) * 100);
@@ -1045,7 +1056,7 @@ function renderStudyMode() {
 
     let filtered = thesisQuestions.filter(q => {
         const matchesCat = filterCat === 'all' || 
-            (filterCat === 'ensayo' ? q.isProfessorEnsayo : q.category === filterCat);
+            (filterCat === 'ensayo' ? q.isProfessorEnsayo : (filterCat === 'informatica' ? q.isInformaticaFocus : q.category === filterCat));
         const matchesSearch = !searchTerm || 
             q.question.toLowerCase().includes(searchTerm) || 
             q.keyTakeaway.toLowerCase().includes(searchTerm) ||
@@ -1118,7 +1129,9 @@ function renderStatsDisplay() {
     if (weakList) {
         const stats = state.stats.categoryStats;
         const categories = [
+            { id: 'informatica_tesis', name: '💻 Tesis Actualizada & Informática' },
             { id: 'ensayo_profesor', name: '🎯 Ensayo Real del Profesor (Evaluador)' },
+            { id: 'ingenieria', name: 'Ingeniería, Pipeline & Cómputo' },
             { id: 'contexto', name: 'Contexto y Motivación de la Tesis' },
             { id: 'kdd', name: 'Metodología KDD & Fases' },
             { id: 'preprocesamiento', name: 'Preprocesamiento & Filtro SNPs' },
