@@ -528,50 +528,115 @@
             letter-spacing: 1px;
         }
 
-        /* MODO MÓVIL VERTICAL (ESTILO GAMEBOY: PANTALLA ARRIBA, CONTROLES ABAJO) */
+        /* MODO MÓVIL VERTICAL (ESTILO GAMEBOY SIMÉTRICO: PANTALLA ARRIBA, CONSOLA ALINEADA ABAJO) */
         @media (pointer: coarse) and (orientation: portrait), (max-width: 760px) and (orientation: portrait) {
-            #touch-deck {
-                display: flex;
-                height: 190px;
-                min-height: 180px;
+            .hud-scores {
+                max-width: 34vw;
+            }
+            .hud-center {
+                font-size: clamp(0.52rem, 1.9vw, 0.72rem);
+                gap: 5px;
+            }
+            #console-body {
+                justify-content: flex-start;
+                padding: 8px 10px 12px 10px;
+                gap: 10px;
             }
             #screen-bezel {
+                flex: 0 1 auto;
+                width: 100%;
+                max-height: 55vh;
+                padding: 8px;
+            }
+            #arena-wrap {
+                flex: 0 1 auto;
+            }
+            #game-canvas {
+                max-height: 47vh;
+            }
+            .hud-stats-bar {
+                font-size: 0.7rem;
+                gap: 7px;
+                padding: 4px 10px;
+                flex-wrap: nowrap;
+                white-space: nowrap;
+                max-width: 100%;
+                overflow-x: auto;
+            }
+            #touch-deck {
+                display: grid;
+                grid-template-columns: 1fr auto 1fr;
+                align-items: center;
+                justify-items: center;
                 flex: 1;
+                width: 100%;
+                min-height: 175px;
+                padding: 12px 10px 34px 10px;
+                gap: 6px;
+            }
+            .dpad-zone {
+                width: 128px;
+                height: 128px;
+            }
+            .bomb-touch-btn {
+                width: 92px;
+                height: 92px;
+                font-size: 2.2rem;
             }
         }
 
-        /* MODO MÓVIL HORIZONTAL (GAMEPAD DIVIDIDO A LOS LADOS DEL MAPA) */
+        /* MODO MÓVIL HORIZONTAL (MARCO AJUSTADO AL MAPA Y CONTROLES AL CENTRO DE CADA LADO) */
         @media (pointer: coarse) and (orientation: landscape), (max-width: 920px) and (orientation: landscape) {
             #console-body {
-                flex-direction: row;
+                display: grid;
+                grid-template-columns: 1fr auto 1fr;
+                align-items: center;
+                justify-items: center;
                 padding: 4px 10px;
-            }
-            #screen-bezel {
-                flex: 1;
-                height: 100%;
-                margin: 0 120px; /* Espacio lateral para los controles fuera del mapa */
+                gap: 8px;
             }
             #touch-deck {
-                display: flex;
-                position: absolute;
-                inset: 0;
-                background: transparent;
-                border: none;
-                box-shadow: none;
-                pointer-events: none;
-                padding: 0 10px;
-            }
-            .dpad-zone, .action-zone {
-                pointer-events: auto;
+                display: contents;
             }
             .dpad-zone {
-                width: 112px;
-                height: 112px;
+                order: 1;
+                width: 118px;
+                height: 118px;
+            }
+            #screen-bezel {
+                order: 2;
+                flex: 0 0 auto;
+                width: fit-content;
+                height: auto;
+                padding: 6px 8px;
+            }
+            #arena-wrap {
+                flex: 0 0 auto;
+                width: fit-content;
+                height: auto;
+            }
+            #game-canvas {
+                height: calc(100vh - 106px);
+                height: calc(100dvh - 106px);
+                width: auto;
+                aspect-ratio: 13 / 11;
+                max-width: calc(100vw - 290px);
+            }
+            .hud-stats-bar {
+                font-size: 0.7rem;
+                gap: 7px;
+                padding: 3px 10px;
+                flex-wrap: nowrap;
+                white-space: nowrap;
+            }
+            .action-zone {
+                order: 3;
+                justify-content: center;
             }
             .bomb-touch-btn {
-                width: 82px;
-                height: 82px;
-                font-size: 2rem;
+                width: 88px;
+                height: 88px;
+                font-size: 2.1rem;
             }
             .deck-brand {
                 display: none;
@@ -1266,7 +1331,7 @@
                             row.push(CELL_WALL);
                         }
                     } else {
-                        const crateChance = currentMode === 'survival' ? 0.55 : (theme === 'magma' ? 0.62 : 0.74);
+                        const crateChance = currentMode === 'survival' ? 0.65 : (theme === 'magma' ? 0.62 : 0.74);
                         row.push(Math.random() < crateChance ? CELL_CRATE : CELL_EMPTY);
                     }
                 }
@@ -1496,17 +1561,6 @@
             const p1 = entities[myId];
             const p1C = p1 ? Math.floor(p1.x / TILE) : 1;
             const p1R = p1 ? Math.floor(p1.y / TILE) : 1;
-
-            // En oleadas intermedias del mismo mundo, reponer algunas cajas para dar powerups
-            if (wave > 1 && (wave - 1) % WAVES_PER_WORLD !== 0) {
-                for (let r = 1; r < ROWS - 1; r++) {
-                    for (let c = 1; c < COLS - 1; c++) {
-                        if (grid[r][c] === CELL_EMPTY && Math.hypot(c - p1C, r - p1R) > 3 && Math.random() < 0.24) {
-                            grid[r][c] = CELL_CRATE;
-                        }
-                    }
-                }
-            }
 
             const hasBoss = (wave % WAVES_PER_WORLD === 0);
             const regularCount = Math.min(10, 3 + Math.floor(wave * 0.75));
@@ -2884,28 +2938,10 @@
         }
 
         function advanceToNextSurvivalWave() {
-            const prevWave = survivalWave;
             survivalWave++;
-            const changingWorld = (prevWave % WAVES_PER_WORLD === 0);
-
-            if (changingWorld) {
-                // Reconstruir el nuevo mundo conservando las mejoras del jugador
-                const roster = [{ id: 'local_p1', nick: myNick, color: myColor, isBot: false }];
-                startNewRound(roster, true);
-            } else {
-                const p1 = entities[myId];
-                if (p1) p1.invulnTimer = 2.0;
-                spawnSurvivalWave(survivalWave);
-                updateScoreboardHUD();
-                updateMyStatsBar();
-                const worldNum = (Math.floor((survivalWave - 1) / WAVES_PER_WORLD) % WORLD_ORDER.length) + 1;
-                const stageNum = ((survivalWave - 1) % WAVES_PER_WORLD) + 1;
-                showBanner(
-                    `👾 ¡OLEADA ${survivalWave}!`,
-                    `Mundo ${worldNum} • Etapa ${stageNum}/${WAVES_PER_WORLD}`,
-                    1600
-                );
-            }
+            // En cada oleada se regenera el mapa completo y se resetean los poderes del jugador para mantener el desafío equilibrado
+            const roster = [{ id: 'local_p1', nick: myNick, color: myColor, isBot: false }];
+            startNewRound(roster, false);
         }
 
         function continueEndlessSurvival() {
