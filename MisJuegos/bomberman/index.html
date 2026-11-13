@@ -1,0 +1,3327 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Bomber Neón - Arcade de Omar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --panel-bg: rgba(15, 23, 42, 0.9);
+            --accent: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-amber: #fbbf24;
+            --accent-pink: #f43f5e;
+            --text: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Pantallas de menú / lobby / fin */
+        .screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px 12px 32px 12px;
+            z-index: 30;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            border-radius: 22px;
+            padding: 20px 18px;
+            max-width: 670px;
+            width: 100%;
+            margin: auto;
+            flex-shrink: 0;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 30px rgba(56, 189, 248, 0.12);
+            backdrop-filter: blur(12px);
+            text-align: center;
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(1.2rem, 3.8vw, 2rem);
+            color: #fbbf24;
+            text-shadow: 0 0 18px rgba(251, 191, 36, 0.6), 0 4px 0 #b45309;
+            margin: 0 0 8px 0;
+            line-height: 1.4;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.92rem;
+            margin: 0 0 16px 0;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .mode-card {
+            background: rgba(30, 41, 59, 0.78);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 12px 10px;
+            cursor: pointer;
+            transition: transform 0.18s, border-color 0.18s, background 0.18s;
+            text-align: center;
+            color: var(--text);
+        }
+
+        .mode-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.12);
+        }
+
+        .mode-card .m-icon {
+            font-size: 1.9rem;
+            margin-bottom: 4px;
+        }
+
+        .mode-card h3 {
+            margin: 0 0 4px 0;
+            font-size: 1rem;
+            color: #fff;
+        }
+
+        .mode-card p {
+            margin: 0;
+            font-size: 0.78rem;
+            color: #94a3b8;
+        }
+
+        .row-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        input[type="text"], select {
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            color: #fff;
+            padding: 9px 12px;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            text-align: center;
+        }
+
+        input[type="text"]:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+        }
+
+        .arcade-btn {
+            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 11px 20px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #1d4ed8, 0 6px 16px rgba(37, 99, 235, 0.35);
+            transition: transform 0.12s, filter 0.12s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .arcade-btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        .arcade-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #1d4ed8;
+        }
+
+        .arcade-btn.green {
+            background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+            box-shadow: 0 4px 0 #15803d, 0 6px 16px rgba(22, 163, 74, 0.35);
+        }
+
+        .arcade-btn.amber {
+            background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+            color: #0f172a;
+            box-shadow: 0 4px 0 #b45309, 0 6px 16px rgba(217, 119, 6, 0.35);
+        }
+
+        .arcade-btn.secondary {
+            background: rgba(51, 65, 85, 0.85);
+            color: #cbd5e1;
+            box-shadow: 0 4px 0 #1e293b;
+        }
+
+        .config-box {
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 14px;
+            margin: 12px 0;
+            text-align: left;
+        }
+
+        .config-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+            gap: 10px;
+            font-size: 0.92rem;
+            flex-wrap: wrap;
+        }
+
+        .color-swatches {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .color-opt {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: transform 0.15s;
+        }
+
+        .color-opt.selected {
+            border-color: #fff;
+            transform: scale(1.18);
+            box-shadow: 0 0 12px currentColor;
+        }
+
+        .player-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .player-pill {
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 10px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-left: 5px solid var(--accent);
+        }
+
+        .code-badge {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.6rem;
+            color: #4ade80;
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px dashed rgba(74, 222, 128, 0.5);
+            padding: 10px 20px;
+            border-radius: 14px;
+            display: inline-block;
+            letter-spacing: 4px;
+            margin: 6px 0;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+            gap: 6px;
+            margin-top: 10px;
+            font-size: 0.76rem;
+            color: #cbd5e1;
+            text-align: left;
+        }
+
+        .legend-item {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 5px 8px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* =========================================================
+           ESTRUCTURA DE CONSOLA / SHELL DE JUEGO (PC + GAMEBOY MÓVIL)
+           ========================================================= */
+        #game-shell {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            background: #070b14;
+            z-index: 10;
+        }
+
+        #game-hud {
+            height: 48px;
+            min-height: 48px;
+            background: rgba(9, 13, 22, 0.95);
+            border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            gap: 8px;
+            z-index: 15;
+        }
+
+        .hud-scores {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            overflow-x: auto;
+            max-width: 48vw;
+            scrollbar-width: none;
+        }
+
+        .hud-player {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            white-space: nowrap;
+        }
+
+        .hud-player.dead {
+            opacity: 0.38;
+            text-decoration: line-through;
+        }
+
+        .hud-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .hud-center {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(0.62rem, 2.2vw, 0.82rem);
+            color: #fbbf24;
+            white-space: nowrap;
+        }
+
+        .hud-timer.danger {
+            color: #f43f5e;
+            animation: blinkDanger 0.5s infinite alternate;
+        }
+
+        @keyframes blinkDanger {
+            from { opacity: 0.5; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1.05); }
+        }
+
+        /* Cuerpo principal debajo del HUD */
+        #console-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            padding: 6px;
+            gap: 6px;
+            position: relative;
+        }
+
+        /* Pantalla / Visor donde vive el Canvas y la barra de Poderes */
+        #screen-bezel {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #111a2e 0%, #060911 100%);
+            border: 2px solid rgba(56, 189, 248, 0.25);
+            border-radius: 16px;
+            padding: 6px;
+            box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.85), 0 6px 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        #arena-wrap {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #game-canvas {
+            background: #0b1120;
+            border-radius: 10px;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.18);
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            touch-action: none;
+        }
+
+        .hud-stats-bar {
+            margin-top: 5px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            padding: 4px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        /* Panel de Controles Táctiles (Oculto en PC de escritorio, visible en táctil/móvil) */
+        #touch-deck {
+            display: none;
+            width: 100%;
+            background: linear-gradient(180deg, #162032 0%, #0d1320 100%);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-top: 3px solid rgba(56, 189, 248, 0.35);
+            border-radius: 20px;
+            padding: 10px 22px;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: inset 0 3px 10px rgba(255, 255, 255, 0.05), 0 -4px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .deck-brand {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.55rem;
+            color: rgba(148, 163, 184, 0.45);
+            letter-spacing: 2px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .dpad-zone {
+            width: 138px;
+            height: 138px;
+            position: relative;
+            touch-action: none;
+            background: radial-gradient(circle, #1e293b 0%, #090d16 100%);
+            border: 3px solid rgba(56, 189, 248, 0.45);
+            border-radius: 50%;
+            box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.8), 0 0 14px rgba(56, 189, 248, 0.2);
+            flex-shrink: 0;
+        }
+
+        /* Guías visuales de la cruceta tipo consola */
+        .dpad-arrow {
+            position: absolute;
+            color: rgba(148, 163, 184, 0.45);
+            font-size: 0.9rem;
+            pointer-events: none;
+            font-weight: 800;
+        }
+        .dpad-arrow.up { top: 8px; left: 50%; transform: translateX(-50%); }
+        .dpad-arrow.down { bottom: 8px; left: 50%; transform: translateX(-50%); }
+        .dpad-arrow.left { left: 10px; top: 50%; transform: translateY(-50%); }
+        .dpad-arrow.right { right: 10px; top: 50%; transform: translateY(-50%); }
+
+        .dpad-stick {
+            position: absolute;
+            width: 52px;
+            height: 52px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #7dd3fc 0%, #0284c7 80%);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 14px rgba(56, 189, 248, 0.7);
+            pointer-events: none;
+        }
+
+        .action-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .bomb-touch-btn {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #fb7185 0%, #e11d48 65%, #9f1239 100%);
+            border: 4px solid rgba(255, 255, 255, 0.5);
+            color: #fff;
+            font-size: 2.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 0 #881337, 0 0 24px rgba(244, 63, 94, 0.65);
+            touch-action: none;
+            cursor: pointer;
+        }
+
+        .bomb-touch-btn:active {
+            transform: translateY(4px) scale(0.95);
+            box-shadow: 0 2px 0 #881337, 0 0 14px rgba(244, 63, 94, 0.8);
+        }
+
+        .action-label {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.58rem;
+            color: #fda4af;
+            letter-spacing: 1px;
+        }
+
+        /* MODO MÓVIL VERTICAL (ESTILO GAMEBOY: PANTALLA ARRIBA, CONTROLES ABAJO) */
+        @media (pointer: coarse) and (orientation: portrait), (max-width: 760px) and (orientation: portrait) {
+            #touch-deck {
+                display: flex;
+                height: 190px;
+                min-height: 180px;
+            }
+            #screen-bezel {
+                flex: 1;
+            }
+        }
+
+        /* MODO MÓVIL HORIZONTAL (GAMEPAD DIVIDIDO A LOS LADOS DEL MAPA) */
+        @media (pointer: coarse) and (orientation: landscape), (max-width: 920px) and (orientation: landscape) {
+            #console-body {
+                flex-direction: row;
+                padding: 4px 10px;
+            }
+            #screen-bezel {
+                flex: 1;
+                height: 100%;
+                margin: 0 120px; /* Espacio lateral para los controles fuera del mapa */
+            }
+            #touch-deck {
+                display: flex;
+                position: absolute;
+                inset: 0;
+                background: transparent;
+                border: none;
+                box-shadow: none;
+                pointer-events: none;
+                padding: 0 10px;
+            }
+            .dpad-zone, .action-zone {
+                pointer-events: auto;
+            }
+            .dpad-zone {
+                width: 112px;
+                height: 112px;
+            }
+            .bomb-touch-btn {
+                width: 82px;
+                height: 82px;
+                font-size: 2rem;
+            }
+            .deck-brand {
+                display: none;
+            }
+        }
+
+        /* Banner flotante de ronda / eventos */
+        #round-banner {
+            position: fixed;
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(9, 13, 22, 0.94);
+            border: 2px solid var(--accent-amber);
+            border-radius: 20px;
+            padding: 18px 28px;
+            text-align: center;
+            z-index: 25;
+            box-shadow: 0 0 40px rgba(251, 191, 36, 0.35);
+            pointer-events: none;
+            max-width: 90vw;
+        }
+
+        #round-banner h2 {
+            font-family: 'Press Start 2P', cursive;
+            margin: 0 0 8px 0;
+            font-size: clamp(0.95rem, 3.2vw, 1.5rem);
+            color: #fbbf24;
+            line-height: 1.4;
+        }
+
+        #round-banner p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- PANTALLA 1: MENÚ PRINCIPAL -->
+    <div id="screen-menu" class="screen">
+        <div class="glass-panel">
+            <h1 class="game-title">💣 BOMBER NEÓN 💣</h1>
+            <p class="subtitle">Explosiones en cadena, mundos elementales, portales y caos arcade (1 a 6 jugadores)</p>
+
+            <div class="row-group" style="margin-bottom: 12px;">
+                <input type="text" id="input-nick" maxlength="12" placeholder="Tu apodo" style="width: 170px;">
+                <div id="menu-colors" class="color-swatches"></div>
+            </div>
+
+            <div class="mode-grid">
+                <div class="mode-card" onclick="openSoloSetup('bots')">
+                    <div class="m-icon">🤖</div>
+                    <h3>Batalla vs Bots</h3>
+                    <p>1 Jugador contra IA táctica (hasta 5 rivales)</p>
+                </div>
+
+                <div class="mode-card" onclick="openSoloSetup('survival')">
+                    <div class="m-icon">👾</div>
+                    <h3>Supervivencia</h3>
+                    <p>Aventura por los 4 Mundos + Modo Infinito</p>
+                </div>
+
+                <div class="mode-card" onclick="openSoloSetup('local2p')">
+                    <div class="m-icon">🎮</div>
+                    <h3>2J Mismo PC</h3>
+                    <p>WASD+Espacio vs Flechas+Enter (+Bots)</p>
+                </div>
+
+                <div class="mode-card" onclick="createOnlineRoom()">
+                    <div class="m-icon">🌐</div>
+                    <h3>Crear Sala Online</h3>
+                    <p>Multijugador P2P de 2 a 6 amigos</p>
+                </div>
+            </div>
+
+            <div class="row-group" style="margin-top: 6px;">
+                <input type="text" id="input-room-code" maxlength="6" placeholder="CÓDIGO SALA" style="width: 155px; text-transform: uppercase;">
+                <button class="arcade-btn green" onclick="joinOnlineRoom()">UNIRSE A SALA</button>
+            </div>
+
+            <div class="legend-grid">
+                <div class="legend-item">💣 <span>+1 Bomba</span></div>
+                <div class="legend-item">🔥 <span>+1 Alcance</span></div>
+                <div class="legend-item">⚡ <span>+Velocidad</span></div>
+                <div class="legend-item">🥾 <span>Patear Bombas</span></div>
+                <div class="legend-item">🛡️ <span>Escudo Protector</span></div>
+                <div class="legend-item">🌀 <span>Portales Teletransp.</span></div>
+            </div>
+
+            <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <span id="best-survival-badge" style="font-size: 0.85rem; color: #fbbf24; font-weight: 700;">🏆 Récord Oleadas: 0</span>
+                <button class="arcade-btn secondary" onclick="window.location.href='../../index.html'">⬅ VOLVER AL ARCADE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA 2: CONFIGURACIÓN / LOBBY -->
+    <div id="screen-lobby" class="screen hidden">
+        <div class="glass-panel">
+            <h2 id="lobby-title" class="game-title" style="font-size: 1.25rem;">CONFIGURAR PARTIDA</h2>
+
+            <div id="online-code-box" class="hidden">
+                <p style="margin: 2px 0; color: #94a3b8; font-size: 0.85rem;">Comparte este código con tus amigos:</p>
+                <div id="lobby-code-display" class="code-badge">----</div>
+            </div>
+
+            <div id="lobby-players" class="player-list"></div>
+
+            <div id="host-settings" class="config-box">
+                <div class="config-row" id="row-map-select">
+                    <span>🗺️ Mundo / Arena:</span>
+                    <select id="sel-map" onchange="syncLobbyConfig()">
+                        <option value="random" selected>🎲 Aleatorio (Cambia cada ronda)</option>
+                        <option value="progression">🌍 Viaje por los 4 Mundos (En orden)</option>
+                        <option value="classic">🏟️ Mundo 1: Clásico Neón</option>
+                        <option value="portals">🌀 Mundo 2: Laberinto Portal</option>
+                        <option value="ice">❄️ Mundo 3: Cueva de Cristal (Hielo)</option>
+                        <option value="magma">🌋 Mundo 4: Reactor de Magma (Full Poder)</option>
+                    </select>
+                </div>
+
+                <div class="config-row hidden" id="row-survival-info" style="color: #38bdf8; font-size: 0.85rem; flex-direction: column; align-items: stretch; gap: 8px;">
+                    <div>🌍 <strong>Campaña de 4 Mundos:</strong> Supera 3 oleadas por mundo (12 oleadas en total) mezclando enemigos cada vez más inteligentes:</div>
+                    <div class="legend-grid" style="margin-top: 2px;">
+                        <div class="legend-item"><span style="color:#a855f7">●</span> <span><strong>Nv.1 Errante:</strong> Patrulla pasillos</span></div>
+                        <div class="legend-item"><span style="color:#fb923c">●</span> <span><strong>Nv.2 Cazador:</strong> Te persigue</span></div>
+                        <div class="legend-item"><span style="color:#38bdf8">●</span> <span><strong>Nv.3 Táctico:</strong> Caza y esquiva 💣</span></div>
+                        <div class="legend-item"><span style="color:#4ade80">●</span> <span><strong>Nv.4 BomberBot:</strong> Pone 💣 + Ítems</span></div>
+                        <div class="legend-item" style="grid-column: 1 / -1;"><span style="color:#f43f5e">👑</span> <span><strong>Jefe de Mundo:</strong> IA Táctica, Mega-Bombas (🔥3-6), patea bombas y entra en Furia</span></div>
+                    </div>
+                </div>
+
+                <div class="config-row" id="row-bots-count">
+                    <span>🤖 Cantidad de Bots:</span>
+                    <select id="sel-bots" onchange="syncLobbyConfig()">
+                        <option value="0">0 Bots</option>
+                        <option value="1">1 Bot</option>
+                        <option value="2">2 Bots</option>
+                        <option value="3" selected>3 Bots</option>
+                        <option value="5">5 Bots (Caos)</option>
+                    </select>
+                </div>
+
+                <div class="config-row" id="row-bot-diff">
+                    <span>🧠 Nivel de IA:</span>
+                    <select id="sel-diff" onchange="syncLobbyConfig()">
+                        <option value="normal">Normal</option>
+                        <option value="hard" selected>Táctico (Difícil)</option>
+                    </select>
+                </div>
+
+                <div class="config-row" id="row-wins">
+                    <span>🏆 Rondas para Ganar:</span>
+                    <select id="sel-wins" onchange="syncLobbyConfig()">
+                        <option value="2">2 Victorias</option>
+                        <option value="3" selected>3 Victorias</option>
+                        <option value="5">5 Victorias</option>
+                    </select>
+                </div>
+            </div>
+
+            <p id="client-wait-msg" class="hidden" style="color: #38bdf8; font-weight: 600;">Esperando a que el Host inicie la partida...</p>
+
+            <div class="row-group" style="margin-top: 16px;">
+                <button id="btn-start-match" class="arcade-btn amber" onclick="hostStartMatch()">🔥 ¡INICIAR BATALLA!</button>
+                <button class="arcade-btn secondary" onclick="leaveLobby()">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA 3: CONSOLA DE JUEGO (ARENA + CONTROLES TIPO GAMEBOY EN MÓVIL) -->
+    <div id="game-shell" class="hidden">
+        <div id="game-hud">
+            <div id="hud-scores" class="hud-scores"></div>
+            <div class="hud-center">
+                <span id="hud-mode-label">RONDA 1</span>
+                <span id="hud-timer" class="hud-timer">02:00</span>
+            </div>
+            <button class="arcade-btn secondary" style="padding: 5px 10px; font-size: 0.75rem;" onclick="quitToMenu()">SALIR</button>
+        </div>
+
+        <div id="console-body">
+            <div id="screen-bezel">
+                <div id="arena-wrap">
+                    <canvas id="game-canvas" width="780" height="660"></canvas>
+                </div>
+                <div id="hud-stats-bar" class="hud-stats-bar">
+                    <span id="stat-world" style="color: #38bdf8;">🏟️ Neón</span>
+                    <span id="stat-bombs">💣 1</span>
+                    <span id="stat-fire">🔥 2</span>
+                    <span id="stat-speed">⚡ 1</span>
+                    <span id="stat-kick" style="opacity: 0.35;">🥾 Patada</span>
+                    <span id="stat-shield" style="opacity: 0.35;">🛡️ Escudo</span>
+                </div>
+            </div>
+
+            <!-- Mitad inferior tipo GameBoy en Vertical / Lados en Horizontal -->
+            <div id="touch-deck">
+                <div id="dpad-zone" class="dpad-zone">
+                    <span class="dpad-arrow up">▲</span>
+                    <span class="dpad-arrow down">▼</span>
+                    <span class="dpad-arrow left">◄</span>
+                    <span class="dpad-arrow right">►</span>
+                    <div id="dpad-stick" class="dpad-stick"></div>
+                </div>
+
+                <div class="deck-brand">
+                    BOMBER<br>NEÓN<br>POCKET
+                </div>
+
+                <div class="action-zone">
+                    <button id="btn-touch-bomb" class="bomb-touch-btn" aria-label="Colocar Bomba">💣</button>
+                    <span class="action-label">BOMBA</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="round-banner" class="hidden">
+        <h2 id="banner-title">¡RONDA 1!</h2>
+        <p id="banner-sub">Prepárate...</p>
+    </div>
+
+    <!-- PANTALLA 4: FIN DE PARTIDA / CAMPEÓN / DERROTA -->
+    <div id="screen-gameover" class="screen hidden">
+        <div class="glass-panel">
+            <div id="gameover-icon" style="font-size: 4rem; margin-bottom: 6px;">🏆</div>
+            <h1 id="winner-headline" class="game-title">¡CAMPEÓN!</h1>
+            <p id="winner-sub" class="subtitle">Dominio explosivo en la arena</p>
+
+            <div id="final-scoreboard" class="player-list" style="margin: 18px 0;"></div>
+
+            <div class="row-group">
+                <button id="btn-endless-continue" class="arcade-btn amber hidden" onclick="continueEndlessSurvival()">🔥 SEGUIR EN MODO INFINITO</button>
+                <button id="btn-rematch" class="arcade-btn green" onclick="requestRematch()">🔄 JUGAR DE NUEVO</button>
+                <button class="arcade-btn secondary" onclick="quitToMenu()">🏠 MENÚ PRINCIPAL</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../sounds.js"></script>
+    <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
+
+        // --- CONSTANTES DE GRILLA Y MUNDOS ---
+        const COLS = 13;
+        const ROWS = 11;
+        const TILE = 60; // 780 x 660
+        const CANVAS = document.getElementById('game-canvas');
+        const CTX = CANVAS.getContext('2d');
+
+        const CELL_EMPTY = 0;
+        const CELL_WALL = 1;
+        const CELL_CRATE = 2;
+        const CELL_PORTAL = 3;
+
+        const PU_BOMB = 'bomb';
+        const PU_FIRE = 'fire';
+        const PU_SPEED = 'speed';
+        const PU_KICK = 'kick';
+        const PU_SHIELD = 'shield';
+
+        const WORLD_ORDER = ['classic', 'portals', 'ice', 'magma'];
+        const WORLD_INFO = {
+            classic: { name: 'Sector Neón', icon: '🏟️', floor: '#0b1120', wall: '#1e293b', crate: '#3b82f6', border: '#38bdf8' },
+            portals: { name: 'Laberinto Portal', icon: '🌀', floor: '#130d26', wall: '#2e1065', crate: '#8b5cf6', border: '#c084fc' },
+            ice:     { name: 'Cueva de Cristal', icon: '❄️', floor: '#0c1e35', wall: '#164e63', crate: '#0284c7', border: '#67e8f9' },
+            magma:   { name: 'Reactor de Magma', icon: '🌋', floor: '#1f0d14', wall: '#451a03', crate: '#d97706', border: '#fb923c' }
+        };
+        const WAVES_PER_WORLD = 3; // 4 mundos x 3 oleadas = 12 oleadas para completar la campaña
+
+        const PALETTE = [
+            { name: 'Cian', hex: '#38bdf8' },
+            { name: 'Coral', hex: '#f43f5e' },
+            { name: 'Esmeralda', hex: '#4ade80' },
+            { name: 'Ámbar', hex: '#fbbf24' },
+            { name: 'Violeta', hex: '#a855f7' },
+            { name: 'Naranja', hex: '#fb923c' }
+        ];
+
+        const SPAWN_CORNERS = [
+            { c: 1, r: 1 },
+            { c: COLS - 2, r: ROWS - 2 },
+            { c: COLS - 2, r: 1 },
+            { c: 1, r: ROWS - 2 },
+            { c: 6, r: 1 },
+            { c: 6, r: ROWS - 2 }
+        ];
+
+        // --- ESTADO DEL JUEGO ---
+        let myNick = localStorage.getItem('bomber_nick') || ('Bomber' + Math.floor(Math.random() * 90 + 10));
+        let myColor = localStorage.getItem('bomber_color') || PALETTE[0].hex;
+        let bestSurvivalWave = parseInt(localStorage.getItem('bomber_best_wave') || '0', 10);
+
+        let currentMode = 'bots'; // 'bots' | 'survival' | 'local2p' | 'online'
+        let isHost = true;
+        let myId = 'local_p1';
+        let peer = null;
+        let hostConn = null;
+        let clientConns = {};
+
+        let lobbyPlayers = [];
+        let matchConfig = {
+            map: 'random', // 'random' | 'progression' | 'classic' | 'portals' | 'ice' | 'magma'
+            bots: 3,
+            diff: 'hard',
+            winsNeeded: 3
+        };
+
+        // Estado de ronda / oleada
+        let gameActive = false;
+        let activeMapTheme = 'classic';
+        let lastRandomMap = null;
+        let roundNumber = 1;
+        let roundTimer = 110;
+        let lastTimerSec = 110;
+        let suddenDeathActive = false;
+        let suddenDeathStep = 0;
+        let suddenDeathClock = 0;
+        let spiralCoords = [];
+
+        // Estado de Supervivencia por Mundos
+        let survivalWave = 1;
+        let survivalEndless = false;
+        let waveTransitionPending = false;
+        let waveTransitionTimer = 0;
+
+        let grid = [];
+        let portals = [];
+        let powerups = [];
+        let bombs = [];
+        let flames = [];
+        let particles = [];
+        let monsters = [];
+        let screenShake = 0;
+
+        let entities = {};
+        let scores = {};
+
+        // Controles
+        const keysDown = {};
+        const localInput1 = { dx: 0, dy: 0, bombPressed: false };
+        const localInput2 = { dx: 0, dy: 0, bombPressed: false };
+        const remoteInputs = {};
+        let touchVector = { dx: 0, dy: 0 };
+
+        document.getElementById('input-nick').value = myNick;
+        document.getElementById('best-survival-badge').innerText = `🏆 Récord Oleadas: ${bestSurvivalWave}`;
+
+        function renderColorSwatches() {
+            const container = document.getElementById('menu-colors');
+            container.innerHTML = '';
+            PALETTE.forEach(p => {
+                const d = document.createElement('div');
+                d.className = 'color-opt' + (p.hex === myColor ? ' selected' : '');
+                d.style.backgroundColor = p.hex;
+                d.style.color = p.hex;
+                d.onclick = () => {
+                    myColor = p.hex;
+                    localStorage.setItem('bomber_color', myColor);
+                    renderColorSwatches();
+                };
+                container.appendChild(d);
+            });
+        }
+        renderColorSwatches();
+
+        function saveUserPrefs() {
+            const val = document.getElementById('input-nick').value.trim();
+            if (val) {
+                myNick = val;
+                localStorage.setItem('bomber_nick', myNick);
+            }
+        }
+
+        function showScreen(id) {
+            ['screen-menu', 'screen-lobby', 'screen-gameover'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            if (id) {
+                const el = document.getElementById(id);
+                el.classList.remove('hidden');
+                el.scrollTop = 0;
+            }
+        }
+
+        // ==========================================
+        // CONFIGURACIÓN DE MODOS Y SALAS P2P
+        // ==========================================
+        function openSoloSetup(mode) {
+            saveUserPrefs();
+            currentMode = mode;
+            isHost = true;
+            myId = 'local_p1';
+
+            document.getElementById('online-code-box').classList.add('hidden');
+            document.getElementById('host-settings').classList.remove('hidden');
+            document.getElementById('client-wait-msg').classList.add('hidden');
+            document.getElementById('btn-start-match').classList.remove('hidden');
+
+            if (mode === 'survival') {
+                document.getElementById('lobby-title').innerText = '👾 MODO SUPERVIVENCIA (4 MUNDOS)';
+                document.getElementById('row-map-select').classList.add('hidden');
+                document.getElementById('row-survival-info').classList.remove('hidden');
+                document.getElementById('row-bots-count').classList.add('hidden');
+                document.getElementById('row-bot-diff').classList.add('hidden');
+                document.getElementById('row-wins').classList.add('hidden');
+                document.getElementById('sel-map').value = 'progression';
+                lobbyPlayers = [{ id: 'local_p1', nick: myNick, color: myColor, isBot: false }];
+            } else if (mode === 'local2p') {
+                document.getElementById('lobby-title').innerText = '🎮 2 JUGADORES EN MISMO PC';
+                document.getElementById('row-map-select').classList.remove('hidden');
+                document.getElementById('row-survival-info').classList.add('hidden');
+                document.getElementById('row-bots-count').classList.remove('hidden');
+                document.getElementById('row-bot-diff').classList.remove('hidden');
+                document.getElementById('row-wins').classList.remove('hidden');
+                document.getElementById('sel-bots').value = '2';
+                const p2Color = PALETTE.find(c => c.hex !== myColor).hex;
+                lobbyPlayers = [
+                    { id: 'local_p1', nick: myNick + ' (J1)', color: myColor, isBot: false },
+                    { id: 'local_p2', nick: 'Jugador 2 (Flechas)', color: p2Color, isBot: false, isLocal2: true }
+                ];
+            } else {
+                document.getElementById('lobby-title').innerText = '🤖 BATALLA VS BOTS';
+                document.getElementById('row-map-select').classList.remove('hidden');
+                document.getElementById('row-survival-info').classList.add('hidden');
+                document.getElementById('row-bots-count').classList.remove('hidden');
+                document.getElementById('row-bot-diff').classList.remove('hidden');
+                document.getElementById('row-wins').classList.remove('hidden');
+                document.getElementById('sel-bots').value = '3';
+                lobbyPlayers = [{ id: 'local_p1', nick: myNick, color: myColor, isBot: false }];
+            }
+
+            syncLobbyConfig();
+            showScreen('screen-lobby');
+        }
+
+        function createOnlineRoom() {
+            saveUserPrefs();
+            currentMode = 'online';
+            isHost = true;
+
+            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+            if (peer) peer.destroy();
+            peer = new Peer(code);
+
+            peer.on('open', (id) => {
+                myId = id;
+                lobbyPlayers = [{ id: myId, nick: myNick, color: myColor, isBot: false }];
+                document.getElementById('lobby-title').innerText = '🌐 SALA MULTIJUGADOR';
+                document.getElementById('online-code-box').classList.remove('hidden');
+                document.getElementById('lobby-code-display').innerText = id;
+                document.getElementById('host-settings').classList.remove('hidden');
+                document.getElementById('row-map-select').classList.remove('hidden');
+                document.getElementById('row-survival-info').classList.add('hidden');
+                document.getElementById('row-bots-count').classList.remove('hidden');
+                document.getElementById('row-bot-diff').classList.remove('hidden');
+                document.getElementById('row-wins').classList.remove('hidden');
+                document.getElementById('sel-bots').value = '1';
+                document.getElementById('client-wait-msg').classList.add('hidden');
+                document.getElementById('btn-start-match').classList.remove('hidden');
+
+                syncLobbyConfig();
+                showScreen('screen-lobby');
+            });
+
+            peer.on('connection', (conn) => {
+                conn.on('open', () => {
+                    clientConns[conn.peer] = conn;
+                    conn.on('data', (data) => handleHostNetwork(conn.peer, data));
+                });
+                conn.on('close', () => {
+                    delete clientConns[conn.peer];
+                    lobbyPlayers = lobbyPlayers.filter(p => p.id !== conn.peer);
+                    if (entities[conn.peer]) entities[conn.peer].alive = false;
+                    renderLobbyPlayers();
+                    broadcastLobbyState();
+                });
+            });
+
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') createOnlineRoom();
+                else alert('Error P2P: ' + err.message);
+            });
+        }
+
+        function joinOnlineRoom() {
+            saveUserPrefs();
+            const code = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (!code) return;
+
+            currentMode = 'online';
+            isHost = false;
+            if (peer) peer.destroy();
+            peer = new Peer();
+
+            peer.on('open', (id) => {
+                myId = id;
+                hostConn = peer.connect(code);
+                hostConn.on('open', () => {
+                    if (window.ArcadeAudio) ArcadeAudio.notification();
+                    document.getElementById('lobby-title').innerText = '🌐 SALA ' + code;
+                    document.getElementById('online-code-box').classList.remove('hidden');
+                    document.getElementById('lobby-code-display').innerText = code;
+                    document.getElementById('host-settings').classList.add('hidden');
+                    document.getElementById('client-wait-msg').classList.remove('hidden');
+                    document.getElementById('btn-start-match').classList.add('hidden');
+                    showScreen('screen-lobby');
+
+                    hostConn.send({ type: 'JOIN', nick: myNick, color: myColor });
+                });
+                hostConn.on('data', handleClientNetwork);
+                hostConn.on('close', () => {
+                    alert('El Host cerró la sala.');
+                    quitToMenu();
+                });
+            });
+        }
+
+        function handleHostNetwork(peerId, data) {
+            if (data.type === 'JOIN') {
+                if (lobbyPlayers.length >= 6) return;
+                const usedColors = lobbyPlayers.map(p => p.color);
+                let assignedColor = data.color;
+                if (usedColors.includes(assignedColor)) {
+                    const free = PALETTE.find(c => !usedColors.includes(c.hex));
+                    if (free) assignedColor = free.hex;
+                }
+                lobbyPlayers.push({ id: peerId, nick: data.nick || 'Invitado', color: assignedColor, isBot: false });
+                if (window.ArcadeAudio) ArcadeAudio.notification();
+                renderLobbyPlayers();
+                broadcastLobbyState();
+            } else if (data.type === 'INPUT') {
+                remoteInputs[peerId] = data.input;
+                if (data.input.bombPressed && entities[peerId] && entities[peerId].alive && gameActive) {
+                    tryPlaceBomb(entities[peerId]);
+                }
+            }
+        }
+
+        function handleClientNetwork(data) {
+            if (data.type === 'LOBBY_SYNC') {
+                lobbyPlayers = data.players;
+                matchConfig = data.config;
+                renderLobbyPlayers();
+            } else if (data.type === 'START_ROUND') {
+                applyClientStartRound(data);
+            } else if (data.type === 'STATE') {
+                applyClientState(data);
+            } else if (data.type === 'SFX') {
+                if (window.ArcadeAudio && typeof ArcadeAudio[data.sfx] === 'function') {
+                    ArcadeAudio[data.sfx]();
+                }
+            } else if (data.type === 'BANNER') {
+                showBanner(data.title, data.sub, data.ms);
+            } else if (data.type === 'MATCH_OVER') {
+                showMatchOver(data.winnerNick, data.winnerColor, data.scoreboard, data.isVictory, data.subText);
+            }
+        }
+
+        function broadcastLobbyState() {
+            if (!isHost) return;
+            Object.values(clientConns).forEach(c => {
+                if (c.open) c.send({ type: 'LOBBY_SYNC', players: lobbyPlayers, config: matchConfig });
+            });
+        }
+
+        function broadcastSfx(sfxName) {
+            if (window.ArcadeAudio && typeof ArcadeAudio[sfxName] === 'function') {
+                ArcadeAudio[sfxName]();
+            }
+            if (isHost && currentMode === 'online') {
+                Object.values(clientConns).forEach(c => {
+                    if (c.open) c.send({ type: 'SFX', sfx: sfxName });
+                });
+            }
+        }
+
+        function syncLobbyConfig() {
+            matchConfig.map = document.getElementById('sel-map').value;
+            matchConfig.bots = parseInt(document.getElementById('sel-bots').value, 10);
+            matchConfig.diff = document.getElementById('sel-diff').value;
+            matchConfig.winsNeeded = parseInt(document.getElementById('sel-wins').value, 10);
+            renderLobbyPlayers();
+            broadcastLobbyState();
+        }
+
+        function renderLobbyPlayers() {
+            const box = document.getElementById('lobby-players');
+            box.innerHTML = '';
+            const previewList = [...lobbyPlayers];
+
+            if (currentMode !== 'survival') {
+                const maxTotal = 6;
+                const botCount = Math.min(matchConfig.bots, maxTotal - previewList.length);
+                const botNames = ['CyberBot', 'NovaIA', 'VortexBot', 'PyroIA', 'OmegaBot'];
+                for (let i = 0; i < botCount; i++) {
+                    const used = previewList.map(p => p.color);
+                    const free = PALETTE.find(c => !used.includes(c.hex)) || PALETTE[(previewList.length + i) % PALETTE.length];
+                    previewList.push({
+                        id: 'bot_' + (i + 1),
+                        nick: '🤖 ' + botNames[i % botNames.length],
+                        color: free.hex,
+                        isBot: true
+                    });
+                }
+            }
+
+            previewList.forEach(p => {
+                const pill = document.createElement('div');
+                pill.className = 'player-pill';
+                pill.style.borderLeftColor = p.color;
+                pill.innerHTML = `<span class="hud-dot" style="background:${p.color}"></span> <span>${p.nick}</span>`;
+                box.appendChild(pill);
+            });
+        }
+
+        function leaveLobby() {
+            if (peer) { peer.destroy(); peer = null; }
+            clientConns = {};
+            hostConn = null;
+            showScreen('screen-menu');
+        }
+
+        function quitToMenu() {
+            gameActive = false;
+            waveTransitionPending = false;
+            if (peer) { peer.destroy(); peer = null; }
+            clientConns = {};
+            hostConn = null;
+            document.getElementById('game-shell').classList.add('hidden');
+            document.getElementById('round-banner').classList.add('hidden');
+            showScreen('screen-menu');
+        }
+
+        // ==========================================
+        // SELECCIÓN DE MUNDO / GENERACIÓN DE ARENA
+        // ==========================================
+        function pickThemeForCurrentRound() {
+            if (currentMode === 'survival') {
+                const worldIdx = Math.floor((survivalWave - 1) / WAVES_PER_WORLD) % WORLD_ORDER.length;
+                return WORLD_ORDER[worldIdx];
+            }
+            if (matchConfig.map === 'random') {
+                const choices = WORLD_ORDER.filter(w => w !== lastRandomMap);
+                const picked = choices[Math.floor(Math.random() * choices.length)];
+                lastRandomMap = picked;
+                return picked;
+            }
+            if (matchConfig.map === 'progression') {
+                const idx = (roundNumber - 1) % WORLD_ORDER.length;
+                return WORLD_ORDER[idx];
+            }
+            return WORLD_INFO[matchConfig.map] ? matchConfig.map : 'classic';
+        }
+
+        function buildSpiralOrder() {
+            const coords = [];
+            let top = 1, bottom = ROWS - 2, left = 1, right = COLS - 2;
+            while (top <= bottom && left <= right) {
+                for (let c = left; c <= right; c++) coords.push({ c, r: top });
+                top++;
+                for (let r = top; r <= bottom; r++) coords.push({ c: right, r });
+                right--;
+                if (top <= bottom) {
+                    for (let c = right; c >= left; c--) coords.push({ c, r: bottom });
+                    bottom--;
+                }
+                if (left <= right) {
+                    for (let r = bottom; r >= top; r--) coords.push({ c: left, r });
+                    left++;
+                }
+            }
+            return coords;
+        }
+
+        function generateArenaGrid(theme) {
+            grid = [];
+            portals = [];
+            for (let r = 0; r < ROWS; r++) {
+                const row = [];
+                for (let c = 0; c < COLS; c++) {
+                    if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) {
+                        row.push(CELL_WALL);
+                    } else if (r % 2 === 0 && c % 2 === 0) {
+                        if (theme === 'magma' && (r === 4 || r === 6) && (c === 4 || c === 8)) {
+                            row.push(CELL_CRATE);
+                        } else {
+                            row.push(CELL_WALL);
+                        }
+                    } else {
+                        const crateChance = currentMode === 'survival' ? 0.55 : (theme === 'magma' ? 0.62 : 0.74);
+                        row.push(Math.random() < crateChance ? CELL_CRATE : CELL_EMPTY);
+                    }
+                }
+                grid.push(row);
+            }
+
+            if (theme === 'portals') {
+                portals = [
+                    { c: 3, r: 3 },
+                    { c: COLS - 4, r: 3 },
+                    { c: 3, r: ROWS - 4 },
+                    { c: COLS - 4, r: ROWS - 4 }
+                ];
+                portals.forEach(pt => {
+                    grid[pt.r][pt.c] = CELL_PORTAL;
+                });
+            }
+
+            SPAWN_CORNERS.forEach(sp => {
+                const safeCells = [
+                    { c: sp.c, r: sp.r },
+                    { c: sp.c + 1, r: sp.r },
+                    { c: sp.c - 1, r: sp.r },
+                    { c: sp.c, r: sp.r + 1 },
+                    { c: sp.c, r: sp.r - 1 }
+                ];
+                safeCells.forEach(sc => {
+                    if (sc.r > 0 && sc.r < ROWS - 1 && sc.c > 0 && sc.c < COLS - 1) {
+                        if (grid[sc.r][sc.c] === CELL_CRATE) grid[sc.r][sc.c] = CELL_EMPTY;
+                    }
+                });
+            });
+        }
+
+        function hostStartMatch() {
+            if (!isHost) return;
+            syncLobbyConfig();
+
+            scores = {};
+            roundNumber = 1;
+            survivalWave = 1;
+            survivalEndless = false;
+            waveTransitionPending = false;
+
+            const fullRoster = [...lobbyPlayers];
+            if (currentMode !== 'survival') {
+                const botCount = Math.min(matchConfig.bots, 6 - fullRoster.length);
+                const botNames = ['CyberBot', 'NovaIA', 'VortexBot', 'PyroIA', 'OmegaBot'];
+                for (let i = 0; i < botCount; i++) {
+                    const used = fullRoster.map(p => p.color);
+                    const free = PALETTE.find(c => !used.includes(c.hex)) || PALETTE[(fullRoster.length + i) % PALETTE.length];
+                    fullRoster.push({
+                        id: 'bot_' + (i + 1),
+                        nick: '🤖 ' + botNames[i % botNames.length],
+                        color: free.hex,
+                        isBot: true
+                    });
+                }
+            }
+
+            fullRoster.forEach(p => { scores[p.id] = 0; });
+            startNewRound(fullRoster, false);
+        }
+
+        function startNewRound(roster, preservePlayerStats = false) {
+            showScreen(null);
+            document.getElementById('game-shell').classList.remove('hidden');
+
+            activeMapTheme = pickThemeForCurrentRound();
+            const wInfo = WORLD_INFO[activeMapTheme] || WORLD_INFO.classic;
+
+            powerups = [];
+            bombs = [];
+            flames = [];
+            particles = [];
+            monsters = [];
+            suddenDeathActive = false;
+            suddenDeathStep = 0;
+            suddenDeathClock = 0;
+            waveTransitionPending = false;
+            spiralCoords = buildSpiralOrder();
+
+            roundTimer = currentMode === 'survival' ? 999 : 110;
+            lastTimerSec = roundTimer;
+
+            generateArenaGrid(activeMapTheme);
+
+            const prevEntities = { ...entities };
+            entities = {};
+            const startBombs = activeMapTheme === 'magma' ? 2 : 1;
+            const startFire = activeMapTheme === 'magma' ? 3 : 2;
+
+            roster.forEach((p, idx) => {
+                const sp = SPAWN_CORNERS[idx % SPAWN_CORNERS.length];
+                const prev = preservePlayerStats ? prevEntities[p.id] : null;
+                entities[p.id] = {
+                    id: p.id,
+                    nick: p.nick,
+                    color: p.color,
+                    isBot: !!p.isBot,
+                    isLocal2: !!p.isLocal2,
+                    x: (sp.c + 0.5) * TILE,
+                    y: (sp.r + 0.5) * TILE,
+                    vx: 0,
+                    vy: 0,
+                    dirX: 0,
+                    dirY: 1,
+                    alive: true,
+                    maxBombs: prev ? Math.max(prev.maxBombs, startBombs) : startBombs,
+                    activeBombs: 0,
+                    fireRange: prev ? Math.max(prev.fireRange, startFire) : startFire,
+                    speedLvl: prev ? prev.speedLvl : 1,
+                    canKick: prev ? (prev.canKick || activeMapTheme === 'ice') : (activeMapTheme === 'ice'),
+                    hasShield: prev ? prev.hasShield : (currentMode === 'survival' && survivalWave === 1),
+                    invulnTimer: currentMode === 'survival' ? 2.2 : 1.0,
+                    portalCooldown: 0,
+                    aiCooldown: 0,
+                    aiTarget: null
+                };
+            });
+
+            if (currentMode === 'survival') {
+                spawnSurvivalWave(survivalWave);
+            }
+
+            updateScoreboardHUD();
+            updateMyStatsBar();
+
+            let bannerTitle, bannerSub;
+            if (currentMode === 'survival') {
+                const worldNum = (Math.floor((survivalWave - 1) / WAVES_PER_WORLD) % WORLD_ORDER.length) + 1;
+                const stageInWorld = ((survivalWave - 1) % WAVES_PER_WORLD) + 1;
+                bannerTitle = `${wInfo.icon} MUNDO ${worldNum}: ${wInfo.name.toUpperCase()}`;
+                bannerSub = `Oleada ${survivalWave} (Etapa ${stageInWorld}/${WAVES_PER_WORLD})`;
+            } else {
+                bannerTitle = `🔥 RONDA ${roundNumber}`;
+                bannerSub = `${wInfo.icon} Arena: ${wInfo.name} • Meta: ${matchConfig.winsNeeded} ★`;
+            }
+
+            showBanner(bannerTitle, bannerSub, 2100);
+            broadcastSfx('transition');
+
+            if (currentMode === 'online') {
+                Object.values(clientConns).forEach(c => {
+                    if (c.open) {
+                        c.send({
+                            type: 'START_ROUND',
+                            grid,
+                            portals,
+                            activeMapTheme,
+                            entities,
+                            scores,
+                            roundNumber,
+                            config: matchConfig,
+                            bannerTitle,
+                            bannerSub
+                        });
+                    }
+                });
+            }
+
+            gameActive = true;
+        }
+
+        function applyClientStartRound(data) {
+            showScreen(null);
+            document.getElementById('game-shell').classList.remove('hidden');
+
+            grid = data.grid;
+            portals = data.portals || [];
+            activeMapTheme = data.activeMapTheme || 'classic';
+            entities = data.entities;
+            scores = data.scores;
+            roundNumber = data.roundNumber;
+            matchConfig = data.config;
+            powerups = [];
+            bombs = [];
+            flames = [];
+            particles = [];
+            monsters = [];
+            gameActive = true;
+
+            updateScoreboardHUD();
+            updateMyStatsBar();
+            showBanner(data.bannerTitle, data.bannerSub, 2100);
+            if (window.ArcadeAudio) ArcadeAudio.transition();
+        }
+
+        // Distribución porcentual progresiva de los 4 niveles de enemigos sin eliminar los anteriores
+        function getWaveTierWeights(wave) {
+            if (wave === 1) return [1.00, 0.00, 0.00, 0.00]; // Oleada 1: 100% Nivel 1 (Básicos)
+            if (wave === 2) return [0.50, 0.50, 0.00, 0.00]; // Oleada 2: 50% Nivel 1, 50% Nivel 2
+            if (wave === 3) return [0.40, 0.40, 0.20, 0.00]; // Oleada 3: 40% Nv.1, 40% Nv.2, 20% Nv.3 (+ Jefe 1)
+            if (wave === 4) return [0.34, 0.33, 0.33, 0.00]; // Oleada 4: Tercios equilibrados Nv.1, 2 y 3
+            if (wave === 5) return [0.28, 0.28, 0.26, 0.18]; // Oleada 5: Entran los BomberBots (Nv.4)
+            if (wave === 6) return [0.25, 0.25, 0.25, 0.25]; // Oleada 6: 25% de cada uno de los 4 niveles (+ Jefe 2)
+            if (wave <= 9)  return [0.20, 0.25, 0.30, 0.25]; // Mundo 3: Mezcla diversa de los 4 niveles
+            return [0.15, 0.25, 0.30, 0.30];                 // Mundo 4 y Modo Infinito: Alta intensidad con los 4 niveles
+        }
+
+        function buildMixedTierList(wave, totalRegular) {
+            const weights = getWaveTierWeights(wave);
+            const raw = weights.map(w => w * totalRegular);
+            const counts = raw.map(v => Math.floor(v));
+            let assigned = counts.reduce((a, b) => a + b, 0);
+
+            const remainders = raw
+                .map((v, idx) => ({ idx, rem: v - counts[idx], w: weights[idx] }))
+                .filter(item => item.w > 0)
+                .sort((a, b) => b.rem - a.rem);
+
+            let rIdx = 0;
+            while (assigned < totalRegular && remainders.length > 0) {
+                counts[remainders[rIdx % remainders.length].idx]++;
+                assigned++;
+                rIdx++;
+            }
+
+            const tiers = [];
+            counts.forEach((cnt, idx) => {
+                for (let k = 0; k < cnt; k++) tiers.push(idx + 1);
+            });
+            return tiers;
+        }
+
+        function spawnSurvivalWave(wave) {
+            const p1 = entities[myId];
+            const p1C = p1 ? Math.floor(p1.x / TILE) : 1;
+            const p1R = p1 ? Math.floor(p1.y / TILE) : 1;
+
+            // En oleadas intermedias del mismo mundo, reponer algunas cajas para dar powerups
+            if (wave > 1 && (wave - 1) % WAVES_PER_WORLD !== 0) {
+                for (let r = 1; r < ROWS - 1; r++) {
+                    for (let c = 1; c < COLS - 1; c++) {
+                        if (grid[r][c] === CELL_EMPTY && Math.hypot(c - p1C, r - p1R) > 3 && Math.random() < 0.24) {
+                            grid[r][c] = CELL_CRATE;
+                        }
+                    }
+                }
+            }
+
+            const hasBoss = (wave % WAVES_PER_WORLD === 0);
+            const regularCount = Math.min(10, 3 + Math.floor(wave * 0.75));
+            const tierList = buildMixedTierList(wave, regularCount);
+            const worldIdx = Math.floor((wave - 1) / WAVES_PER_WORLD); // 0, 1, 2, 3...
+
+            const spawnConfigs = [];
+            if (hasBoss) {
+                spawnConfigs.push({ isBoss: true, tier: 5 });
+            }
+            tierList.forEach(t => spawnConfigs.push({ isBoss: false, tier: t }));
+
+            const TIER_COLORS = {
+                1: '#a855f7', // Nv.1 Errante (Violeta)
+                2: '#fb923c', // Nv.2 Cazador (Naranja)
+                3: '#38bdf8', // Nv.3 Acechador Táctico (Cian)
+                4: '#4ade80', // Nv.4 BomberBot Mercenario (Esmeralda)
+                5: '#f43f5e'  // Jefe de Mundo (Carmesí Dorado)
+            };
+
+            spawnConfigs.forEach((cfg, i) => {
+                let tries = 85;
+                let mc = COLS - 2, mr = ROWS - 2;
+                while (tries-- > 0) {
+                    const rc = Math.floor(Math.random() * (COLS - 2)) + 1;
+                    const rr = Math.floor(Math.random() * (ROWS - 2)) + 1;
+                    const distToPlayer = Math.hypot(rc - p1C, rr - p1R);
+                    if ((grid[rr][rc] === CELL_EMPTY || tries < 15) && grid[rr][rc] !== CELL_WALL && distToPlayer >= 4.5) {
+                        if (grid[rr][rc] === CELL_CRATE) grid[rr][rc] = CELL_EMPTY;
+                        // Si es Nv.4 o Jefe (ponen bombas), asegurar al menos 1 casilla adyacente libre para no encerrarse al nacer
+                        if (cfg.tier >= 4) {
+                            const adj = [{ c: rc + 1, r: rr }, { c: rc - 1, r: rr }, { c: rc, r: rr + 1 }, { c: rc, r: rr - 1 }];
+                            adj.forEach(a => {
+                                if (grid[a.r] && grid[a.r][a.c] === CELL_CRATE) grid[a.r][a.c] = CELL_EMPTY;
+                            });
+                        }
+                        mc = rc;
+                        mr = rr;
+                        break;
+                    }
+                }
+
+                const isBoss = cfg.isBoss;
+                const tier = cfg.tier;
+                const bossHp = 3 + Math.min(2, Math.floor(worldIdx / 1)); // Mundo 1: 3HP, Mundo 2: 4HP, Mundo 3+: 5HP
+                const baseSpeed = isBoss
+                    ? (116 + Math.min(worldIdx * 8, 28))
+                    : (tier === 1 ? 80 : tier === 2 ? 94 : tier === 3 ? 105 : 114) + Math.min(wave * 2.5, 30);
+
+                monsters.push({
+                    id: 'm_' + wave + '_' + i,
+                    isMonster: true,
+                    tier,
+                    isBoss,
+                    x: (mc + 0.5) * TILE,
+                    y: (mr + 0.5) * TILE,
+                    vx: 0,
+                    vy: 0,
+                    dirX: i % 2 === 0 ? 1 : 0,
+                    dirY: i % 2 === 0 ? 0 : 1,
+                    speed: baseSpeed,
+                    speedLvl: 1,
+                    hp: isBoss ? bossHp : 1,
+                    maxHp: isBoss ? bossHp : 1,
+                    enraged: false,
+                    // Estadísticas de Bomba para Nivel 4 y Jefes de Mundo
+                    canBomb: (tier === 4 || isBoss),
+                    maxBombs: isBoss ? (2 + Math.min(2, Math.floor(worldIdx / 2))) : (tier === 4 ? 1 : 0),
+                    activeBombs: 0,
+                    fireRange: isBoss ? (3 + Math.min(3, worldIdx)) : (tier === 4 ? 2 : 1),
+                    canKick: isBoss, // El Jefe patea bombas desde el inicio; Nv.4 puede conseguir el ítem 🥾
+                    hasShield: false,
+                    aiCooldown: 0.15,
+                    bombCooldown: isBoss ? 1.4 : 2.0,
+                    portalCooldown: 0,
+                    invuln: 1.0,
+                    spawnGrace: 1.1,
+                    color: TIER_COLORS[tier] || '#a855f7'
+                });
+                spawnBurst((mc + 0.5) * TILE, (mr + 0.5) * TILE, TIER_COLORS[tier] || '#a855f7', isBoss ? 26 : 14);
+            });
+        }
+
+        function showBanner(title, sub, ms = 1800) {
+            const b = document.getElementById('round-banner');
+            document.getElementById('banner-title').innerText = title;
+            document.getElementById('banner-sub').innerText = sub;
+            b.classList.remove('hidden');
+            setTimeout(() => b.classList.add('hidden'), ms);
+        }
+
+        function updateScoreboardHUD() {
+            const container = document.getElementById('hud-scores');
+            container.innerHTML = '';
+            Object.values(entities).forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'hud-player' + (p.alive ? '' : ' dead');
+                const sc = scores[p.id] || 0;
+                div.innerHTML = `<span class="hud-dot" style="background:${p.color}"></span> <span>${p.nick}</span> <span style="color:#fbbf24">★${sc}</span>`;
+                container.appendChild(div);
+            });
+
+            if (currentMode === 'survival') {
+                const worldNum = (Math.floor((survivalWave - 1) / WAVES_PER_WORLD) % WORLD_ORDER.length) + 1;
+                const stageNum = ((survivalWave - 1) % WAVES_PER_WORLD) + 1;
+                document.getElementById('hud-mode-label').innerText = `MUNDO ${worldNum}-${stageNum} (OL.${survivalWave})`;
+            } else {
+                document.getElementById('hud-mode-label').innerText = `RONDA ${roundNumber}`;
+            }
+        }
+
+        function updateMyStatsBar() {
+            const wInfo = WORLD_INFO[activeMapTheme] || WORLD_INFO.classic;
+            document.getElementById('stat-world').innerText = `${wInfo.icon} ${wInfo.name}`;
+            const me = entities[myId];
+            if (!me) return;
+            document.getElementById('stat-bombs').innerText = `💣 ${me.maxBombs}`;
+            document.getElementById('stat-fire').innerText = `🔥 ${me.fireRange}`;
+            document.getElementById('stat-speed').innerText = `⚡ ${me.speedLvl}`;
+            document.getElementById('stat-kick').style.opacity = me.canKick ? '1' : '0.3';
+            document.getElementById('stat-shield').style.opacity = me.hasShield ? '1' : '0.3';
+        }
+
+        // ==========================================
+        // CONTROLES (TECLADO + JOYSTICK TÁCTIL)
+        // ==========================================
+        window.addEventListener('keydown', (e) => {
+            keysDown[e.code] = true;
+            if (!gameActive) return;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isHost) {
+                    if (entities[myId] && entities[myId].alive) tryPlaceBomb(entities[myId]);
+                } else if (hostConn && hostConn.open) {
+                    hostConn.send({ type: 'INPUT', input: { ...localInput1, bombPressed: true } });
+                }
+            }
+
+            if (currentMode === 'local2p' && (e.code === 'Enter' || e.code === 'KeyP' || e.code === 'ShiftRight')) {
+                e.preventDefault();
+                if (entities['local_p2'] && entities['local_p2'].alive) {
+                    tryPlaceBomb(entities['local_p2']);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keysDown[e.code] = false;
+        });
+
+        function pollLocalInputs() {
+            let dx1 = 0, dy1 = 0;
+            const allowArrowsP1 = currentMode !== 'local2p';
+
+            if (keysDown['KeyA'] || (allowArrowsP1 && keysDown['ArrowLeft'])) dx1 -= 1;
+            if (keysDown['KeyD'] || (allowArrowsP1 && keysDown['ArrowRight'])) dx1 += 1;
+            if (keysDown['KeyW'] || (allowArrowsP1 && keysDown['ArrowUp'])) dy1 -= 1;
+            if (keysDown['KeyS'] || (allowArrowsP1 && keysDown['ArrowDown'])) dy1 += 1;
+
+            if (touchVector.dx !== 0 || touchVector.dy !== 0) {
+                dx1 = touchVector.dx;
+                dy1 = touchVector.dy;
+            }
+
+            localInput1.dx = dx1;
+            localInput1.dy = dy1;
+
+            if (!isHost && currentMode === 'online' && hostConn && hostConn.open) {
+                hostConn.send({ type: 'INPUT', input: { dx: dx1, dy: dy1, bombPressed: false } });
+            }
+
+            if (currentMode === 'local2p') {
+                let dx2 = 0, dy2 = 0;
+                if (keysDown['ArrowLeft']) dx2 -= 1;
+                if (keysDown['ArrowRight']) dx2 += 1;
+                if (keysDown['ArrowUp']) dy2 -= 1;
+                if (keysDown['ArrowDown']) dy2 += 1;
+                localInput2.dx = dx2;
+                localInput2.dy = dy2;
+            }
+        }
+
+        // Joystick táctil
+        const dpadZone = document.getElementById('dpad-zone');
+        const dpadStick = document.getElementById('dpad-stick');
+        let activeTouchId = null;
+
+        function handleDpadMove(clientX, clientY) {
+            const rect = dpadZone.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const maxR = rect.width * 0.34;
+            let dx = clientX - cx;
+            let dy = clientY - cy;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < 10) {
+                touchVector.dx = 0;
+                touchVector.dy = 0;
+                dpadStick.style.transform = `translate(-50%, -50%)`;
+                return;
+            }
+
+            const clamped = Math.min(dist, maxR);
+            const angle = Math.atan2(dy, dx);
+            const sx = Math.cos(angle) * clamped;
+            const sy = Math.sin(angle) * clamped;
+            dpadStick.style.transform = `translate(calc(-50% + ${sx}px), calc(-50% + ${sy}px))`;
+
+            if (Math.abs(dx) > Math.abs(dy) * 1.35) {
+                touchVector.dx = Math.sign(dx);
+                touchVector.dy = 0;
+            } else if (Math.abs(dy) > Math.abs(dx) * 1.35) {
+                touchVector.dx = 0;
+                touchVector.dy = Math.sign(dy);
+            } else {
+                touchVector.dx = Math.sign(dx);
+                touchVector.dy = Math.sign(dy);
+            }
+        }
+
+        dpadZone.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            activeTouchId = e.pointerId;
+            dpadZone.setPointerCapture(e.pointerId);
+            handleDpadMove(e.clientX, e.clientY);
+        });
+
+        dpadZone.addEventListener('pointermove', (e) => {
+            if (e.pointerId !== activeTouchId) return;
+            e.preventDefault();
+            handleDpadMove(e.clientX, e.clientY);
+        });
+
+        function resetDpad(e) {
+            if (e.pointerId !== activeTouchId) return;
+            activeTouchId = null;
+            touchVector.dx = 0;
+            touchVector.dy = 0;
+            dpadStick.style.transform = `translate(-50%, -50%)`;
+        }
+        dpadZone.addEventListener('pointerup', resetDpad);
+        dpadZone.addEventListener('pointercancel', resetDpad);
+
+        document.getElementById('btn-touch-bomb').addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            if (!gameActive) return;
+            if (isHost) {
+                if (entities[myId] && entities[myId].alive) tryPlaceBomb(entities[myId]);
+            } else if (hostConn && hostConn.open) {
+                hostConn.send({ type: 'INPUT', input: { ...localInput1, bombPressed: true } });
+            }
+        });
+
+        // ==========================================
+        // LÓGICA DE BOMBAS, FÍSICAS Y EXPLOSIONES
+        // ==========================================
+        function tryPlaceBomb(player) {
+            if (!player || !player.alive) return;
+            if (player.activeBombs >= player.maxBombs) return;
+
+            const c = Math.floor(player.x / TILE);
+            const r = Math.floor(player.y / TILE);
+            if (c < 1 || c >= COLS - 1 || r < 1 || r >= ROWS - 1) return;
+            if (grid[r][c] === CELL_WALL || grid[r][c] === CELL_CRATE) return;
+            if (bombs.some(b => b.c === c && b.r === r)) return;
+
+            player.activeBombs++;
+            bombs.push({
+                id: 'b_' + Date.now() + '_' + Math.random(),
+                c,
+                r,
+                x: (c + 0.5) * TILE,
+                y: (r + 0.5) * TILE,
+                ownerId: player.id,
+                range: player.fireRange,
+                timer: 2.5,
+                vx: 0,
+                vy: 0,
+                portalCooldown: 0
+            });
+            broadcastSfx('place');
+        }
+
+        function isCellBlockedForPlayer(c, r, player, ignoreBombAtPlayer = true) {
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return true;
+            const cell = grid[r][c];
+            if (cell === CELL_WALL || cell === CELL_CRATE) return true;
+
+            const bombHere = bombs.find(b => b.c === c && b.r === r);
+            if (bombHere) {
+                if (ignoreBombAtPlayer && player) {
+                    const pc = Math.floor(player.x / TILE);
+                    const pr = Math.floor(player.y / TILE);
+                    if (pc === c && pr === r) return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        function moveEntityWithCornerAssist(p, dx, dy, dt) {
+            if (dx === 0 && dy === 0) return;
+
+            const baseSpeed = 155 + (p.speedLvl - 1) * 24;
+            const len = Math.hypot(dx, dy) || 1;
+            const vx = (dx / len) * baseSpeed;
+            const vy = (dy / len) * baseSpeed;
+
+            p.dirX = Math.sign(dx);
+            p.dirY = Math.sign(dy);
+
+            const radius = TILE * 0.34;
+
+            if (vx !== 0) {
+                const nextX = p.x + vx * dt;
+                const checkC = Math.floor((nextX + Math.sign(vx) * radius) / TILE);
+                const topR = Math.floor((p.y - radius * 0.8) / TILE);
+                const botR = Math.floor((p.y + radius * 0.8) / TILE);
+
+                const blockedTop = isCellBlockedForPlayer(checkC, topR, p);
+                const blockedBot = isCellBlockedForPlayer(checkC, botR, p);
+
+                if (!blockedTop && !blockedBot) {
+                    p.x = nextX;
+                } else {
+                    const midR = Math.floor(p.y / TILE);
+                    const hitBomb = bombs.find(b => b.c === checkC && b.r === midR && b.vx === 0 && b.vy === 0);
+                    if (hitBomb && p.canKick) {
+                        kickBomb(hitBomb, Math.sign(vx), 0);
+                    } else if (blockedTop !== blockedBot && dy === 0) {
+                        const freeR = !blockedTop ? topR : botR;
+                        const targetCenterY = (freeR + 0.5) * TILE;
+                        p.y += Math.sign(targetCenterY - p.y) * baseSpeed * 0.85 * dt;
+                    }
+                }
+            }
+
+            if (vy !== 0) {
+                const nextY = p.y + vy * dt;
+                const checkR = Math.floor((nextY + Math.sign(vy) * radius) / TILE);
+                const leftC = Math.floor((p.x - radius * 0.8) / TILE);
+                const rightC = Math.floor((p.x + radius * 0.8) / TILE);
+
+                const blockedLeft = isCellBlockedForPlayer(leftC, checkR, p);
+                const blockedRight = isCellBlockedForPlayer(rightC, checkR, p);
+
+                if (!blockedLeft && !blockedRight) {
+                    p.y = nextY;
+                } else {
+                    const midC = Math.floor(p.x / TILE);
+                    const hitBomb = bombs.find(b => b.c === midC && b.r === checkR && b.vx === 0 && b.vy === 0);
+                    if (hitBomb && p.canKick) {
+                        kickBomb(hitBomb, 0, Math.sign(vy));
+                    } else if (blockedLeft !== blockedRight && dx === 0) {
+                        const freeC = !blockedLeft ? leftC : rightC;
+                        const targetCenterX = (freeC + 0.5) * TILE;
+                        p.x += Math.sign(targetCenterX - p.x) * baseSpeed * 0.85 * dt;
+                    }
+                }
+            }
+
+            if (p.portalCooldown > 0) p.portalCooldown -= dt;
+            const pc = Math.floor(p.x / TILE);
+            const pr = Math.floor(p.y / TILE);
+            if (grid[pr] && grid[pr][pc] === CELL_PORTAL && p.portalCooldown <= 0 && portals.length > 1) {
+                const others = portals.filter(pt => pt.c !== pc || pt.r !== pr);
+                const dest = others[Math.floor(Math.random() * others.length)];
+                p.x = (dest.c + 0.5) * TILE;
+                p.y = (dest.r + 0.5) * TILE;
+                p.portalCooldown = 1.2;
+                spawnBurst(p.x, p.y, '#a855f7', 16);
+                broadcastSfx('bounce');
+            }
+
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const pu = powerups[i];
+                if (pu.c === pc && pu.r === pr) {
+                    applyPowerUp(p, pu.type);
+                    powerups.splice(i, 1);
+                    broadcastSfx('coin');
+                    spawnBurst((pc + 0.5) * TILE, (pr + 0.5) * TILE, '#fbbf24', 12);
+                    if (p.id === myId) updateMyStatsBar();
+                }
+            }
+        }
+
+        function kickBomb(bomb, dirX, dirY) {
+            const nextC = bomb.c + dirX;
+            const nextR = bomb.r + dirY;
+            if (grid[nextR] && (grid[nextR][nextC] === CELL_EMPTY || grid[nextR][nextC] === CELL_PORTAL) &&
+                !bombs.some(b => b !== bomb && b.c === nextC && b.r === nextR)) {
+                bomb.vx = dirX * 340;
+                bomb.vy = dirY * 340;
+                broadcastSfx('slide');
+            }
+        }
+
+        function applyPowerUp(p, type) {
+            if (type === PU_BOMB) p.maxBombs = Math.min(8, p.maxBombs + 1);
+            else if (type === PU_FIRE) p.fireRange = Math.min(8, p.fireRange + 1);
+            else if (type === PU_SPEED) p.speedLvl = Math.min(5, p.speedLvl + 1);
+            else if (type === PU_KICK) p.canKick = true;
+            else if (type === PU_SHIELD) p.hasShield = true;
+        }
+
+        function tryPlaceMonsterBomb(mon) {
+            if (!mon || !mon.canBomb) return false;
+            if ((mon.activeBombs || 0) >= (mon.maxBombs || 1)) return false;
+
+            const c = Math.floor(mon.x / TILE);
+            const r = Math.floor(mon.y / TILE);
+            if (c < 1 || c >= COLS - 1 || r < 1 || r >= ROWS - 1) return false;
+            if (grid[r][c] === CELL_WALL || grid[r][c] === CELL_CRATE) return false;
+            if (bombs.some(b => b.c === c && b.r === r)) return false;
+
+            mon.activeBombs = (mon.activeBombs || 0) + 1;
+            bombs.push({
+                id: 'mb_' + Date.now() + '_' + Math.random(),
+                c,
+                r,
+                x: (c + 0.5) * TILE,
+                y: (r + 0.5) * TILE,
+                ownerId: mon.id,
+                fromMonster: true,
+                isBossBomb: !!mon.isBoss,
+                range: mon.fireRange || 2,
+                timer: mon.isBoss ? 2.2 : 2.5,
+                vx: 0,
+                vy: 0,
+                portalCooldown: 0
+            });
+            broadcastSfx('place');
+            return true;
+        }
+
+        function detonateBomb(bomb) {
+            const idx = bombs.indexOf(bomb);
+            if (idx !== -1) bombs.splice(idx, 1);
+
+            if (entities[bomb.ownerId]) {
+                entities[bomb.ownerId].activeBombs = Math.max(0, entities[bomb.ownerId].activeBombs - 1);
+            } else {
+                const monOwner = monsters.find(m => m.id === bomb.ownerId);
+                if (monOwner) {
+                    monOwner.activeBombs = Math.max(0, (monOwner.activeBombs || 0) - 1);
+                }
+            }
+
+            screenShake = Math.max(screenShake, bomb.isBossBomb ? 13 : 9);
+            broadcastSfx('sink');
+
+            const isMonsterBomb = !!bomb.fromMonster;
+            const centerC = Math.floor(bomb.x / TILE);
+            const centerR = Math.floor(bomb.y / TILE);
+            addFlameCell(centerC, centerR, isMonsterBomb);
+
+            const dirs = [
+                { dc: 1, dr: 0 },
+                { dc: -1, dr: 0 },
+                { dc: 0, dr: 1 },
+                { dc: 0, dr: -1 }
+            ];
+
+            dirs.forEach(d => {
+                for (let step = 1; step <= bomb.range; step++) {
+                    const tc = centerC + d.dc * step;
+                    const tr = centerR + d.dr * step;
+                    if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) break;
+
+                    const cell = grid[tr][tc];
+                    if (cell === CELL_WALL) break;
+
+                    if (cell === CELL_CRATE) {
+                        grid[tr][tc] = CELL_EMPTY;
+                        addFlameCell(tc, tr, isMonsterBomb);
+                        spawnBurst((tc + 0.5) * TILE, (tr + 0.5) * TILE, '#f97316', 14);
+                        maybeSpawnPowerUp(tc, tr);
+                        break;
+                    }
+
+                    addFlameCell(tc, tr, isMonsterBomb);
+
+                    const puIdx = powerups.findIndex(pu => pu.c === tc && pu.r === tr);
+                    if (puIdx !== -1) powerups.splice(puIdx, 1);
+
+                    const otherBomb = bombs.find(b => b.c === tc && b.r === tr);
+                    if (otherBomb) {
+                        detonateBomb(otherBomb);
+                    }
+                }
+            });
+        }
+
+        function addFlameCell(c, r, fromMonster = false) {
+            flames.push({ c, r, timer: 0.45, maxTimer: 0.45, fromMonster });
+            spawnBurst((c + 0.5) * TILE, (r + 0.5) * TILE, fromMonster ? '#fb7185' : '#fbbf24', 6);
+        }
+
+        function maybeSpawnPowerUp(c, r) {
+            if (Math.random() > 0.44) return;
+            const roll = Math.random();
+            let type = PU_BOMB;
+            if (roll < 0.28) type = PU_BOMB;
+            else if (roll < 0.56) type = PU_FIRE;
+            else if (roll < 0.76) type = PU_SPEED;
+            else if (roll < 0.90) type = PU_KICK;
+            else type = PU_SHIELD;
+
+            powerups.push({ c, r, type, bob: Math.random() * Math.PI * 2 });
+        }
+
+        function damagePlayer(p) {
+            if (!p.alive || p.invulnTimer > 0) return;
+            if (p.hasShield) {
+                p.hasShield = false;
+                p.invulnTimer = 1.4;
+                spawnBurst(p.x, p.y, '#38bdf8', 22);
+                broadcastSfx('bounce');
+                if (p.id === myId) updateMyStatsBar();
+                return;
+            }
+            p.alive = false;
+            spawnBurst(p.x, p.y, p.color, 35);
+            broadcastSfx('hit');
+            updateScoreboardHUD();
+        }
+
+        // ==========================================
+        // INTELIGENCIA ARTIFICIAL DE BOTS
+        // ==========================================
+        function buildDangerMap() {
+            const danger = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+            flames.forEach(f => {
+                if (danger[f.r]) danger[f.r][f.c] = true;
+            });
+            bombs.forEach(b => {
+                const bc = b.c, br = b.r;
+                if (danger[br]) danger[br][bc] = true;
+                const dirs = [{ dc: 1, dr: 0 }, { dc: -1, dr: 0 }, { dc: 0, dr: 1 }, { dc: 0, dr: -1 }];
+                dirs.forEach(d => {
+                    for (let s = 1; s <= b.range; s++) {
+                        const tc = bc + d.dc * s;
+                        const tr = br + d.dr * s;
+                        if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) break;
+                        if (grid[tr][tc] === CELL_WALL) break;
+                        danger[tr][tc] = true;
+                        if (grid[tr][tc] === CELL_CRATE) break;
+                    }
+                });
+            });
+            return danger;
+        }
+
+        function hasSafeEscapeAfterPlanting(bot, bombC, bombR, currentDanger) {
+            const simDanger = currentDanger.map(row => [...row]);
+            simDanger[bombR][bombC] = true;
+            const dirs = [{ dc: 1, dr: 0 }, { dc: -1, dr: 0 }, { dc: 0, dr: 1 }, { dc: 0, dr: -1 }];
+            dirs.forEach(d => {
+                for (let s = 1; s <= bot.fireRange; s++) {
+                    const tc = bombC + d.dc * s;
+                    const tr = bombR + d.dr * s;
+                    if (tr < 0 || tr >= ROWS || tc < 0 || tc >= COLS) break;
+                    if (grid[tr][tc] === CELL_WALL) break;
+                    simDanger[tr][tc] = true;
+                    if (grid[tr][tc] === CELL_CRATE) break;
+                }
+            });
+
+            const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+            const queue = [{ c: bombC, r: bombR, steps: 0 }];
+            visited[bombR][bombC] = true;
+
+            while (queue.length > 0) {
+                const cur = queue.shift();
+                if (!simDanger[cur.r][cur.c]) return true;
+                if (cur.steps >= 5) continue;
+
+                for (const d of dirs) {
+                    const nc = cur.c + d.dc;
+                    const nr = cur.r + d.dr;
+                    if (nr < 1 || nr >= ROWS - 1 || nc < 1 || nc >= COLS - 1) continue;
+                    if (visited[nr][nc]) continue;
+                    if (grid[nr][nc] === CELL_WALL || grid[nr][nc] === CELL_CRATE) continue;
+                    if (bombs.some(b => b.c === nc && b.r === nr)) continue;
+                    visited[nr][nc] = true;
+                    queue.push({ c: nc, r: nr, steps: cur.steps + 1 });
+                }
+            }
+            return false;
+        }
+
+        function updateBotAI(bot, dt, danger) {
+            const bc = Math.floor(bot.x / TILE);
+            const br = Math.floor(bot.y / TILE);
+            const dirs = [
+                { dc: 1, dr: 0 },
+                { dc: -1, dr: 0 },
+                { dc: 0, dr: 1 },
+                { dc: 0, dr: -1 }
+            ];
+
+            if (danger[br] && danger[br][bc]) {
+                const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+                const queue = [];
+                visited[br][bc] = true;
+
+                dirs.forEach(d => {
+                    const nc = bc + d.dc, nr = br + d.dr;
+                    if (!isCellBlockedForPlayer(nc, nr, bot, false)) {
+                        visited[nr][nc] = true;
+                        queue.push({ c: nc, r: nr, firstDir: d });
+                    }
+                });
+
+                let escapeDir = null;
+                while (queue.length > 0) {
+                    const cur = queue.shift();
+                    if (!danger[cur.r][cur.c]) {
+                        escapeDir = cur.firstDir;
+                        break;
+                    }
+                    dirs.forEach(d => {
+                        const nc = cur.c + d.dc, nr = cur.r + d.dr;
+                        if (nr > 0 && nr < ROWS - 1 && nc > 0 && nc < COLS - 1 && !visited[nr][nc] && !isCellBlockedForPlayer(nc, nr, bot, false)) {
+                            visited[nr][nc] = true;
+                            queue.push({ c: nc, r: nr, firstDir: cur.firstDir });
+                        }
+                    });
+                }
+
+                if (escapeDir) {
+                    moveEntityWithCornerAssist(bot, escapeDir.dc, escapeDir.dr, dt);
+                    return;
+                }
+            }
+
+            bot.aiCooldown -= dt;
+            if (bot.aiCooldown <= 0) {
+                bot.aiCooldown = matchConfig.diff === 'hard' ? 0.22 : 0.45;
+
+                const hasCrateAdj = dirs.some(d => grid[br + d.dr] && grid[br + d.dr][bc + d.dc] === CELL_CRATE);
+                const hasEnemyNear = Object.values(entities).some(other =>
+                    other.id !== bot.id && other.alive &&
+                    Math.hypot(other.x - bot.x, other.y - bot.y) < TILE * 2.1
+                );
+
+                if ((hasCrateAdj || hasEnemyNear) && bot.activeBombs < bot.maxBombs) {
+                    if (hasSafeEscapeAfterPlanting(bot, bc, br, danger)) {
+                        tryPlaceBomb(bot);
+                    }
+                }
+
+                const safeDirs = dirs.filter(d => {
+                    const nc = bc + d.dc, nr = br + d.dr;
+                    return !isCellBlockedForPlayer(nc, nr, bot, false) && !(danger[nr] && danger[nr][nc]);
+                });
+
+                if (safeDirs.length > 0) {
+                    let bestDir = safeDirs[Math.floor(Math.random() * safeDirs.length)];
+                    const targetEnemy = Object.values(entities).find(o => o.id !== bot.id && o.alive);
+                    if (targetEnemy && Math.random() < (matchConfig.diff === 'hard' ? 0.75 : 0.45)) {
+                        safeDirs.sort((a, b) => {
+                            const da = Math.hypot((bc + a.dc + 0.5) * TILE - targetEnemy.x, (br + a.dr + 0.5) * TILE - targetEnemy.y);
+                            const db = Math.hypot((bc + b.dc + 0.5) * TILE - targetEnemy.x, (br + b.dr + 0.5) * TILE - targetEnemy.y);
+                            return da - db;
+                        });
+                        bestDir = safeDirs[0];
+                    }
+                    bot.aiTarget = bestDir;
+                } else {
+                    bot.aiTarget = { dc: 0, dr: 0 };
+                }
+            }
+
+            if (bot.aiTarget) {
+                const nc = bc + (bot.aiTarget.dc || 0);
+                const nr = br + (bot.aiTarget.dr || 0);
+                if (danger[nr] && danger[nr][nc]) {
+                    const centerX = (bc + 0.5) * TILE;
+                    const centerY = (br + 0.5) * TILE;
+                    moveEntityWithCornerAssist(bot, Math.sign(centerX - bot.x), Math.sign(centerY - bot.y), dt);
+                } else {
+                    moveEntityWithCornerAssist(bot, bot.aiTarget.dc || 0, bot.aiTarget.dr || 0, dt);
+                }
+            }
+        }
+
+        // ============================================================
+        // IA DE MONSTRUOS POR NIVEL (NIVELES 1 A 4 + JEFE DE MUNDO)
+        // ============================================================
+        function isCellBlockedForMonster(c, r, mon, ignoreBombAtMonster = true) {
+            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return true;
+            const cell = grid[r][c];
+            if (cell === CELL_WALL || cell === CELL_CRATE) return true;
+
+            const bombHere = bombs.find(b => b.c === c && b.r === r);
+            if (bombHere) {
+                if (ignoreBombAtMonster && mon) {
+                    const mc = Math.floor(mon.x / TILE);
+                    const mr = Math.floor(mon.y / TILE);
+                    if (mc === c && mr === r) return false;
+                }
+                return true;
+            }
+            return false;
+        }
+
+        function moveMonsterSmooth(mon, dx, dy, dt) {
+            if (dx === 0 && dy === 0) return false;
+
+            const effSpeed = (mon.speed || 90) + ((mon.speedLvl || 1) - 1) * 18;
+            const len = Math.hypot(dx, dy) || 1;
+            const vx = (dx / len) * effSpeed;
+            const vy = (dy / len) * effSpeed;
+
+            mon.dirX = Math.sign(dx);
+            mon.dirY = Math.sign(dy);
+
+            const radius = TILE * 0.33;
+            let moved = false;
+
+            if (vx !== 0) {
+                const nextX = mon.x + vx * dt;
+                const checkC = Math.floor((nextX + Math.sign(vx) * radius) / TILE);
+                const topR = Math.floor((mon.y - radius * 0.78) / TILE);
+                const botR = Math.floor((mon.y + radius * 0.78) / TILE);
+
+                const blockedTop = isCellBlockedForMonster(checkC, topR, mon);
+                const blockedBot = isCellBlockedForMonster(checkC, botR, mon);
+
+                if (!blockedTop && !blockedBot) {
+                    mon.x = nextX;
+                    moved = true;
+                } else {
+                    const midR = Math.floor(mon.y / TILE);
+                    const hitBomb = bombs.find(b => b.c === checkC && b.r === midR && b.vx === 0 && b.vy === 0);
+                    if (hitBomb && mon.canKick) {
+                        kickBomb(hitBomb, Math.sign(vx), 0);
+                    } else if (blockedTop !== blockedBot && dy === 0) {
+                        const freeR = !blockedTop ? topR : botR;
+                        const targetCenterY = (freeR + 0.5) * TILE;
+                        mon.y += Math.sign(targetCenterY - mon.y) * effSpeed * 0.85 * dt;
+                        moved = true;
+                    }
+                }
+            }
+
+            if (vy !== 0) {
+                const nextY = mon.y + vy * dt;
+                const checkR = Math.floor((nextY + Math.sign(vy) * radius) / TILE);
+                const leftC = Math.floor((mon.x - radius * 0.78) / TILE);
+                const rightC = Math.floor((mon.x + radius * 0.78) / TILE);
+
+                const blockedLeft = isCellBlockedForMonster(leftC, checkR, mon);
+                const blockedRight = isCellBlockedForMonster(rightC, checkR, mon);
+
+                if (!blockedLeft && !blockedRight) {
+                    mon.y = nextY;
+                    moved = true;
+                } else {
+                    const midC = Math.floor(mon.x / TILE);
+                    const hitBomb = bombs.find(b => b.c === midC && b.r === checkR && b.vx === 0 && b.vy === 0);
+                    if (hitBomb && mon.canKick) {
+                        kickBomb(hitBomb, 0, Math.sign(vy));
+                    } else if (blockedLeft !== blockedRight && dx === 0) {
+                        const freeC = !blockedLeft ? leftC : rightC;
+                        const targetCenterX = (freeC + 0.5) * TILE;
+                        mon.x += Math.sign(targetCenterX - mon.x) * effSpeed * 0.85 * dt;
+                        moved = true;
+                    }
+                }
+            }
+
+            // Teletransporte por portales
+            if (mon.portalCooldown > 0) mon.portalCooldown -= dt;
+            const mc = Math.floor(mon.x / TILE);
+            const mr = Math.floor(mon.y / TILE);
+            if (grid[mr] && grid[mr][mc] === CELL_PORTAL && (mon.portalCooldown || 0) <= 0 && portals.length > 1) {
+                const others = portals.filter(pt => pt.c !== mc || pt.r !== mr);
+                const dest = others[Math.floor(Math.random() * others.length)];
+                mon.x = (dest.c + 0.5) * TILE;
+                mon.y = (dest.r + 0.5) * TILE;
+                mon.portalCooldown = 1.4;
+                spawnBurst(mon.x, mon.y, mon.color, 14);
+                broadcastSfx('bounce');
+            }
+
+            // Nivel 4 (BomberBot) y Jefe recogen Power-Ups del suelo
+            if (mon.tier >= 4 || mon.isBoss) {
+                for (let i = powerups.length - 1; i >= 0; i--) {
+                    const pu = powerups[i];
+                    if (pu.c === mc && pu.r === mr) {
+                        applyPowerUp(mon, pu.type);
+                        powerups.splice(i, 1);
+                        broadcastSfx('coin');
+                        spawnBurst((mc + 0.5) * TILE, (mr + 0.5) * TILE, mon.color, 12);
+                    }
+                }
+            }
+
+            return moved;
+        }
+
+        function findEscapeStepForMonster(mc, mr, dangerMap, mon) {
+            const dirs = [
+                { dc: 1, dr: 0 },
+                { dc: -1, dr: 0 },
+                { dc: 0, dr: 1 },
+                { dc: 0, dr: -1 }
+            ];
+            const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+            const queue = [];
+            visited[mr][mc] = true;
+
+            dirs.forEach(d => {
+                const nc = mc + d.dc, nr = mr + d.dr;
+                if (!isCellBlockedForMonster(nc, nr, mon, false)) {
+                    visited[nr][nc] = true;
+                    queue.push({ c: nc, r: nr, firstDir: d });
+                }
+            });
+
+            while (queue.length > 0) {
+                const cur = queue.shift();
+                if (!dangerMap[cur.r][cur.c]) {
+                    return cur.firstDir;
+                }
+                dirs.forEach(d => {
+                    const nc = cur.c + d.dc, nr = cur.r + d.dr;
+                    if (nr > 0 && nr < ROWS - 1 && nc > 0 && nc < COLS - 1 &&
+                        !visited[nr][nc] && !isCellBlockedForMonster(nc, nr, mon, false)) {
+                        visited[nr][nc] = true;
+                        queue.push({ c: nc, r: nr, firstDir: cur.firstDir });
+                    }
+                });
+            }
+            return null;
+        }
+
+        // Busca el primer paso hacia (targetC, targetR) por caminos abiertos (o la casilla alcanzable más cercana)
+        function findChaseStepForMonster(mc, mr, targetC, targetR, avoidDanger, dangerMap, mon) {
+            const dirs = [
+                { dc: 1, dr: 0 },
+                { dc: -1, dr: 0 },
+                { dc: 0, dr: 1 },
+                { dc: 0, dr: -1 }
+            ];
+            const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+            const queue = [];
+            visited[mr][mc] = true;
+
+            let bestFallbackDir = null;
+            let bestFallbackDist = Math.hypot(mc - targetC, mr - targetR);
+
+            dirs.forEach(d => {
+                const nc = mc + d.dc, nr = mr + d.dr;
+                if (isCellBlockedForMonster(nc, nr, mon, false)) return;
+                if (avoidDanger && dangerMap[nr] && dangerMap[nr][nc]) return;
+                visited[nr][nc] = true;
+                queue.push({ c: nc, r: nr, firstDir: d, steps: 1 });
+            });
+
+            while (queue.length > 0) {
+                const cur = queue.shift();
+                if (cur.c === targetC && cur.r === targetR) {
+                    return { dir: cur.firstDir, directPath: true };
+                }
+                const dist = Math.hypot(cur.c - targetC, cur.r - targetR);
+                if (dist < bestFallbackDist) {
+                    bestFallbackDist = dist;
+                    bestFallbackDir = cur.firstDir;
+                }
+                if (cur.steps >= 16) continue;
+
+                dirs.forEach(d => {
+                    const nc = cur.c + d.dc, nr = cur.r + d.dr;
+                    if (nr <= 0 || nr >= ROWS - 1 || nc <= 0 || nc >= COLS - 1) return;
+                    if (visited[nr][nc] || isCellBlockedForMonster(nc, nr, mon, false)) return;
+                    if (avoidDanger && dangerMap[nr] && dangerMap[nr][nc]) return;
+                    visited[nr][nc] = true;
+                    queue.push({ c: nc, r: nr, firstDir: cur.firstDir, steps: cur.steps + 1 });
+                });
+            }
+
+            return bestFallbackDir ? { dir: bestFallbackDir, directPath: false } : null;
+        }
+
+        function updateMonsterByTier(mon, dt, dangerMap, p1) {
+            if (mon.invuln > 0) mon.invuln -= dt;
+            if (mon.spawnGrace > 0) {
+                mon.spawnGrace -= dt;
+                return;
+            }
+            if (mon.bombCooldown > 0) mon.bombCooldown -= dt;
+
+            const mc = Math.floor(mon.x / TILE);
+            const mr = Math.floor(mon.y / TILE);
+            const p1C = p1 ? Math.floor(p1.x / TILE) : 1;
+            const p1R = p1 ? Math.floor(p1.y / TILE) : 1;
+            const dirs = [
+                { dc: 1, dr: 0 },
+                { dc: -1, dr: 0 },
+                { dc: 0, dr: 1 },
+                { dc: 0, dr: -1 }
+            ];
+
+            // NIVEL 3, NIVEL 4 y JEFES: Si están en zona de explosión, prioridad #1 es protegerse/escapar
+            if ((mon.tier >= 3 || mon.isBoss) && dangerMap[mr] && dangerMap[mr][mc]) {
+                const escapeDir = findEscapeStepForMonster(mc, mr, dangerMap, mon);
+                if (escapeDir) {
+                    moveMonsterSmooth(mon, escapeDir.dc, escapeDir.dr, dt);
+                    if (p1 && p1.alive && Math.hypot(mon.x - p1.x, mon.y - p1.y) < TILE * 0.55) {
+                        damagePlayer(p1);
+                    }
+                    return;
+                }
+            }
+
+            // NIVEL 1 (Básico / Errante): Patrulla pasillos y cambia al azar al chocar
+            if (mon.tier === 1 && !mon.isBoss) {
+                const moved = (Math.random() > 0.015) && moveMonsterSmooth(mon, mon.dirX, mon.dirY, dt);
+                if (!moved) {
+                    const valid = dirs.filter(d => !isCellBlockedForMonster(mc + d.dc, mr + d.dr, mon, false));
+                    if (valid.length > 0) {
+                        const pick = valid[Math.floor(Math.random() * valid.length)];
+                        mon.dirX = pick.dc;
+                        mon.dirY = pick.dr;
+                    } else {
+                        mon.dirX *= -1;
+                        mon.dirY *= -1;
+                    }
+                }
+            }
+            // NIVEL 2 (Cazador): Si el camino lo permite, persigue activamente al jugador (no esquiva bombas)
+            else if (mon.tier === 2 && !mon.isBoss) {
+                mon.aiCooldown = (mon.aiCooldown || 0) - dt;
+                if (mon.aiCooldown <= 0 || !mon.aiTarget) {
+                    mon.aiCooldown = 0.25;
+                    const chase = p1 && p1.alive ? findChaseStepForMonster(mc, mr, p1C, p1R, false, dangerMap, mon) : null;
+                    if (chase && chase.dir) {
+                        mon.aiTarget = chase.dir;
+                    } else {
+                        const valid = dirs.filter(d => !isCellBlockedForMonster(mc + d.dc, mr + d.dr, mon, false));
+                        mon.aiTarget = valid.length > 0 ? valid[Math.floor(Math.random() * valid.length)] : { dc: 0, dr: 0 };
+                    }
+                }
+                const moved = moveMonsterSmooth(mon, mon.aiTarget.dc, mon.aiTarget.dr, dt);
+                if (!moved) mon.aiCooldown = 0;
+            }
+            // NIVEL 3 (Acechador Táctico): Persigue al jugador si hay camino, pero esquiva y evita entrar frente a bombas
+            else if (mon.tier === 3 && !mon.isBoss) {
+                mon.aiCooldown = (mon.aiCooldown || 0) - dt;
+                if (mon.aiCooldown <= 0 || !mon.aiTarget) {
+                    mon.aiCooldown = 0.22;
+                    const chase = p1 && p1.alive ? findChaseStepForMonster(mc, mr, p1C, p1R, true, dangerMap, mon) : null;
+                    if (chase && chase.dir) {
+                        mon.aiTarget = chase.dir;
+                    } else {
+                        const safeDirs = dirs.filter(d => {
+                            const nc = mc + d.dc, nr = mr + d.dr;
+                            return !isCellBlockedForMonster(nc, nr, mon, false) && !(dangerMap[nr] && dangerMap[nr][nc]);
+                        });
+                        mon.aiTarget = safeDirs.length > 0 ? safeDirs[Math.floor(Math.random() * safeDirs.length)] : { dc: 0, dr: 0 };
+                    }
+                }
+                const nextC = mc + (mon.aiTarget.dc || 0);
+                const nextR = mr + (mon.aiTarget.dr || 0);
+                if (dangerMap[nextR] && dangerMap[nextR][nextC]) {
+                    // Se detiene en el centro de su casilla segura esperando a que explote la bomba frente a él
+                    const cx = (mc + 0.5) * TILE;
+                    const cy = (mr + 0.5) * TILE;
+                    moveMonsterSmooth(mon, Math.sign(cx - mon.x), Math.sign(cy - mon.y), dt);
+                } else {
+                    const moved = moveMonsterSmooth(mon, mon.aiTarget.dc, mon.aiTarget.dr, dt);
+                    if (!moved) mon.aiCooldown = 0;
+                }
+            }
+            // NIVEL 4 (BomberBot Mercenario) y JEFE DE MUNDO: Persiguen, se cubren de bombas, recogen ítems y ponen bombas tácticas
+            else {
+                mon.aiCooldown = (mon.aiCooldown || 0) - dt;
+                if (mon.aiCooldown <= 0 || !mon.aiTarget) {
+                    mon.aiCooldown = mon.isBoss ? 0.18 : 0.24;
+
+                    // 1. ¿Hay un Power-Up seguro muy cerca (<= 4 casillas)? Ir a recogerlo
+                    let targetC = p1C, targetR = p1R;
+                    if (powerups.length > 0) {
+                        const nearPu = powerups
+                            .filter(pu => !(dangerMap[pu.r] && dangerMap[pu.r][pu.c]) && Math.hypot(pu.c - mc, pu.r - mr) <= 4.2)
+                            .sort((a, b) => Math.hypot(a.c - mc, a.r - mr) - Math.hypot(b.c - mc, b.r - mr))[0];
+                        if (nearPu) {
+                            targetC = nearPu.c;
+                            targetR = nearPu.r;
+                        }
+                    }
+
+                    const chase = findChaseStepForMonster(mc, mr, targetC, targetR, true, dangerMap, mon);
+                    if (chase && chase.dir) {
+                        mon.aiTarget = chase.dir;
+                    } else {
+                        const safeDirs = dirs.filter(d => {
+                            const nc = mc + d.dc, nr = mr + d.dr;
+                            return !isCellBlockedForMonster(nc, nr, mon, false) && !(dangerMap[nr] && dangerMap[nr][nc]);
+                        });
+                        mon.aiTarget = safeDirs.length > 0 ? safeDirs[Math.floor(Math.random() * safeDirs.length)] : { dc: 0, dr: 0 };
+                    }
+
+                    // 2. ¿Colocar bomba táctica? (Si el jugador está cerca o hay cajas bloqueando el paso)
+                    if (mon.canBomb && (mon.bombCooldown || 0) <= 0 && (mon.activeBombs || 0) < (mon.maxBombs || 1)) {
+                        const hasCrateAdj = dirs.some(d => grid[mr + d.dr] && grid[mr + d.dr][mc + d.dc] === CELL_CRATE);
+                        const distToP1 = p1 && p1.alive ? Math.hypot(p1.x - mon.x, p1.y - mon.y) : 9999;
+                        const attackRange = mon.isBoss ? TILE * 3.1 : TILE * 2.2;
+
+                        if (distToP1 <= attackRange || hasCrateAdj) {
+                            if (hasSafeEscapeAfterPlanting(mon, mc, mr, dangerMap)) {
+                                if (tryPlaceMonsterBomb(mon)) {
+                                    mon.bombCooldown = mon.isBoss ? (mon.enraged ? 0.95 : 1.45) : 2.1;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                const nextC = mc + (mon.aiTarget.dc || 0);
+                const nextR = mr + (mon.aiTarget.dr || 0);
+                if (dangerMap[nextR] && dangerMap[nextR][nextC]) {
+                    const cx = (mc + 0.5) * TILE;
+                    const cy = (mr + 0.5) * TILE;
+                    moveMonsterSmooth(mon, Math.sign(cx - mon.x), Math.sign(cy - mon.y), dt);
+                } else {
+                    const moved = moveMonsterSmooth(mon, mon.aiTarget.dc, mon.aiTarget.dr, dt);
+                    if (!moved) mon.aiCooldown = 0;
+                }
+            }
+
+            if (p1 && p1.alive && Math.hypot(mon.x - p1.x, mon.y - p1.y) < TILE * 0.55) {
+                damagePlayer(p1);
+            }
+        }
+
+        // ==========================================
+        // BUCLE PRINCIPAL DEL JUEGO
+        // ==========================================
+        let lastFrameTime = performance.now();
+        let netSyncTimer = 0;
+
+        function updateHostGame(dt) {
+            // 1. Reloj de ronda y Muerte Súbita (Solo modos Versus)
+            if (currentMode !== 'survival') {
+                roundTimer = Math.max(0, roundTimer - dt);
+                const sec = Math.ceil(roundTimer);
+                if (sec !== lastTimerSec) {
+                    lastTimerSec = sec;
+                    if (sec === 30 && !suddenDeathActive) {
+                        suddenDeathActive = true;
+                        showBanner('⚠️ ¡MUERTE SÚBITA!', 'La arena se derrumba desde los bordes', 1800);
+                        broadcastSfx('alarm');
+                    } else if (sec <= 10 && sec > 0) {
+                        broadcastSfx('tick');
+                    }
+                }
+
+                if (suddenDeathActive) {
+                    suddenDeathClock += dt;
+                    if (suddenDeathClock >= 0.42 && suddenDeathStep < spiralCoords.length) {
+                        suddenDeathClock = 0;
+                        const cell = spiralCoords[suddenDeathStep++];
+                        if (grid[cell.r][cell.c] !== CELL_WALL) {
+                            grid[cell.r][cell.c] = CELL_WALL;
+                            spawnBurst((cell.c + 0.5) * TILE, (cell.r + 0.5) * TILE, '#f43f5e', 10);
+                            bombs = bombs.filter(b => b.c !== cell.c || b.r !== cell.r);
+                            Object.values(entities).forEach(p => {
+                                if (p.alive && Math.floor(p.x / TILE) === cell.c && Math.floor(p.y / TILE) === cell.r) {
+                                    p.hasShield = false;
+                                    damagePlayer(p);
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
+            const dangerMap = buildDangerMap();
+
+            // 2. Actualizar Jugadores y Bots
+            Object.values(entities).forEach(p => {
+                if (!p.alive) return;
+                if (p.invulnTimer > 0) p.invulnTimer -= dt;
+
+                if (p.id === myId) {
+                    moveEntityWithCornerAssist(p, localInput1.dx, localInput1.dy, dt);
+                } else if (p.isLocal2) {
+                    moveEntityWithCornerAssist(p, localInput2.dx, localInput2.dy, dt);
+                } else if (p.isBot) {
+                    updateBotAI(p, dt, dangerMap);
+                } else if (remoteInputs[p.id]) {
+                    moveEntityWithCornerAssist(p, remoteInputs[p.id].dx, remoteInputs[p.id].dy, dt);
+                }
+            });
+
+            // 3. Actualizar Bombas
+            for (let i = bombs.length - 1; i >= 0; i--) {
+                const b = bombs[i];
+                if (!b) continue;
+
+                if (b.portalCooldown > 0) b.portalCooldown -= dt;
+
+                if (b.vx !== 0 || b.vy !== 0) {
+                    const nextX = b.x + b.vx * dt;
+                    const nextY = b.y + b.vy * dt;
+                    const leadC = Math.floor((nextX + Math.sign(b.vx) * TILE * 0.42) / TILE);
+                    const leadR = Math.floor((nextY + Math.sign(b.vy) * TILE * 0.42) / TILE);
+
+                    const hitWall = !grid[leadR] || grid[leadR][leadC] === CELL_WALL || grid[leadR][leadC] === CELL_CRATE;
+                    const hitOtherBomb = bombs.some(ob => ob !== b && ob.c === leadC && ob.r === leadR);
+                    const hitPlayer = Object.values(entities).some(p =>
+                        p.alive && Math.floor(p.x / TILE) === leadC && Math.floor(p.y / TILE) === leadR
+                    );
+
+                    if (hitWall || hitOtherBomb || hitPlayer) {
+                        b.vx = 0;
+                        b.vy = 0;
+                        b.x = (b.c + 0.5) * TILE;
+                        b.y = (b.r + 0.5) * TILE;
+                    } else {
+                        b.x = nextX;
+                        b.y = nextY;
+                        b.c = Math.floor(b.x / TILE);
+                        b.r = Math.floor(b.y / TILE);
+
+                        if (grid[b.r][b.c] === CELL_PORTAL && b.portalCooldown <= 0 && portals.length > 1) {
+                            const others = portals.filter(pt => pt.c !== b.c || pt.r !== b.r);
+                            const dest = others[Math.floor(Math.random() * others.length)];
+                            b.c = dest.c;
+                            b.r = dest.r;
+                            b.x = (dest.c + 0.5) * TILE;
+                            b.y = (dest.r + 0.5) * TILE;
+                            b.portalCooldown = 0.6;
+                            broadcastSfx('bounce');
+                        }
+                    }
+                }
+
+                b.timer -= dt;
+                if (b.timer <= 0) {
+                    detonateBomb(b);
+                }
+            }
+
+            // 4. Actualizar Llamas
+            for (let i = flames.length - 1; i >= 0; i--) {
+                const f = flames[i];
+                f.timer -= dt;
+
+                // En transición entre oleadas de Supervivencia el jugador es inmune a sus propias llamas residuales
+                if (!waveTransitionPending) {
+                    Object.values(entities).forEach(p => {
+                        if (p.alive && Math.floor(p.x / TILE) === f.c && Math.floor(p.y / TILE) === f.r) {
+                            damagePlayer(p);
+                        }
+                    });
+                }
+
+                // Las llamas del jugador dañan a los monstruos (las bombas puestas por monstruos/jefe no auto-eliminan la oleada)
+                if (!f.fromMonster) {
+                    for (let m = monsters.length - 1; m >= 0; m--) {
+                        const mon = monsters[m];
+                        if (mon.invuln <= 0 && Math.floor(mon.x / TILE) === f.c && Math.floor(mon.y / TILE) === f.r) {
+                            if (mon.hasShield) {
+                                mon.hasShield = false;
+                                mon.invuln = 0.85;
+                                spawnBurst(mon.x, mon.y, '#38bdf8', 20);
+                                broadcastSfx('bounce');
+                                continue;
+                            }
+                            mon.hp--;
+                            mon.invuln = 0.65;
+                            spawnBurst(mon.x, mon.y, mon.color, 20);
+                            if (mon.hp <= 0) {
+                                monsters.splice(m, 1);
+                                const pts = mon.isBoss ? 80 : (mon.tier * 10);
+                                scores[myId] = (scores[myId] || 0) + pts;
+                                broadcastSfx('coin');
+                                updateScoreboardHUD();
+                            } else {
+                                broadcastSfx('hit');
+                                // Si al Jefe le queda 1 sola vida, entra en Modo Furia
+                                if (mon.isBoss && mon.hp === 1 && !mon.enraged) {
+                                    mon.enraged = true;
+                                    mon.speed += 28;
+                                    mon.maxBombs = (mon.maxBombs || 2) + 1;
+                                    spawnBurst(mon.x, mon.y, '#fbbf24', 32);
+                                    broadcastSfx('alarm');
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (f.timer <= 0) flames.splice(i, 1);
+            }
+
+            // 5. Lógica de Modo Supervivencia por Mundos / Oleadas
+            if (currentMode === 'survival') {
+                const p1 = entities[myId];
+
+                // ¿Murió el jugador? -> Derrota real
+                if (p1 && !p1.alive) {
+                    gameActive = false;
+                    waveTransitionPending = false;
+                    const clearedWaves = Math.max(0, survivalWave - 1);
+                    if (clearedWaves > bestSurvivalWave) {
+                        bestSurvivalWave = clearedWaves;
+                        localStorage.setItem('bomber_best_wave', String(bestSurvivalWave));
+                        document.getElementById('best-survival-badge').innerText = `🏆 Récord Oleadas: ${bestSurvivalWave}`;
+                    }
+                    const worldNum = (Math.floor((survivalWave - 1) / WAVES_PER_WORLD) % WORLD_ORDER.length) + 1;
+                    setTimeout(() => {
+                        showMatchOver(
+                            '💀 ¡CAÍSTE EN COMBATE!',
+                            '#f43f5e',
+                            [{ nick: p1.nick, color: p1.color, score: `Oleada ${survivalWave} • ${scores[myId] || 0} pts` }],
+                            false,
+                            `Alcanzaste el Mundo ${worldNum} (Oleada ${survivalWave})`,
+                            false
+                        );
+                    }, 800);
+                    return;
+                }
+
+                // Si estamos en cuenta regresiva hacia la siguiente oleada / mundo
+                if (waveTransitionPending) {
+                    waveTransitionTimer -= dt;
+                    if (waveTransitionTimer <= 0) {
+                        waveTransitionPending = false;
+                        advanceToNextSurvivalWave();
+                    }
+                    return;
+                }
+
+                // Mover y ejecutar IA de los 4 Niveles de Monstruos + Jefes
+                monsters.forEach(mon => {
+                    updateMonsterByTier(mon, dt, dangerMap, p1);
+                });
+
+                // ¿Se limpiaron todos los monstruos de la oleada actual?
+                if (monsters.length === 0 && gameActive && !waveTransitionPending) {
+                    if (survivalWave > bestSurvivalWave) {
+                        bestSurvivalWave = survivalWave;
+                        localStorage.setItem('bomber_best_wave', String(bestSurvivalWave));
+                        document.getElementById('best-survival-badge').innerText = `🏆 Récord Oleadas: ${bestSurvivalWave}`;
+                    }
+
+                    // Limpiar bombas activas y llamas para que el jugador no muera celebrando
+                    bombs = [];
+                    flames = [];
+                    if (p1) {
+                        p1.activeBombs = 0;
+                        p1.invulnTimer = 2.5;
+                    }
+
+                    const totalCampaignWaves = WORLD_ORDER.length * WAVES_PER_WORLD; // 12 oleadas
+                    if (survivalWave === totalCampaignWaves && !survivalEndless) {
+                        // ¡Completó los 4 Mundos!
+                        gameActive = false;
+                        showMatchOver(
+                            '🏆 ¡CAMPEÓN DE LOS 4 MUNDOS!',
+                            '#4ade80',
+                            [{ nick: p1.nick, color: p1.color, score: `${ totalCampaignWaves } Oleadas • ${scores[myId] || 0} pts` }],
+                            true,
+                            '¡Conquistaste Sector Neón, Laberinto Portal, Cueva de Cristal y Reactor de Magma!',
+                            true
+                        );
+                        return;
+                    }
+
+                    broadcastSfx('correct');
+                    waveTransitionPending = true;
+                    waveTransitionTimer = 2.2;
+
+                    const nextWave = survivalWave + 1;
+                    const changingWorld = (survivalWave % WAVES_PER_WORLD === 0);
+                    if (changingWorld) {
+                        const nextWorldIdx = Math.floor((nextWave - 1) / WAVES_PER_WORLD) % WORLD_ORDER.length;
+                        const nextWInfo = WORLD_INFO[WORLD_ORDER[nextWorldIdx]];
+                        showBanner(
+                            `🌟 ¡MUNDO COMPLETADO!`,
+                            `Viajando a ${nextWInfo.icon} ${nextWInfo.name}...`,
+                            2100
+                        );
+                    } else {
+                        showBanner(
+                            `✅ ¡OLEADA ${survivalWave} SUPERADA!`,
+                            `Preparando Oleada ${nextWave}...`,
+                            2000
+                        );
+                    }
+                }
+            } else {
+                // 6. Verificar fin de ronda en modos Versus
+                const alivePlayers = Object.values(entities).filter(p => p.alive);
+                if (alivePlayers.length <= 1) {
+                    gameActive = false;
+                    const winner = alivePlayers[0];
+                    if (winner) {
+                        scores[winner.id] = (scores[winner.id] || 0) + 1;
+                        broadcastSfx('correct');
+                        updateScoreboardHUD();
+                    } else {
+                        broadcastSfx('back');
+                    }
+
+                    if (winner && scores[winner.id] >= matchConfig.winsNeeded) {
+                        const board = Object.values(entities)
+                            .map(p => ({ nick: p.nick, color: p.color, score: `${scores[p.id] || 0} Victorias` }))
+                            .sort((a, b) => parseInt(b.score) - parseInt(a.score));
+
+                        const didIWin = (winner.id === myId) || (currentMode === 'local2p' && !winner.isBot);
+                        setTimeout(() => {
+                            if (currentMode === 'online') {
+                                Object.values(clientConns).forEach(c => {
+                                    if (c.open) c.send({
+                                        type: 'MATCH_OVER',
+                                        winnerNick: `¡${winner.nick} GANA!`,
+                                        winnerColor: winner.color,
+                                        scoreboard: board,
+                                        isVictory: winner.id === c.peer,
+                                        subText: 'Dominio explosivo en la arena'
+                                    });
+                                });
+                            }
+                            showMatchOver(`¡${winner.nick} GANA!`, winner.color, board, didIWin, 'Dominio explosivo en la arena', false);
+                        }, 1100);
+                    } else {
+                        const msg = winner ? `¡Punto para ${winner.nick}!` : '¡Empate explosivo!';
+                        showBanner(msg, 'Siguiente ronda en breve...', 2000);
+                        if (currentMode === 'online') {
+                            Object.values(clientConns).forEach(c => {
+                                if (c.open) c.send({ type: 'BANNER', title: msg, sub: 'Siguiente ronda en breve...', ms: 2000 });
+                            });
+                        }
+                        const roster = Object.values(entities).map(p => ({
+                            id: p.id, nick: p.nick, color: p.color, isBot: p.isBot, isLocal2: p.isLocal2
+                        }));
+                        setTimeout(() => {
+                            roundNumber++;
+                            startNewRound(roster, false);
+                        }, 2200);
+                    }
+                }
+            }
+
+            // 7. Sincronizar estado con clientes Online (~25Hz)
+            if (currentMode === 'online') {
+                netSyncTimer += dt;
+                if (netSyncTimer >= 0.04) {
+                    netSyncTimer = 0;
+                    const packet = {
+                        type: 'STATE',
+                        grid,
+                        activeMapTheme,
+                        entities,
+                        bombs,
+                        flames,
+                        powerups,
+                        scores,
+                        roundTimer
+                    };
+                    Object.values(clientConns).forEach(c => {
+                        if (c.open) c.send(packet);
+                    });
+                }
+            }
+        }
+
+        function advanceToNextSurvivalWave() {
+            const prevWave = survivalWave;
+            survivalWave++;
+            const changingWorld = (prevWave % WAVES_PER_WORLD === 0);
+
+            if (changingWorld) {
+                // Reconstruir el nuevo mundo conservando las mejoras del jugador
+                const roster = [{ id: 'local_p1', nick: myNick, color: myColor, isBot: false }];
+                startNewRound(roster, true);
+            } else {
+                const p1 = entities[myId];
+                if (p1) p1.invulnTimer = 2.0;
+                spawnSurvivalWave(survivalWave);
+                updateScoreboardHUD();
+                updateMyStatsBar();
+                const worldNum = (Math.floor((survivalWave - 1) / WAVES_PER_WORLD) % WORLD_ORDER.length) + 1;
+                const stageNum = ((survivalWave - 1) % WAVES_PER_WORLD) + 1;
+                showBanner(
+                    `👾 ¡OLEADA ${survivalWave}!`,
+                    `Mundo ${worldNum} • Etapa ${stageNum}/${WAVES_PER_WORLD}`,
+                    1600
+                );
+            }
+        }
+
+        function continueEndlessSurvival() {
+            survivalEndless = true;
+            showScreen(null);
+            document.getElementById('game-shell').classList.remove('hidden');
+            gameActive = true;
+            advanceToNextSurvivalWave();
+        }
+
+        function applyClientState(data) {
+            grid = data.grid;
+            if (data.activeMapTheme) activeMapTheme = data.activeMapTheme;
+            entities = data.entities;
+            bombs = data.bombs;
+            flames = data.flames;
+            powerups = data.powerups;
+            scores = data.scores;
+            roundTimer = data.roundTimer;
+            updateMyStatsBar();
+            updateScoreboardHUD();
+        }
+
+        function showMatchOver(headline, color, scoreboard, isVictory = true, subText = 'Dominio explosivo en la arena', allowEndless = false) {
+            gameActive = false;
+            document.getElementById('game-shell').classList.add('hidden');
+
+            document.getElementById('gameover-icon').innerText = isVictory ? '🏆' : '💀';
+            const titleEl = document.getElementById('winner-headline');
+            titleEl.innerText = headline;
+            titleEl.style.color = color || (isVictory ? '#fbbf24' : '#f43f5e');
+            document.getElementById('winner-sub').innerText = subText;
+
+            const box = document.getElementById('final-scoreboard');
+            box.innerHTML = '';
+            scoreboard.forEach(item => {
+                const d = document.createElement('div');
+                d.className = 'player-pill';
+                d.style.borderLeftColor = item.color;
+                d.style.justifyContent = 'space-between';
+                d.innerHTML = `<span>${item.nick}</span> <span style="color:#fbbf24">${item.score}</span>`;
+                box.appendChild(d);
+            });
+
+            const endlessBtn = document.getElementById('btn-endless-continue');
+            if (allowEndless) endlessBtn.classList.remove('hidden');
+            else endlessBtn.classList.add('hidden');
+
+            document.getElementById('btn-rematch').style.display = isHost ? 'inline-block' : 'none';
+            showScreen('screen-gameover');
+
+            if (window.ArcadeAudio) {
+                if (isVictory) ArcadeAudio.victory();
+                else ArcadeAudio.defeat();
+            }
+        }
+
+        function requestRematch() {
+            if (!isHost) return;
+            hostStartMatch();
+        }
+
+        // ==========================================
+        // PARTÍCULAS Y RENDERIZADO CANVAS
+        // ==========================================
+        function spawnBurst(x, y, color, count = 12) {
+            for (let i = 0; i < count; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 40 + Math.random() * 160;
+                particles.push({
+                    x,
+                    y,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd,
+                    size: 3 + Math.random() * 5,
+                    color,
+                    life: 0.35 + Math.random() * 0.25
+                });
+            }
+        }
+
+        function renderArena(dt, nowMs) {
+            CTX.save();
+            if (screenShake > 0) {
+                const sx = (Math.random() - 0.5) * screenShake;
+                const sy = (Math.random() - 0.5) * screenShake;
+                CTX.translate(sx, sy);
+                screenShake = Math.max(0, screenShake - dt * 28);
+            }
+
+            const wInfo = WORLD_INFO[activeMapTheme] || WORLD_INFO.classic;
+            CTX.fillStyle = wInfo.floor;
+            CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
+
+            // Dibujar Celdas
+            for (let r = 0; r < ROWS; r++) {
+                if (!grid[r]) continue;
+                for (let c = 0; c < COLS; c++) {
+                    const x = c * TILE;
+                    const y = r * TILE;
+                    const cell = grid[r][c];
+
+                    if ((r + c) % 2 === 0) {
+                        CTX.fillStyle = 'rgba(255, 255, 255, 0.025)';
+                        CTX.fillRect(x, y, TILE, TILE);
+                    }
+
+                    if (cell === CELL_WALL) {
+                        CTX.fillStyle = wInfo.wall;
+                        CTX.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+                        CTX.strokeStyle = wInfo.border;
+                        CTX.globalAlpha = 0.42;
+                        CTX.lineWidth = 2;
+                        CTX.strokeRect(x + 4, y + 4, TILE - 8, TILE - 8);
+                        CTX.globalAlpha = 1;
+                        CTX.fillStyle = 'rgba(255, 255, 255, 0.07)';
+                        CTX.fillRect(x + 12, y + 12, TILE - 24, TILE - 24);
+                    } else if (cell === CELL_CRATE) {
+                        CTX.fillStyle = wInfo.crate;
+                        CTX.beginPath();
+                        CTX.roundRect(x + 5, y + 5, TILE - 10, TILE - 10, 8);
+                        CTX.fill();
+                        CTX.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+                        CTX.lineWidth = 2;
+                        CTX.stroke();
+
+                        CTX.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+                        CTX.beginPath();
+                        CTX.moveTo(x + 12, y + 12);
+                        CTX.lineTo(x + TILE - 12, y + TILE - 12);
+                        CTX.moveTo(x + TILE - 12, y + 12);
+                        CTX.lineTo(x + 12, y + TILE - 12);
+                        CTX.stroke();
+                    } else if (cell === CELL_PORTAL) {
+                        const cx = x + TILE / 2;
+                        const cy = y + TILE / 2;
+                        const pulse = 18 + Math.sin(nowMs * 0.006) * 4;
+                        const grad = CTX.createRadialGradient(cx, cy, 3, cx, cy, pulse + 6);
+                        grad.addColorStop(0, '#f0abfc');
+                        grad.addColorStop(0.6, '#a855f7');
+                        grad.addColorStop(1, 'transparent');
+                        CTX.fillStyle = grad;
+                        CTX.beginPath();
+                        CTX.arc(cx, cy, pulse + 6, 0, Math.PI * 2);
+                        CTX.fill();
+                    }
+                }
+            }
+
+            // Dibujar PowerUps
+            CTX.font = '26px sans-serif';
+            CTX.textAlign = 'center';
+            CTX.textBaseline = 'middle';
+            powerups.forEach(pu => {
+                pu.bob = (pu.bob || 0) + dt * 5;
+                const px = (pu.c + 0.5) * TILE;
+                const py = (pu.r + 0.5) * TILE + Math.sin(pu.bob) * 3;
+
+                CTX.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                CTX.beginPath();
+                CTX.arc(px, py, 20, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.strokeStyle = '#fbbf24';
+                CTX.lineWidth = 2;
+                CTX.stroke();
+
+                const icon = pu.type === PU_BOMB ? '💣' :
+                             pu.type === PU_FIRE ? '🔥' :
+                             pu.type === PU_SPEED ? '⚡' :
+                             pu.type === PU_KICK ? '🥾' : '🛡️';
+                CTX.fillText(icon, px, py + 1);
+            });
+
+            // Dibujar Bombas
+            bombs.forEach(b => {
+                const pulse = 1 + Math.sin(nowMs * 0.018) * 0.1;
+                const r = (b.isBossBomb ? 23 : 20) * pulse;
+
+                CTX.fillStyle = b.timer < 0.8
+                    ? 'rgba(244, 63, 94, 0.42)'
+                    : (b.fromMonster ? 'rgba(168, 85, 247, 0.28)' : 'rgba(56, 189, 248, 0.18)');
+                CTX.beginPath();
+                CTX.arc(b.x, b.y, r + 6, 0, Math.PI * 2);
+                CTX.fill();
+
+                CTX.fillStyle = b.timer < 0.7 && Math.floor(nowMs / 90) % 2 === 0
+                    ? '#f43f5e'
+                    : (b.isBossBomb ? '#4c0519' : b.fromMonster ? '#1e1b4b' : '#0f172a');
+                CTX.beginPath();
+                CTX.arc(b.x, b.y, r, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.strokeStyle = b.isBossBomb ? '#fbbf24' : (b.fromMonster ? '#f43f5e' : '#e2e8f0');
+                CTX.lineWidth = 2.5;
+                CTX.stroke();
+
+                CTX.fillStyle = '#fbbf24';
+                CTX.beginPath();
+                CTX.arc(b.x + 6, b.y - r + 2, 4 + Math.random() * 2, 0, Math.PI * 2);
+                CTX.fill();
+            });
+
+            // Dibujar Llamas
+            flames.forEach(f => {
+                const alpha = Math.max(0, f.timer / f.maxTimer);
+                const x = f.c * TILE;
+                const y = f.r * TILE;
+
+                CTX.fillStyle = f.fromMonster
+                    ? `rgba(244, 63, 94, ${alpha * 0.88})`
+                    : `rgba(249, 115, 22, ${alpha * 0.85})`;
+                CTX.fillRect(x + 4, y + 4, TILE - 8, TILE - 8);
+
+                CTX.fillStyle = `rgba(254, 240, 138, ${alpha})`;
+                CTX.fillRect(x + 12, y + 12, TILE - 24, TILE - 24);
+            });
+
+            // Dibujar Monstruos por Nivel (Niveles 1 a 4 + Jefes de Mundo)
+            monsters.forEach(mon => {
+                if (mon.spawnGrace > 0 && Math.floor(nowMs / 90) % 2 === 0) {
+                    CTX.globalAlpha = 0.45;
+                } else if (mon.invuln > 0 && Math.floor(nowMs / 75) % 2 === 0) {
+                    CTX.globalAlpha = 0.55;
+                }
+
+                const r = mon.isBoss ? 25 : (mon.tier === 4 ? 20 : 19);
+
+                // Escudo protector si un Nv.4 recogió el ítem 🛡️
+                if (mon.hasShield) {
+                    CTX.strokeStyle = '#38bdf8';
+                    CTX.lineWidth = 3;
+                    CTX.beginPath();
+                    CTX.arc(mon.x, mon.y, r + 6 + Math.sin(nowMs * 0.01) * 2, 0, Math.PI * 2);
+                    CTX.stroke();
+                }
+
+                // Halo táctico para Nivel 3 o Aura de Furia para el Jefe
+                if (mon.tier === 3 && !mon.isBoss) {
+                    CTX.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+                    CTX.lineWidth = 2;
+                    CTX.beginPath();
+                    CTX.arc(mon.x, mon.y, r + 4 + Math.sin(nowMs * 0.012) * 1.5, 0, Math.PI * 2);
+                    CTX.stroke();
+                } else if (mon.isBoss) {
+                    CTX.fillStyle = mon.enraged ? 'rgba(251, 191, 36, 0.32)' : 'rgba(244, 63, 94, 0.22)';
+                    CTX.beginPath();
+                    CTX.arc(mon.x, mon.y, r + 7 + Math.sin(nowMs * 0.016) * 3, 0, Math.PI * 2);
+                    CTX.fill();
+                }
+
+                // Cuerpo principal
+                CTX.fillStyle = mon.color;
+                CTX.beginPath();
+                CTX.arc(mon.x, mon.y, r, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.strokeStyle = mon.isBoss ? '#fbbf24' : '#ffffff';
+                CTX.lineWidth = mon.isBoss ? 3 : 2;
+                CTX.stroke();
+
+                const ox = (mon.dirX || 0) * 3;
+                const oy = (mon.dirY || 0) * 3;
+
+                // Rasgos faciales según Nivel de Inteligencia
+                if (mon.tier >= 4 || mon.isBoss) {
+                    // Nivel 4 (BomberBot) y Jefe: Visor táctico oscuro con ojos brillantes
+                    CTX.fillStyle = '#090d16';
+                    CTX.beginPath();
+                    CTX.roundRect(mon.x - 11 + ox, mon.y - 6 + oy, 22, 11, 5);
+                    CTX.fill();
+
+                    CTX.fillStyle = mon.isBoss ? '#fbbf24' : '#4ade80';
+                    CTX.beginPath();
+                    CTX.arc(mon.x - 5 + ox, mon.y - 1 + oy, 2.6, 0, Math.PI * 2);
+                    CTX.arc(mon.x + 5 + ox, mon.y - 1 + oy, 2.6, 0, Math.PI * 2);
+                    CTX.fill();
+                } else if (mon.tier === 3) {
+                    // Nivel 3 (Acechador Táctico): Visor cíclope / gafas de radar
+                    CTX.fillStyle = '#090d16';
+                    CTX.beginPath();
+                    CTX.roundRect(mon.x - 10 + ox, mon.y - 5 + oy, 20, 8, 4);
+                    CTX.fill();
+                    CTX.fillStyle = '#fef08a';
+                    CTX.beginPath();
+                    CTX.arc(mon.x - 4 + ox, mon.y - 1 + oy, 2.2, 0, Math.PI * 2);
+                    CTX.arc(mon.x + 4 + ox, mon.y - 1 + oy, 2.2, 0, Math.PI * 2);
+                    CTX.fill();
+                } else if (mon.tier === 2) {
+                    // Nivel 2 (Cazador): Ojos con cejas agresivas en V
+                    CTX.fillStyle = '#090d16';
+                    CTX.beginPath();
+                    CTX.arc(mon.x - 6 + ox, mon.y - 2 + oy, 3.5, 0, Math.PI * 2);
+                    CTX.arc(mon.x + 6 + ox, mon.y - 2 + oy, 3.5, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.strokeStyle = '#090d16';
+                    CTX.lineWidth = 2.2;
+                    CTX.beginPath();
+                    CTX.moveTo(mon.x - 10 + ox, mon.y - 7 + oy);
+                    CTX.lineTo(mon.x - 2 + ox, mon.y - 4 + oy);
+                    CTX.moveTo(mon.x + 10 + ox, mon.y - 7 + oy);
+                    CTX.lineTo(mon.x + 2 + ox, mon.y - 4 + oy);
+                    CTX.stroke();
+                } else {
+                    // Nivel 1 (Errante básico): Ojos clásicos
+                    CTX.fillStyle = '#090d16';
+                    CTX.beginPath();
+                    CTX.arc(mon.x - 6 + ox, mon.y - 3 + oy, 3.5, 0, Math.PI * 2);
+                    CTX.arc(mon.x + 6 + ox, mon.y - 3 + oy, 3.5, 0, Math.PI * 2);
+                    CTX.fill();
+                }
+
+                // Insignia superior (Coronas del Jefe o Indicador de Nivel)
+                if (mon.isBoss && mon.hp > 0) {
+                    CTX.fillStyle = '#fbbf24';
+                    CTX.font = 'bold 12px Outfit, sans-serif';
+                    const bossTag = mon.enraged ? '🔥' + '👑'.repeat(mon.hp) + '🔥' : '👑'.repeat(mon.hp);
+                    CTX.fillText(bossTag, mon.x, mon.y - 32);
+                } else if (mon.tier >= 2) {
+                    CTX.fillStyle = 'rgba(255,255,255,0.88)';
+                    CTX.font = 'bold 10px Outfit, sans-serif';
+                    const badge = mon.tier === 4 ? '🤖💣' : `NV.${mon.tier}`;
+                    CTX.fillText(badge, mon.x, mon.y - 25);
+                }
+                CTX.globalAlpha = 1;
+            });
+
+            // Dibujar Jugadores
+            Object.values(entities).forEach(p => {
+                if (!p.alive) return;
+                if (p.invulnTimer > 0 && Math.floor(nowMs / 80) % 2 === 0) return;
+
+                if (p.hasShield) {
+                    CTX.strokeStyle = '#38bdf8';
+                    CTX.lineWidth = 3;
+                    CTX.beginPath();
+                    CTX.arc(p.x, p.y, 26 + Math.sin(nowMs * 0.01) * 2, 0, Math.PI * 2);
+                    CTX.stroke();
+                }
+
+                CTX.fillStyle = p.color;
+                CTX.beginPath();
+                CTX.arc(p.x, p.y, 20, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.strokeStyle = '#ffffff';
+                CTX.lineWidth = 2.5;
+                CTX.stroke();
+
+                const ox = (p.dirX || 0) * 4;
+                const oy = (p.dirY || 0) * 4;
+                CTX.fillStyle = '#0f172a';
+                CTX.beginPath();
+                CTX.roundRect(p.x - 11 + ox, p.y - 7 + oy, 22, 11, 5);
+                CTX.fill();
+
+                CTX.fillStyle = '#ffffff';
+                CTX.beginPath();
+                CTX.arc(p.x - 5 + ox, p.y - 2 + oy, 2.5, 0, Math.PI * 2);
+                CTX.arc(p.x + 5 + ox, p.y - 2 + oy, 2.5, 0, Math.PI * 2);
+                CTX.fill();
+
+                CTX.font = 'bold 11px Outfit, sans-serif';
+                CTX.fillStyle = '#ffffff';
+                CTX.shadowColor = 'rgba(0,0,0,0.9)';
+                CTX.shadowBlur = 4;
+                CTX.fillText(p.nick, p.x, p.y - 28);
+                CTX.shadowBlur = 0;
+            });
+
+            // Partículas
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx * dt;
+                pt.y += pt.vy * dt;
+                pt.life -= dt;
+                if (pt.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                CTX.fillStyle = pt.color;
+                CTX.globalAlpha = Math.max(0, pt.life * 2);
+                CTX.beginPath();
+                CTX.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.globalAlpha = 1;
+            }
+
+            CTX.restore();
+
+            const timerEl = document.getElementById('hud-timer');
+            if (currentMode === 'survival') {
+                timerEl.innerText = `👾 ${monsters.length}`;
+                timerEl.classList.remove('danger');
+            } else {
+                const s = Math.max(0, Math.ceil(roundTimer));
+                const mStr = String(Math.floor(s / 60)).padStart(2, '0');
+                const sStr = String(s % 60).padStart(2, '0');
+                timerEl.innerText = `${mStr}:${sStr}`;
+                if (s <= 30) timerEl.classList.add('danger');
+                else timerEl.classList.remove('danger');
+            }
+        }
+
+        function mainLoop(nowMs) {
+            const dt = Math.min(0.05, (nowMs - lastFrameTime) / 1000);
+            lastFrameTime = nowMs;
+
+            if (gameActive) {
+                pollLocalInputs();
+                if (isHost) {
+                    updateHostGame(dt);
+                }
+                renderArena(dt, nowMs);
+            }
+
+            requestAnimationFrame(mainLoop);
+        }
+        requestAnimationFrame(mainLoop);
+    </script>
+</body>
+
+</html>
