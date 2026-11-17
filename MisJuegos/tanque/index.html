@@ -42,23 +42,23 @@
             letter-spacing: 1.5px;
         }
 
-        /* BOTÓN VOLVER AL ARCADE */
+        /* BOTÓN VOLVER AL ARCADE (ESCALADO PARA PC, COMPACTO EN MÓVIL) */
         .arcade-back-btn {
             position: fixed;
-            top: 10px;
-            left: 10px;
+            top: 14px;
+            left: 16px;
             z-index: 220;
             text-decoration: none;
             color: #e2e8f0;
-            background: rgba(10, 16, 28, 0.88);
-            border: 1.5px solid rgba(148, 163, 184, 0.35);
-            padding: 7px 13px;
-            border-radius: 10px;
+            background: rgba(10, 16, 28, 0.9);
+            border: 1.5px solid rgba(148, 163, 184, 0.4);
+            padding: 10px 18px;
+            border-radius: 12px;
             font-weight: 800;
-            font-size: 0.82rem;
+            font-size: 0.96rem;
             backdrop-filter: blur(8px);
             transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
             cursor: pointer;
         }
         .arcade-back-btn:hover {
@@ -387,19 +387,21 @@
             margin-top: 8px;
         }
         .mini-btn {
-            background: rgba(30, 41, 59, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            color: #e2e8f0;
-            padding: 5px 10px;
-            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.92);
+            border: 1.5px solid rgba(148, 163, 184, 0.4);
+            color: #f1f5f9;
+            padding: 7px 14px;
+            border-radius: 10px;
             font-family: 'Outfit', sans-serif;
-            font-size: 0.76rem;
+            font-size: 0.9rem;
             font-weight: 800;
             cursor: pointer;
+            transition: all 0.15s ease;
         }
         .mini-btn:hover {
             border-color: #fff;
-            background: rgba(51, 65, 85, 0.95);
+            background: rgba(51, 65, 85, 0.98);
+            transform: translateY(-1px);
         }
 
         /* COLOR PICKER MODAL */
@@ -437,7 +439,9 @@
             transform: scale(1.15);
         }
 
-        /* HUD EN PARTIDA ACTIVA */
+        /* =========================================================================
+           HUD EN PARTIDA ACTIVA — FLUJO FLEX RESPONSIVO (CERO SOLAPAMIENTO EN PANTALLA DIVIDIDA, PC O MÓVIL)
+           ========================================================================= */
         #main-hud {
             display: none;
             position: fixed;
@@ -446,103 +450,269 @@
             z-index: 25;
         }
 
-        .hud-top-bar {
+        #hud-top-stack {
             position: absolute;
-            top: 8px;
-            left: 112px;
-            right: 12px;
+            top: 0;
+            left: 0;
+            right: 0;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px 14px 0 118px;
             pointer-events: none;
         }
 
-        .hud-pill {
-            background: rgba(8, 14, 26, 0.88);
-            border: 1.5px solid rgba(148, 163, 184, 0.3);
-            border-radius: 12px;
-            padding: 6px 12px;
+        .hud-top-bar {
+            background: rgba(8, 14, 26, 0.92);
+            border: 1.5px solid rgba(148, 163, 184, 0.38);
+            border-radius: 14px;
+            padding: 7px 14px;
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 10px;
-            font-weight: 800;
-            font-size: 0.88rem;
-            backdrop-filter: blur(6px);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+            justify-content: space-between;
+            gap: 8px 14px;
+            width: 100%;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
             pointer-events: auto;
+            position: relative;
+        }
+
+        .hud-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 14px;
+        }
+
+        .hud-sub-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: start;
+            gap: 8px;
+            width: 100%;
+            pointer-events: none;
+        }
+        .hud-sub-row .turn-banner {
+            grid-column: 2;
+            justify-self: center;
+        }
+        .hud-sub-row #minimap-wrap {
+            grid-column: 3;
+            justify-self: end;
+        }
+
+        @media (max-width: 900px) {
+            .hud-top-bar {
+                justify-content: center;
+                padding: 6px 10px;
+            }
+            .hud-group {
+                justify-content: center;
+            }
+            .hud-sub-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+        }
+
+        .hud-stat-item {
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 800;
+            font-size: clamp(0.82rem, 1.1vw, 1rem);
+        }
+
+        .active-tank-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-weight: 900;
+            font-size: clamp(0.8rem, 1.05vw, 0.95rem);
+            white-space: nowrap;
+        }
+
+        /* BADGE INTERACTIVO DE ARMA + TOOLTIP DESCRIPTIVO */
+        #weapon-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(192, 132, 252, 0.16);
+            border: 1.5px solid rgba(232, 121, 249, 0.55);
+            color: #f5d0fe;
+            padding: 4px 11px;
+            border-radius: 10px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+        #weapon-badge:hover {
+            background: rgba(232, 121, 249, 0.28);
+            border-color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 0 12px rgba(232, 121, 249, 0.45);
+        }
+
+        #weapon-tooltip {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            width: clamp(260px, 34vw, 350px);
+            background: rgba(9, 15, 28, 0.97);
+            border: 2px solid #e879f9;
+            border-radius: 16px;
+            padding: 12px 14px;
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.85), 0 0 20px rgba(232, 121, 249, 0.25);
+            z-index: 120;
+            pointer-events: auto;
+            text-align: left;
+            display: none;
+        }
+        #weapon-tooltip.visible {
+            display: block;
+            animation: popIn 0.16s ease-out;
+        }
+        @keyframes popIn {
+            from { opacity: 0; transform: translateY(-5px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .wt-title {
+            font-family: 'Black Ops One', cursive;
+            font-size: 1.05rem;
+            color: #fde047;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .wt-tags {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 7px;
+            flex-wrap: wrap;
+        }
+        .wt-tag {
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #bae6fd;
+        }
+        .wt-desc {
+            font-size: 0.84rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            line-height: 1.38;
+        }
+        .wt-all-list {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(148, 163, 184, 0.25);
+            max-height: 185px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+            display: none;
+        }
+        .wt-all-list.open {
+            display: block;
+        }
+        .wt-row {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
         }
 
         .turn-banner {
-            position: absolute;
-            top: 52px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(8, 14, 26, 0.88);
-            border: 2px solid rgba(255, 255, 255, 0.25);
-            padding: 5px 18px;
+            background: rgba(8, 14, 26, 0.92);
+            border: 2px solid rgba(255, 255, 255, 0.28);
+            padding: 6px 20px;
             border-radius: 999px;
             font-family: 'Black Ops One', cursive;
-            font-size: clamp(0.95rem, 2.2vw, 1.45rem);
+            font-size: clamp(0.95rem, 1.7vw, 1.35rem);
             white-space: nowrap;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+            pointer-events: none;
         }
 
         #minimap-wrap {
-            position: absolute;
-            top: 52px;
-            right: 12px;
-            background: rgba(6, 11, 20, 0.86);
-            border: 1.5px solid rgba(148, 163, 184, 0.35);
-            border-radius: 10px;
-            padding: 3px;
+            background: rgba(6, 11, 20, 0.9);
+            border: 1.5px solid rgba(148, 163, 184, 0.4);
+            border-radius: 12px;
+            padding: 4px;
             pointer-events: auto;
             cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+            margin-left: auto;
         }
         #minimap-canvas {
             display: block;
-            width: 140px;
-            height: 44px;
-            border-radius: 6px;
+            width: 185px;
+            height: 56px;
+            border-radius: 8px;
         }
 
-        /* BARRA DE CARGA DE POTENCIA Y ÁNGULO */
+        /* BARRA DE CARGA DE POTENCIA Y ÁNGULO (RESPONSIVA SIN CORTAR TEXTO) */
         #aim-hud-bar {
             position: absolute;
-            bottom: 16px;
+            bottom: 18px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(8, 14, 26, 0.92);
-            border: 1.5px solid rgba(148, 163, 184, 0.35);
-            border-radius: 16px;
-            padding: 8px 16px;
+            background: rgba(8, 14, 26, 0.94);
+            border: 2px solid rgba(148, 163, 184, 0.4);
+            border-radius: 18px;
+            padding: 10px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 5px;
-            min-width: 290px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+            gap: 7px;
+            width: clamp(290px, 60vw, 620px);
+            max-width: 94vw;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 32px rgba(0, 0, 0, 0.78);
             pointer-events: auto;
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+        #aim-hud-bar.hidden-during-shot {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 28px);
         }
 
         .aim-metrics {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
+            align-items: center;
             width: 100%;
-            font-size: 0.8rem;
+            font-size: clamp(0.84rem, 1.1vw, 1rem);
             font-weight: 800;
-            color: #cbd5e1;
-            gap: 12px;
+            color: #e2e8f0;
+            gap: 6px 14px;
         }
+        .aim-metrics > span {
+            white-space: nowrap;
+        }
+
+        .hint-pc { display: inline; color: #94a3b8; font-size: 0.8rem; }
+        .hint-mobile { display: none; color: #94a3b8; font-size: 0.74rem; }
 
         #fire-power-bar {
             position: relative;
             width: 100%;
-            height: 16px;
+            height: 20px;
             background: #090f1d;
-            border: 1.5px solid #475569;
+            border: 2px solid #475569;
             border-radius: 999px;
             overflow: hidden;
         }
@@ -562,9 +732,11 @@
             display: none;
         }
 
-        /* CONTROLES TÁCTILES ERGONÓMICOS PARA MÓVIL (VERTICAL Y HORIZONTAL) */
+        /* =========================================================================
+           CONTROLES TÁCTILES: OCULTOS SIEMPRE EN PC, VISIBLES SOLO EN MÓVIL/TABLET
+           ========================================================================= */
         #touch-controls {
-            display: none;
+            display: none !important;
             position: fixed;
             inset: 0;
             pointer-events: none;
@@ -580,27 +752,27 @@
             gap: 10px;
         }
         .touch-left {
-            left: 16px;
+            left: 18px;
         }
         .touch-right {
-            right: 16px;
+            right: 18px;
         }
 
         .dpad-cross {
             display: grid;
-            grid-template-columns: repeat(3, 50px);
-            grid-template-rows: repeat(3, 50px);
+            grid-template-columns: repeat(3, 52px);
+            grid-template-rows: repeat(3, 52px);
             gap: 4px;
-            background: rgba(8, 14, 26, 0.86);
+            background: rgba(8, 14, 26, 0.9);
             padding: 6px;
             border-radius: 22px;
-            border: 2px solid rgba(56, 189, 248, 0.4);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(56, 189, 248, 0.45);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75);
         }
 
         .touch-btn {
             border-radius: 12px;
-            background: linear-gradient(180deg, rgba(22, 38, 66, 0.95) 0%, rgba(10, 18, 34, 0.98) 100%);
+            background: linear-gradient(180deg, rgba(22, 38, 66, 0.96) 0%, rgba(10, 18, 34, 0.98) 100%);
             border: 1.5px solid rgba(56, 189, 248, 0.45);
             color: #e0f2fe;
             display: flex;
@@ -633,14 +805,14 @@
         }
 
         .btn-fire {
-            width: 88px;
-            height: 88px;
+            width: 92px;
+            height: 92px;
             border-radius: 50%;
             background: radial-gradient(circle at 35% 35%, #ff6b6b 0%, #ef4444 60%, #991b1b 100%);
-            border: 3.5px solid rgba(255, 255, 255, 0.75);
+            border: 3.5px solid rgba(255, 255, 255, 0.8);
             color: #fff;
             font-family: 'Black Ops One', cursive;
-            font-size: 1rem;
+            font-size: 1.05rem;
             box-shadow: 0 6px 0 #7f1d1d, 0 0 24px rgba(239, 68, 68, 0.65);
         }
         .btn-fire:active,
@@ -649,46 +821,104 @@
             transform: translateY(4px) scale(0.95);
         }
 
-        /* Ajustes Responsivos para Móvil Vertical y Horizontal */
-        @media (max-width: 760px) {
-            .hud-top-bar {
-                left: 98px;
-                right: 8px;
+        /* =========================================================================
+           SEPARACIÓN ESTRICTA MÓVIL / TÁCTIL (SOLO DISPOSITIVOS TÁCTILES O PANTALLA MÓVIL)
+           ========================================================================= */
+        @media (pointer: coarse) and (hover: none), (max-width: 860px) {
+            body.is-playing:not(.using-mouse) #touch-controls {
+                display: block !important;
+            }
+            .hint-pc { display: none !important; }
+            .hint-mobile { display: inline !important; }
+
+            .arcade-back-btn {
+                top: 8px;
+                left: 8px;
+                padding: 6px 11px;
+                font-size: 0.76rem;
+                border-radius: 9px;
+            }
+            #hud-top-stack {
+                padding: 8px 8px 0 88px;
                 gap: 5px;
             }
             .hud-pill {
+                padding: 5px 10px;
+                font-size: 0.76rem;
+                gap: 6px 10px;
+                border-radius: 10px;
+            }
+            .mini-btn {
                 padding: 4px 8px;
-                font-size: 0.74rem;
-                gap: 6px;
+                font-size: 0.72rem;
+                border-radius: 7px;
             }
             .turn-banner {
-                top: 46px;
-                font-size: 0.88rem;
+                font-size: 0.86rem;
                 padding: 4px 12px;
             }
+            #minimap-wrap {
+                padding: 3px;
+            }
+            #minimap-canvas {
+                width: 115px;
+                height: 36px;
+            }
+            #aim-hud-bar {
+                width: clamp(235px, 44vw, 350px);
+                padding: 6px 12px;
+                border-radius: 13px;
+                gap: 4px;
+                bottom: 14px;
+            }
+            .aim-metrics {
+                font-size: 0.76rem;
+                gap: 6px;
+            }
+            #fire-power-bar {
+                height: 13px;
+            }
+        }
+
+        /* Ajustes específicos para Móvil en VERTICAL (Portrait) */
+        @media (max-width: 760px) and (orientation: portrait) {
             #minimap-wrap {
                 display: none;
             }
             #aim-hud-bar {
-                bottom: 185px;
-                min-width: 240px;
-                padding: 5px 12px;
+                bottom: 196px;
+                width: 90vw;
+            }
+            .touch-left {
+                left: 18px;
+                bottom: 16px;
+            }
+            .touch-right {
+                right: 22px;
+                bottom: 38px;
             }
         }
 
-        @media (max-height: 520px) and (orientation: landscape) {
+        /* Ajustes específicos para Móvil en HORIZONTAL (Landscape) */
+        @media (max-height: 540px) and (orientation: landscape) {
+            .turn-banner {
+                font-size: 0.82rem;
+                padding: 3px 10px;
+            }
             #aim-hud-bar {
                 bottom: 10px;
-                min-width: 230px;
-                padding: 5px 12px;
+                width: clamp(220px, 38vw, 310px);
+                padding: 5px 10px;
             }
             .dpad-cross {
                 grid-template-columns: repeat(3, 44px);
                 grid-template-rows: repeat(3, 44px);
+                padding: 5px;
             }
             .btn-fire {
                 width: 78px;
                 height: 78px;
+                font-size: 0.9rem;
             }
         }
 
@@ -885,32 +1115,55 @@
 
     <!-- HUD EN PARTIDA -->
     <div id="main-hud">
-        <div class="hud-top-bar">
-            <div class="hud-pill">
-                <span>❤️ <strong id="hp-disp" style="color:#4ade80;">100</strong>%</span>
-                <span>⛽ <strong id="fuel-disp" style="color:#fbbf24;">100</strong></span>
-                <span id="weapon-badge" style="color:#e879f9;">💣 Cañón Base</span>
+        <div id="hud-top-stack">
+            <div class="hud-top-bar" id="left-stats-pill">
+                <div class="hud-group">
+                    <span class="active-tank-chip" id="hud-active-player">
+                        <span id="hud-tank-dot" style="width:11px;height:11px;border-radius:50%;background:#ff5252;display:inline-block;"></span>
+                        <span id="hud-tank-name">Tanque</span>
+                    </span>
+                    <span class="hud-stat-item">❤️ <strong id="hp-disp" style="color:#4ade80;">100</strong>%</span>
+                    <span class="hud-stat-item" title="Combustible disponible para moverse en este turno">
+                        ⛽ <strong id="fuel-disp" style="color:#fbbf24;">100</strong>%
+                    </span>
+                    <span id="weapon-badge" onmouseenter="showWeaponTooltip(false)" onmouseleave="hideWeaponTooltipHover()" onclick="toggleWeaponTooltipPin(event)">
+                        <span id="weapon-badge-text">💣 Cañón Base</span>
+                        <span style="font-size:0.75rem; opacity:0.85;">ℹ️</span>
+                    </span>
+
+                    <!-- Tooltip flotante descriptivo del arma actual + catálogo -->
+                    <div id="weapon-tooltip" onclick="event.stopPropagation()">
+                        <div class="wt-title">
+                            <span id="wt-name">💣 Cañón Base</span>
+                            <button type="button" class="mini-btn" style="padding:2px 7px;font-size:0.68rem;" onclick="toggleAllWeaponsCatalog(event)">📖 Ver Arsenal</button>
+                        </div>
+                        <div class="wt-tags" id="wt-tags"></div>
+                        <div class="wt-desc" id="wt-desc">Proyectil balístico estándar. Buen daño directo y cráter moderado.</div>
+                        <div class="wt-all-list" id="wt-all-list"></div>
+                    </div>
+                </div>
+
+                <div class="hud-group">
+                    <span class="hud-stat-item" id="wind-disp">🌬️ Viento: Calma</span>
+                    <span class="hud-stat-item">⏱️ <strong id="turn-timer-disp" style="color:#fbbf24;">40</strong>s</span>
+                    <button id="btn-cam-mode" class="mini-btn" onclick="handleSmartCameraButton()" title="Alternar entre vista de mapa completo y centrar en el tanque">🔍 Ver Mapa</button>
+                </div>
             </div>
 
-            <div class="hud-pill">
-                <span id="wind-disp">🌬️ Viento: 0</span>
-                <span>⏱️ <strong id="turn-timer-disp" style="color:#fbbf24;">40</strong>s</span>
-                <button class="mini-btn" onclick="centerCameraOnActiveTank()" title="Centrar cámara en el tanque activo">🎯 Centrar</button>
-                <button class="mini-btn" onclick="toggleOverviewZoom()" title="Alternar vista panorámica">🔍 Mapa</button>
+            <div class="hud-sub-row">
+                <div class="turn-banner" id="turn-banner">TURNO</div>
+                <div id="minimap-wrap" onclick="handleSmartCameraButton()" title="Toca para alternar vista de todo el mapa">
+                    <canvas id="minimap-canvas" width="185" height="56"></canvas>
+                </div>
             </div>
-        </div>
-
-        <div class="turn-banner" id="turn-banner">TURNO</div>
-
-        <div id="minimap-wrap" onclick="toggleOverviewZoom()" title="Toca para ver todo el mapa">
-            <canvas id="minimap-canvas" width="140" height="44"></canvas>
         </div>
 
         <div id="aim-hud-bar">
             <div class="aim-metrics">
                 <span id="angle-disp">📐 Ángulo: 45°</span>
                 <span id="power-disp" style="color:#fde047;">⚡ Potencia: 0%</span>
-                <span style="color:#94a3b8; font-size:0.72rem;">Espacio / 🔥 o Arrastra tu Tanque</span>
+                <span class="hint-pc">⌨️ [A/D] Mover • [W/S] Cañón • [ESPACIO] o Arrastra tu Tanque</span>
+                <span class="hint-mobile">🎯 Cruceta + 🔥 o Arrastra tu Tanque</span>
             </div>
             <div id="fire-power-bar">
                 <div id="fire-power-fill"></div>
@@ -960,59 +1213,68 @@
         const BIOMES = {
             valley: {
                 name: 'Valle Esmeralda',
-                skyTop: '#070d19',
-                skyBot: '#162844',
-                mountainFar: '#101d33',
-                mountainNear: '#192b48',
-                dirt: '#5d4037',
-                dirtDark: '#442d26',
+                skyTop: '#060b16',
+                skyBot: '#112038',
+                mountainFar: '#0c1628',
+                mountainNear: '#152540',
+                dirt: '#6d4c41',
+                dirtDark: '#4e342e',
                 grass: '#4ade80',
+                craterRim: '#86efac',
+                craterSubRim: '#a16207',
                 stone: '#64748b',
                 lava: '#ff5722',
                 lavaGlow: '#ff9800'
             },
             desert: {
                 name: 'Desierto Escorpión',
-                skyTop: '#1f0d1d',
-                skyBot: '#4a1d24',
-                mountainFar: '#31131b',
-                mountainNear: '#461b21',
-                dirt: '#b45309',
-                dirtDark: '#92400e',
+                skyTop: '#180917',
+                skyBot: '#38141b',
+                mountainFar: '#240c13',
+                mountainNear: '#361319',
+                dirt: '#c25e0e',
+                dirtDark: '#9a3412',
                 grass: '#fbbf24',
+                craterRim: '#fde047',
+                craterSubRim: '#ea580c',
                 stone: '#78716c',
                 lava: '#ea580c',
                 lavaGlow: '#fde047'
             },
             arctic: {
                 name: 'Glaciar Ártico',
-                skyTop: '#04101e',
-                skyBot: '#0f3156',
-                mountainFar: '#0b223d',
-                mountainNear: '#15375c',
-                dirt: '#334155',
-                dirtDark: '#1e293b',
+                skyTop: '#030b16',
+                skyBot: '#0a223d',
+                mountainFar: '#07172b',
+                mountainNear: '#102947',
+                dirt: '#475569',
+                dirtDark: '#334155',
                 grass: '#e0f2fe',
-                stone: '#475569',
+                craterRim: '#7dd3fc',
+                craterSubRim: '#94a3b8',
+                stone: '#64748b',
                 lava: '#0284c7',
                 lavaGlow: '#38bdf8'
             },
             volcano: {
                 name: 'Cráter Volcánico',
-                skyTop: '#140609',
-                skyBot: '#360d12',
-                mountainFar: '#22090d',
-                mountainNear: '#330e14',
-                dirt: '#27272a',
-                dirtDark: '#18181b',
+                skyTop: '#0f0407',
+                skyBot: '#24080c',
+                mountainFar: '#170508',
+                mountainNear: '#26090e',
+                dirt: '#3f3f46',
+                dirtDark: '#27272a',
                 grass: '#f97316',
-                stone: '#52525b',
+                craterRim: '#fb923c',
+                craterSubRim: '#dc2626',
+                stone: '#71717a',
                 lava: '#ef4444',
                 lavaGlow: '#fde047'
             }
         };
 
         const WEAPON_NAMES = {
+            DEFAULT: '💣 Cañón Base',
             TRIPLE: '🚀 Triple Cohete',
             BIG: '☢️ Bomba Atómica',
             MOUNTAIN: '⛰️ Creador de Montaña',
@@ -1022,8 +1284,156 @@
             CLUSTER: '🍇 Bomba de Racimo',
             DRILL: '🔩 Taladro Subterráneo',
             VAMPIRE: '🧛 Proyectil Vampiro',
-            AIRSTRIKE: '✈️ Ataque Aéreo'
+            AIRSTRIKE: '✈️ Ataque Aéreo',
+            TELEPORT: '🌀 Orbe Teletransportador',
+            MAGNET: '🧲 Singularidad Magnética',
+            BOUNCER: '🏀 Granada Saltarina x3',
+            SHOCKWAVE: '💨 Empuje Sónico',
+            NAPALM: '🔥 Lluvia de Magma'
         };
+
+        const WEAPON_INFO = {
+            DEFAULT: {
+                name: '💣 Cañón Base',
+                tags: ['Daño: 42', 'Radio: Medio', 'Munición Infinita'],
+                desc: 'Obús balístico estándar afectado por la gravedad y el viento. Ideal para calibrar tiros y abrir cráteres tácticos.'
+            },
+            TRIPLE: {
+                name: '🚀 Triple Cohete',
+                tags: ['3 Misiles', 'Daño: 3x42', 'Dispersión en Abanico'],
+                desc: 'Dispara una ráfaga de 3 cohetes simultáneos en abanico. Devastador a media distancia o para barrer toda una colina.'
+            },
+            BIG: {
+                name: '☢️ Bomba Atómica',
+                tags: ['Daño: 84', 'Radio: Gigante', 'Hongo Nuclear'],
+                desc: 'Ojiva termonuclear pesada que duplica el daño y vaporiza un cráter colosal capaz de hundir enemigos hasta la lava.'
+            },
+            MOUNTAIN: {
+                name: '⛰️ Creador de Montaña',
+                tags: ['Defensivo / Trampa', 'Eleva Terreno', 'Daño: Bajo'],
+                desc: 'Cristal tectónico que al impactar levanta una gran montaña de tierra. Úsalo para cubrirte o enterrar a un rival.'
+            },
+            SHIELD: {
+                name: '🛡️ Escudo de Energía',
+                tags: ['Ítem Pasivo', 'Bloquea 1 Impacto'],
+                desc: 'Campo de fuerza hexagonal que absorbe por completo el próximo impacto enemigo sin recibir daño.'
+            },
+            TOXIC: {
+                name: '☠️ Obús Tóxico',
+                tags: ['Daño: 42 + Veneno', 'Duración: 4 Turnos'],
+                desc: 'Cápsula de ácido bioquímico que contamina al tanque enemigo, restándole vida automáticamente al inicio de cada turno.'
+            },
+            LASER: {
+                name: '🎯 Francotirador Láser',
+                tags: ['Sin Gravedad', 'Ignora el Viento', 'Línea Recta'],
+                desc: 'Haz de plasma de alta velocidad que viaja en línea totalmente recta sin caer por gravedad ni desviarse con el viento.'
+            },
+            CLUSTER: {
+                name: '🍇 Bomba de Racimo',
+                tags: ['1 + 5 Sub-Bombas', 'Lluvia Explosiva'],
+                desc: 'Al impactar libera 5 fragmentos de plasma hacia arriba que vuelven a caer cubriendo una zona amplia.'
+            },
+            DRILL: {
+                name: '🔩 Taladro Subterráneo',
+                tags: ['Perfora Tierra', 'Ignora Muros'],
+                desc: 'Ojiva perforadora rotatoria que atraviesa la montaña por debajo de la tierra hasta frenarse y detonar desde adentro.'
+            },
+            VAMPIRE: {
+                name: '🧛 Proyectil Vampiro',
+                tags: ['Daño: 42', 'Robo de Vida: 55%'],
+                desc: 'Esfera carmesí que drena la energía de los tanques golpeados y regresa hacia tu tanque para curarte al instante.'
+            },
+            AIRSTRIKE: {
+                name: '✈️ Ataque Aéreo',
+                tags: ['3 Misiles Pesados', 'Daño: 3x96', 'Bombardeo Vertical'],
+                desc: 'Lanza una bengala marcadora donde impacte; un bombardero furtivo cruzará el cielo soltando 3 misiles destructores.'
+            },
+            TELEPORT: {
+                name: '🌀 Orbe Teletransportador',
+                tags: ['Movilidad Táctica', 'Salto Instantáneo'],
+                desc: 'Dispara un vórtice dimensional: exactamente donde aterrice sobre terreno firme, tu tanque se teletransportará al instante.'
+            },
+            MAGNET: {
+                name: '🧲 Singularidad Magnética',
+                tags: ['Misil Buscador', 'Atracción al Cráter'],
+                desc: 'Curva su trayectoria en el aire hacia los enemigos cercanos y al explotar los arrastra hacia el centro del cráter.'
+            },
+            BOUNCER: {
+                name: '🏀 Granada Saltarina x3',
+                tags: ['3 Rebotes en Colinas', 'Daño en Cada Salto'],
+                desc: 'Esfera elástica de plasma que rebota hasta 3 veces sobre el terreno causando ondas sísmicas antes de su explosión final.'
+            },
+            SHOCKWAVE: {
+                name: '💨 Empuje Sónico',
+                tags: [' Súper Empujón', 'Arroja a la Lava'],
+                desc: 'Onda cinética de alta presión que lanza por los aires a los tanques cercanos desplazándolos lejos de su posición.'
+            },
+            NAPALM: {
+                name: '🔥 Lluvia de Magma',
+                tags: ['1 + 6 Brasas Ígneas', 'Fuego de Área'],
+                desc: 'Al detonar escupe 6 brasas de magma incandescente que ruedan por las laderas quemando el terreno y a los rivales.'
+            },
+            HEALTH: {
+                name: '❤️ Botiquín de Reparación',
+                tags: ['Ítem Instantáneo', '+25% Vida'],
+                desc: 'Repara inmediatamente el blindaje de tu tanque en +25 puntos de vida al recoger la caja o dispararle.'
+            }
+        };
+
+        let tooltipPinned = false;
+
+        function populateWeaponTooltip(weaponKey) {
+            const info = WEAPON_INFO[weaponKey] || WEAPON_INFO.DEFAULT;
+            document.getElementById('wt-name').innerText = info.name;
+            document.getElementById('wt-desc').innerText = info.desc;
+            const tagsEl = document.getElementById('wt-tags');
+            tagsEl.innerHTML = info.tags.map(t => `<span class="wt-tag">${t}</span>`).join('');
+
+            const allList = document.getElementById('wt-all-list');
+            if (!allList.dataset.built) {
+                allList.dataset.built = '1';
+                allList.innerHTML = Object.values(WEAPON_INFO).map(w =>
+                    `<div class="wt-row"><strong style="color:#fde047;">${w.name}:</strong> ${w.desc}</div>`
+                ).join('');
+            }
+        }
+
+        function showWeaponTooltip(pin = false) {
+            const active = tanks[turnIndex] || tanks[0];
+            const wKey = (active && active.specialWeapon) ? active.specialWeapon : 'DEFAULT';
+            populateWeaponTooltip(wKey);
+            if (pin) tooltipPinned = true;
+            document.getElementById('weapon-tooltip').classList.add('visible');
+        }
+
+        function hideWeaponTooltipHover() {
+            if (!tooltipPinned) {
+                document.getElementById('weapon-tooltip').classList.remove('visible');
+            }
+        }
+
+        function toggleWeaponTooltipPin(e) {
+            if (e) e.stopPropagation();
+            const tt = document.getElementById('weapon-tooltip');
+            if (tt.classList.contains('visible') && tooltipPinned) {
+                tooltipPinned = false;
+                tt.classList.remove('visible');
+            } else {
+                showWeaponTooltip(true);
+            }
+        }
+
+        function toggleAllWeaponsCatalog(e) {
+            if (e) e.stopPropagation();
+            document.getElementById('wt-all-list').classList.toggle('open');
+        }
+
+        window.addEventListener('pointerdown', (e) => {
+            if (tooltipPinned && !e.target.closest('#weapon-tooltip') && !e.target.closest('#weapon-badge')) {
+                tooltipPinned = false;
+                document.getElementById('weapon-tooltip').classList.remove('visible');
+            }
+        });
 
         const CANVAS = document.getElementById('gameCanvas');
         const CTX = CANVAS.getContext('2d');
@@ -1048,12 +1458,19 @@
             targetY: 500,
             targetZoom: 1,
             autoFollow: true,
-            overviewMode: false
+            overviewMode: false,
+            impactFocus: null
         };
         let screenShake = 0;
         let isDraggingRaw = false;
         let lastTouch = { x: 0, y: 0 };
         let WORLD_HEIGHT = HEIGHT;
+
+        // --- TERRENO DESTRUIBLE 2D (BITMAP + LIENZO OFFSCREEN) ---
+        const T_HEIGHT = 1040;
+        const terrainCanvas = document.createElement('canvas');
+        const terrainCtx = terrainCanvas.getContext('2d');
+        let solidMask = new Uint8Array(2500 * T_HEIGHT); // 0 = aire, 1 = tierra, 2 = roca madre
 
         // --- ESTADO GLOBAL ---
         let myName = localStorage.getItem('tank_nick') || ('Comandante' + Math.floor(Math.random() * 90 + 10));
@@ -1087,10 +1504,15 @@
         let explosions = [];
         let particles = [];
         let debris = [];
+        let tankWreckPieces = [];
         let floatTexts = [];
+        let airstrikePlanes = [];
+        let vampireOrbs = [];
+        let laserBeams = [];
         let turnIndex = 0;
         let turnTimer = TURN_TIME;
         let timerInterval = null;
+        let mainLoopId = null;
         let matchStartTime = 0;
         let botShotScheduled = false;
 
@@ -1106,9 +1528,18 @@
 
         window.addEventListener('keydown', e => {
             keys[e.key] = true;
+            document.body.classList.add('using-mouse');
             if (e.key === ' ' && gameState === 'PLAYING') e.preventDefault();
         });
         window.addEventListener('keyup', e => keys[e.key] = false);
+
+        window.addEventListener('pointerdown', e => {
+            if (e.pointerType === 'touch') {
+                document.body.classList.remove('using-mouse');
+            } else if (e.pointerType === 'mouse') {
+                document.body.classList.add('using-mouse');
+            }
+        }, { capture: true });
 
         // Estrellas decorativas para el cielo
         for (let i = 0; i < 90; i++) {
@@ -1223,8 +1654,8 @@
             if (countdownInterval) clearInterval(countdownInterval);
             if (peer) { peer.destroy(); peer = null; }
             gameState = 'MENU';
+            document.body.classList.remove('is-playing');
             document.getElementById('main-hud').style.display = 'none';
-            document.getElementById('touch-controls').style.display = 'none';
             document.getElementById('game-over-screen').style.display = 'none';
             document.getElementById('ui-layer').style.pointerEvents = 'auto';
             showScreen('login-screen');
@@ -1322,6 +1753,242 @@
                 let h = baseHeight + w1 + w2 + w3 + noise;
                 terrain[x] = Math.min(LAVA_Y - 22, Math.max(220, h));
                 stoneLevels[x] = terrain[x] + 95;
+            }
+            buildTerrain2DFromHeights();
+        }
+
+        let terrainVersion = 0;
+
+        // Construye el lienzo 2D y la máscara de colisión píxel a píxel para cráteres circulares y túneles subterráneos
+        function buildTerrain2DFromHeights() {
+            terrainVersion++;
+            terrainCanvas.width = WIDTH;
+            terrainCanvas.height = T_HEIGHT;
+            if (solidMask.length !== WIDTH * T_HEIGHT) {
+                solidMask = new Uint8Array(WIDTH * T_HEIGHT);
+            } else {
+                solidMask.fill(0);
+            }
+
+            for (let x = 0; x < WIDTH; x++) {
+                const topY = Math.max(0, Math.floor(terrain[x] || HEIGHT));
+                const rockY = Math.max(topY, Math.floor(stoneLevels[x] || (topY + 95)));
+                for (let y = topY; y < T_HEIGHT; y++) {
+                    solidMask[y * WIDTH + x] = (y >= rockY) ? 2 : 1;
+                }
+            }
+
+            const bTheme = BIOMES[activeBiomeKey] || BIOMES.valley;
+            terrainCtx.clearRect(0, 0, WIDTH, T_HEIGHT);
+            terrainCtx.globalCompositeOperation = 'source-over';
+
+            // 1. Capa de Roca Madre Profunda
+            terrainCtx.fillStyle = bTheme.stone;
+            terrainCtx.beginPath();
+            terrainCtx.moveTo(0, T_HEIGHT);
+            for (let x = 0; x < WIDTH; x += 2) {
+                terrainCtx.lineTo(x, Math.max(terrain[x], stoneLevels[x]));
+            }
+            terrainCtx.lineTo(WIDTH, T_HEIGHT);
+            terrainCtx.closePath();
+            terrainCtx.fill();
+
+            // 2. Capa de Tierra / Arena / Nieve con vetas geológicas para diferenciarse siempre del fondo
+            const dirtGrad = terrainCtx.createLinearGradient(0, 220, 0, LAVA_Y);
+            dirtGrad.addColorStop(0, bTheme.dirt);
+            dirtGrad.addColorStop(1, bTheme.dirtDark);
+            terrainCtx.fillStyle = dirtGrad;
+            terrainCtx.beginPath();
+            terrainCtx.moveTo(0, Math.max(terrain[0], stoneLevels[0]));
+            for (let x = 0; x < WIDTH; x++) {
+                terrainCtx.lineTo(x, terrain[x]);
+            }
+            for (let x = WIDTH - 1; x >= 0; x -= 2) {
+                terrainCtx.lineTo(x, Math.max(terrain[x], stoneLevels[x]));
+            }
+            terrainCtx.closePath();
+            terrainCtx.fill();
+
+            // Veta divisoria entre tierra y roca madre para dar contraste subterráneo
+            terrainCtx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+            terrainCtx.lineWidth = 2.5;
+            terrainCtx.beginPath();
+            for (let x = 0; x < WIDTH; x += 6) {
+                const sy = Math.max(terrain[x], stoneLevels[x]);
+                if (x === 0) terrainCtx.moveTo(x, sy);
+                else terrainCtx.lineTo(x, sy);
+            }
+            terrainCtx.stroke();
+
+            // 3. Corteza superficial brillante del bioma
+            terrainCtx.lineWidth = 4.5;
+            for (let x = 0; x < WIDTH - 2; x += 2) {
+                terrainCtx.beginPath();
+                terrainCtx.moveTo(x, terrain[x]);
+                terrainCtx.lineTo(x + 2, terrain[x + 2]);
+                const isStone = terrain[x] >= stoneLevels[x];
+                terrainCtx.strokeStyle = isStone ? bTheme.stone : bTheme.grass;
+                terrainCtx.stroke();
+            }
+        }
+
+        function isSolidAt(x, y) {
+            const ix = Math.floor(x);
+            const iy = Math.floor(y);
+            if (ix < 0 || ix >= WIDTH || iy < 0) return false;
+            if (iy >= T_HEIGHT) return true;
+            return solidMask[iy * WIDTH + ix] > 0;
+        }
+
+        // Busca el suelo sólido inmediatamente debajo de un punto (permite caminar bajo techos/cuevas y caer en cráteres)
+        function getTankGroundY(x, refFootY) {
+            const ix = Math.max(0, Math.min(WIDTH - 1, Math.floor(x)));
+            const maxScanY = Math.min(T_HEIGHT - 1, Math.ceil(LAVA_Y + 24));
+            let startY = Math.max(0, Math.min(maxScanY, Math.floor((refFootY || terrain[ix] || 400) - 20)));
+            // Si el punto de inicio está enterrado dentro de tierra sólida (ej. subiendo colina o montaña creada), subir hasta encontrar aire
+            let climbGuard = 0;
+            while (startY > 10 && solidMask[startY * WIDTH + ix] > 0 && climbGuard < 80) {
+                startY--;
+                climbGuard++;
+            }
+            for (let y = startY; y <= maxScanY; y++) {
+                if (solidMask[y * WIDTH + ix] > 0) return y;
+            }
+            return LAVA_Y + 35;
+        }
+
+        function getTopSurfaceY(x) {
+            const ix = Math.max(0, Math.min(WIDTH - 1, Math.floor(x)));
+            const maxScanY = Math.min(T_HEIGHT - 1, Math.ceil(LAVA_Y + 20));
+            for (let y = 180; y <= maxScanY; y += 2) {
+                if (solidMask[y * WIDTH + ix] > 0) return y;
+            }
+            return LAVA_Y + 35;
+        }
+
+        // Perfora un cráter circular 2D o caverna subterránea real con contorno fracturado claramente visible y recorte local optimizado
+        function carveTerrainCircle(cx, cy, r, scorchRim = true) {
+            terrainVersion++;
+            const bTheme = BIOMES[activeBiomeKey] || BIOMES.valley;
+            const minX = Math.max(0, Math.floor(cx - r - 4));
+            const maxX = Math.min(WIDTH - 1, Math.ceil(cx + r + 4));
+            const minY = Math.max(0, Math.floor(cy - r - 4));
+            const maxY = Math.min(T_HEIGHT - 1, Math.ceil(cy + r + 4));
+
+            // 1. Actualizar máscara 2D (la roca madre resiste un 32% más el radio de explosión)
+            for (let y = minY; y <= maxY; y++) {
+                const dy = y - cy;
+                const rowOff = y * WIDTH;
+                for (let x = minX; x <= maxX; x++) {
+                    const mat = solidMask[rowOff + x];
+                    if (mat === 0) continue;
+                    const dx = x - cx;
+                    const distSq = dx * dx + dy * dy;
+                    const effR = (mat === 2) ? r * 0.68 : r;
+                    if (distSq <= effR * effR) {
+                        solidMask[rowOff + x] = 0;
+                    }
+                }
+            }
+
+            // Generar polígono orgánico del cráter/caverna
+            const steps = 22;
+            const polyPts = [];
+            for (let s = 0; s <= steps; s++) {
+                const ang = (s / steps) * Math.PI * 2;
+                const checkX = Math.max(0, Math.min(WIDTH - 1, Math.floor(cx + Math.cos(ang) * r * 0.8)));
+                const isRock = (cy + Math.sin(ang) * r * 0.8) >= (stoneLevels[checkX] || 9999);
+                const jitter = scorchRim ? (Math.sin(ang * 7 + cx * 0.15) * 1.8) : 0;
+                const rad = (isRock ? r * 0.72 : r) + jitter;
+                polyPts.push({
+                    x: cx + Math.cos(ang) * rad,
+                    y: cy + Math.sin(ang) * rad
+                });
+            }
+
+            // 2. Recortar región sucia (Scissor Clip) para que el navegador NO procese los 2500x1040 píxeles en cada explosión
+            terrainCtx.save();
+            terrainCtx.beginPath();
+            terrainCtx.rect(Math.max(0, minX - 10), Math.max(0, minY - 10), (maxX - minX) + 20, (maxY - minY) + 20);
+            terrainCtx.clip();
+
+            terrainCtx.beginPath();
+            for (let s = 0; s < polyPts.length; s++) {
+                if (s === 0) terrainCtx.moveTo(polyPts[s].x, polyPts[s].y);
+                else terrainCtx.lineTo(polyPts[s].x, polyPts[s].y);
+            }
+            terrainCtx.closePath();
+
+            terrainCtx.globalCompositeOperation = 'source-atop';
+            terrainCtx.lineJoin = 'round';
+            // Franja exterior quemada de contraste
+            terrainCtx.lineWidth = scorchRim ? 11 : 7;
+            terrainCtx.strokeStyle = 'rgba(8, 12, 20, 0.88)';
+            terrainCtx.stroke();
+
+            // Contorno brillante del borde roto para distinguir claramente qué partes están destruidas
+            terrainCtx.lineWidth = scorchRim ? 6.5 : 4.5;
+            terrainCtx.strokeStyle = bTheme.craterRim || bTheme.grass;
+            terrainCtx.stroke();
+
+            if (scorchRim) {
+                terrainCtx.lineWidth = 2.8;
+                terrainCtx.strokeStyle = '#fef08a';
+                terrainCtx.stroke();
+            }
+
+            // 3. Recortar el interior del cráter o túnel con destination-out (deja visible la mitad exterior del borde)
+            terrainCtx.globalCompositeOperation = 'destination-out';
+            terrainCtx.fill();
+            terrainCtx.restore();
+
+            // 4. Actualizar referencia de superficie superior para el minimapa solo si el cráter afectó la superficie
+            if (scorchRim) {
+                for (let x = minX; x <= maxX; x += 4) {
+                    if (minY <= (terrain[x] || 0) + 12) {
+                        const top = getTopSurfaceY(x);
+                        for (let k = 0; k < 4 && x + k <= maxX; k++) {
+                            terrain[x + k] = top;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Añade un domo/muro de tierra sólida en 2D alrededor de (cx, cy) para el arma Creador de Montañas
+        function addTerrainMountain(cx, cy, mr) {
+            terrainVersion++;
+            const bTheme = BIOMES[activeBiomeKey] || BIOMES.valley;
+            const minX = Math.max(0, Math.floor(cx - mr));
+            const maxX = Math.min(WIDTH - 1, Math.ceil(cx + mr));
+            const minY = Math.max(40, Math.floor(cy - mr));
+            const maxY = Math.min(T_HEIGHT - 1, Math.ceil(cy + mr));
+            const mrSq = mr * mr;
+
+            for (let y = minY; y <= maxY; y++) {
+                const dy = y - cy;
+                const rowOff = y * WIDTH;
+                for (let x = minX; x <= maxX; x++) {
+                    const dx = x - cx;
+                    if (dx * dx + dy * dy <= mrSq && solidMask[rowOff + x] === 0) {
+                        solidMask[rowOff + x] = 1;
+                    }
+                }
+            }
+
+            terrainCtx.save();
+            terrainCtx.globalCompositeOperation = 'source-over';
+            terrainCtx.fillStyle = bTheme.dirt;
+            terrainCtx.strokeStyle = bTheme.grass;
+            terrainCtx.lineWidth = 3.5;
+            terrainCtx.beginPath();
+            terrainCtx.arc(cx, cy, mr, 0, Math.PI * 2);
+            terrainCtx.fill();
+            terrainCtx.stroke();
+            terrainCtx.restore();
+
+            for (let x = minX; x <= maxX; x++) {
+                terrain[x] = getTopSurfaceY(x);
             }
         }
 
@@ -1459,9 +2126,9 @@
 
         function resetToLobby() {
             gameState = 'LOBBY';
+            document.body.classList.remove('is-playing');
             document.getElementById('game-over-screen').style.display = 'none';
             document.getElementById('main-hud').style.display = 'none';
-            document.getElementById('touch-controls').style.display = 'none';
             document.getElementById('lobby-screen').style.display = 'flex';
             document.getElementById('ui-layer').style.pointerEvents = 'auto';
 
@@ -1659,6 +2326,7 @@
             floatTexts = [];
             particles = [];
             debris = [];
+            tankWreckPieces = [];
             turnIndex = -1;
             gameState = 'PLAYING';
             isGameOverPending = false;
@@ -1683,7 +2351,6 @@
             initGameClient(startPacket);
 
             nextTurn();
-            requestAnimationFrame(hostLoop);
 
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(hostGameTick, 1000);
@@ -1704,11 +2371,14 @@
             CANVAS.width = window.innerWidth;
             CANVAS.height = window.innerHeight;
 
+            buildTerrain2DFromHeights();
+
             tanks = data.tanks;
             if (terrain && terrain.length > 0) {
                 tanks.forEach(t => {
                     const gx = Math.floor(Math.max(0, Math.min(WIDTH - 1, t.x)));
-                    t.y = (terrain[gx] || HEIGHT / 2) - 20;
+                    t.y = (terrain[gx] || HEIGHT / 2) - 18;
+                    t.livePower = 0;
                 });
             }
 
@@ -1718,19 +2388,21 @@
             floatTexts = [];
             particles = [];
             debris = [];
+            tankWreckPieces = [];
 
             document.getElementById('ui-layer').style.pointerEvents = 'none';
             document.querySelectorAll('.menu-screen').forEach(el => el.style.display = 'none');
             document.getElementById('main-hud').style.display = 'block';
+            document.body.classList.add('is-playing');
 
-            const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.innerWidth <= 960;
-            const defaultZoom = window.innerWidth < 768 ? 0.62 : 0.88;
+            const isSmallScreen = window.innerWidth <= 860 || window.innerHeight <= 540;
+            const defaultZoom = isSmallScreen ? 0.68 : 1.06;
             camera.zoom = defaultZoom;
             camera.targetZoom = defaultZoom;
             camera.autoFollow = true;
             camera.overviewMode = false;
-
-            document.getElementById('touch-controls').style.display = isTouchDevice ? 'block' : 'none';
+            camera.impactFocus = null;
+            updateCameraButtonLabel();
 
             const focusTank = tanks[0];
             if (focusTank) {
@@ -1741,7 +2413,8 @@
                 clampCamera();
             }
 
-            requestAnimationFrame(clientRenderLoop);
+            if (mainLoopId) cancelAnimationFrame(mainLoopId);
+            mainLoopId = requestAnimationFrame(clientRenderLoop);
         }
 
         window.addEventListener('resize', () => {
@@ -1755,14 +2428,39 @@
             return tank.id === myPeerId;
         }
 
+        function updateCameraButtonLabel() {
+            const btn = document.getElementById('btn-cam-mode');
+            if (!btn) return;
+            // El botón muestra a qué estado cambiará al tocarlo
+            if (camera.overviewMode || !camera.autoFollow) {
+                btn.innerText = '🎯 Ver Cerca';
+                btn.title = 'Volver a acercar y centrar la cámara en el tanque activo';
+            } else {
+                btn.innerText = '🔍 Ver Mapa';
+                btn.title = 'Alejar la cámara para ver el mapa completo';
+            }
+        }
+
+        function handleSmartCameraButton() {
+            if (camera.overviewMode || !camera.autoFollow) {
+                centerCameraOnActiveTank();
+            } else {
+                toggleOverviewZoom();
+            }
+            updateCameraButtonLabel();
+        }
+
         function centerCameraOnActiveTank() {
             const active = tanks[turnIndex];
             if (active) {
                 camera.overviewMode = false;
                 camera.autoFollow = true;
-                camera.targetZoom = window.innerWidth < 768 ? 0.68 : 0.92;
+                camera.impactFocus = null;
+                const isSmallScreen = window.innerWidth <= 860 || window.innerHeight <= 540;
+                camera.targetZoom = isSmallScreen ? 0.68 : 1.06;
                 camera.targetX = active.x;
                 camera.targetY = active.y - 40;
+                updateCameraButtonLabel();
             }
         }
 
@@ -1776,30 +2474,28 @@
             } else {
                 centerCameraOnActiveTank();
             }
+            updateCameraButtonLabel();
         }
 
-        // --- BUCLE DEL SERVIDOR / HOST ---
-        let lastTime = 0;
-        function hostLoop(timestamp) {
-            if (gameState !== 'PLAYING') return;
-            const dt = (timestamp - lastTime) / 1000;
-            lastTime = timestamp;
-
-            updatePhysics();
+        // --- SINCRONIZACIÓN DE RED OPTIMIZADA (30Hz SOLO SI HAY CLIENTES ONLINE) ---
+        function hostBroadcastSnapshot() {
+            if (!isHost || frameCounter % 2 !== 0) return;
+            const conns = Object.values(clientConns);
+            if (conns.length === 0) return;
 
             broadcast({
                 type: 'SNAPSHOT',
                 tanks: tanks.map(t => ({
                     id: t.id, x: t.x, y: t.y, angle: t.angle, hp: t.hp, fuel: t.fuel,
-                    dead: t.dead, sw: t.specialWeapon, hs: t.hasShield, psn: t.poison, lp: t.lastPower
+                    dead: t.dead, sw: t.specialWeapon, hs: t.hasShield, psn: t.poison,
+                    lp: t.lastPower, cp: t.livePower || 0
                 })),
                 projectiles: projectiles.map(p => ({ x: p.x, y: p.y, vx: p.vx, vy: p.vy, type: p.type })),
                 turnIndex: turnIndex,
                 timer: turnTimer,
-                wind: windAccel
+                wind: windAccel,
+                trans: isTurnTransition
             });
-
-            requestAnimationFrame(hostLoop);
         }
 
         function hostGameTick() {
@@ -1818,14 +2514,29 @@
                 const inp = playerInputs[activeTank.id];
                 if (inp) {
                     if (inp.left && activeTank.fuel > 0) {
-                        activeTank.x -= 2.1;
+                        const nextX = Math.max(24, activeTank.x - 2.1);
+                        const nextGround = getTankGroundY(nextX, activeTank.y + 18);
+                        // Evitar atravesar paredes verticales de más de 22px de escalón
+                        if ((activeTank.y + 18) - nextGround <= 22) {
+                            activeTank.x = nextX;
+                        }
                         activeTank.fuel = Math.max(0, activeTank.fuel - 0.45);
                         camera.autoFollow = true;
+                        camera.overviewMode = false;
+                        camera.impactFocus = null;
+                        updateCameraButtonLabel();
                     }
                     if (inp.right && activeTank.fuel > 0) {
-                        activeTank.x += 2.1;
+                        const nextX = Math.min(WIDTH - 24, activeTank.x + 2.1);
+                        const nextGround = getTankGroundY(nextX, activeTank.y + 18);
+                        if ((activeTank.y + 18) - nextGround <= 22) {
+                            activeTank.x = nextX;
+                        }
                         activeTank.fuel = Math.max(0, activeTank.fuel - 0.45);
                         camera.autoFollow = true;
+                        camera.overviewMode = false;
+                        camera.impactFocus = null;
+                        updateCameraButtonLabel();
                     }
                     activeTank.x = Math.max(24, Math.min(WIDTH - 24, activeTank.x));
 
@@ -1841,116 +2552,358 @@
                         inp.power += 0.42 * inp.pDir;
                         if (inp.power >= MAX_POWER) { inp.power = MAX_POWER; inp.pDir = -1; }
                         if (inp.power <= 3) { inp.power = 3; inp.pDir = 1; }
+                        activeTank.livePower = inp.power;
                     } else if (!inp.space && inp.charging) {
+                        activeTank.livePower = 0;
                         fireWeapon(activeTank, inp.power);
                         inp.charging = false;
                         inp.power = 0;
+                    } else if (!isSlingshotAiming) {
+                        activeTank.livePower = 0;
                     }
                 }
             }
 
-            // Actualizar posición vertical de cada tanque sobre el terreno y recoger ítems
+            // Actualizar posición vertical de cada tanque vivo sobre el terreno 2D (con caché para no recalcular si no cambió)
             tanks.forEach(t => {
-                const gx = Math.floor(Math.max(0, Math.min(WIDTH - 1, t.x)));
-                const groundY = terrain[gx] || HEIGHT;
-                t.y = groundY - 18;
+                if (t.dead) return;
 
-                if (!t.dead) {
-                    if (t.y > LAVA_Y) {
-                        if (!t.wasInLava) {
-                            t.hp = Math.max(0, t.hp - 50);
-                            t.wasInLava = true;
-                            broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 70, text: "🌋 ¡LAVA -50!", color: '#ff5722' });
-                            floatTexts.push({ x: t.x, y: t.y - 70, text: "🌋 ¡LAVA -50!", color: '#ff5722', life: 60 });
-                            if (t.hp <= 0) {
-                                t.dead = true;
-                                broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y });
-                                triggerLocalTankDeath(t.x, t.y);
-                            }
-                            checkWin();
+                if (t._lastGroundX !== t.x || t._lastTerrainVer !== terrainVersion || t._cachedFootY === undefined) {
+                    t._cachedFootY = getTankGroundY(t.x, t.y + 18);
+                    const ly = getTankGroundY(t.x - 10, t.y + 18);
+                    const ry = getTankGroundY(t.x + 10, t.y + 18);
+                    t._slopeAngle = Math.atan2(ry - ly, 20) * 0.42;
+                    t._lastGroundX = t.x;
+                    t._lastTerrainVer = terrainVersion;
+                }
+
+                const targetY = t._cachedFootY - 18;
+                // Caída suave con gravedad si se abrió un cráter o túnel debajo del tanque
+                if (targetY > t.y + 4) {
+                    t.y = Math.min(targetY, t.y + 7.5);
+                } else {
+                    t.y = targetY;
+                }
+
+                if (t.y > LAVA_Y) {
+                    if (!t.wasInLava) {
+                        t.hp = Math.max(0, t.hp - 50);
+                        t.wasInLava = true;
+                        broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 70, text: "🌋 ¡LAVA -50!", color: '#ff5722' });
+                        floatTexts.push({ x: t.x, y: t.y - 70, text: "🌋 ¡LAVA -50!", color: '#ff5722', life: 60 });
+                        if (t.hp <= 0) {
+                            t.dead = true;
+                            broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y, color: t.color });
+                            triggerLocalTankDeath(t.x, t.y, t.color);
                         }
-                    } else {
-                        t.wasInLava = false;
+                        checkWin();
                     }
+                } else {
+                    t.wasInLava = false;
+                }
 
-                    for (let i = items.length - 1; i >= 0; i--) {
-                        const it = items[i];
-                        const dx = t.x - it.x;
-                        const dy = (t.y + 10) - ((terrain[Math.floor(it.x)] || HEIGHT) - 15);
-                        if (Math.hypot(dx, dy) < 46) {
-                            collectItemHost(t, i);
-                        }
+                for (let i = items.length - 1; i >= 0; i--) {
+                    const it = items[i];
+                    if (it._lastTerrainVer !== terrainVersion || !it.y) {
+                        it.y = getTankGroundY(it.x, it.y || terrain[Math.floor(it.x)]);
+                        it._lastTerrainVer = terrainVersion;
+                    }
+                    const dx = t.x - it.x;
+                    const dy = (t.y - 6) - (it.y - 15);
+                    if (Math.hypot(dx, dy) < 42) {
+                        collectItemHost(t, i);
                     }
                 }
             });
 
-            // Actualizar Proyectiles con Viento y Gravedad
+            // Actualizar Proyectiles con Raycasting Continuo (Línea entre posición anterior y nueva en cada FPS)
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 const p = projectiles[i];
-                p.x += p.vx;
-                p.y += p.vy;
+                if (p.exploded) {
+                    projectiles.splice(i, 1);
+                    continue;
+                }
+
+                p.age = (p.age || 0) + 1;
+                if (p.armDelay > 0) p.armDelay--;
+
+                const oldX = p.x;
+                const oldY = p.y;
+                const nextX = p.x + p.vx;
+                const nextY = p.y + p.vy;
 
                 if (p.type !== 'LASER') {
-                    p.vy += GRAVITY;
-                    if (roomSettings.windMode === 'on' && p.type !== 'AIR_MISSILE') {
+                    // Si el Taladro está perforando bajo tierra, ignora la caída libre gravitatoria para excavar en línea recta/curva suave
+                    if (p.type === 'DRILL' && p.undergroundFrames > 0) {
+                        p.vy += GRAVITY * 0.08;
+                    } else {
+                        p.vy += GRAVITY;
+                    }
+                    if (roomSettings.windMode === 'on' && p.type !== 'AIR_MISSILE' && !(p.type === 'DRILL' && p.undergroundFrames > 0)) {
                         p.vx += windAccel;
                     }
                 }
 
-                // Estela de humo del proyectil
-                if (Math.random() < 0.65) {
-                    particles.push({
-                        x: p.x,
-                        y: p.y,
-                        vx: (Math.random() - 0.5) * 0.6,
-                        vy: (Math.random() - 0.5) * 0.6,
-                        life: 24,
-                        size: p.type === 'BIG' ? 5 : 3,
-                        color: p.type === 'TOXIC' ? 'rgba(74, 222, 128, A)' : 'rgba(200, 210, 225, A)'
+                // Mecánica Buscadora (Homing) para Singularidad Magnética (MAGNET)
+                if (p.type === 'MAGNET') {
+                    const shooter = tanks.find(t => t.id === p.ownerId);
+                    let closestEnemy = null;
+                    let minDist = 175;
+                    tanks.forEach(t => {
+                        if (!t.dead && (!shooter || t.team !== shooter.team)) {
+                            const d = Math.hypot(t.x - nextX, (t.y - 8) - nextY);
+                            if (d < minDist) {
+                                minDist = d;
+                                closestEnemy = t;
+                            }
+                        }
                     });
+                    if (closestEnemy) {
+                        const dx = closestEnemy.x - nextX;
+                        const dy = (closestEnemy.y - 8) - nextY;
+                        const d = Math.hypot(dx, dy) || 1;
+                        p.vx += (dx / d) * 0.42;
+                        p.vy += (dy / d) * 0.42;
+                    }
                 }
 
+                // --- RAYCASTING DE COLISIÓN ENTRE (oldX, oldY) Y (nextX, nextY) ---
+                // Evita que proyectiles rápidos atraviesen paredes delgadas o tanques entre fotogramas
                 let hitResult = null;
+                let directHitTank = null;
+                let capturedItemIdx = -1;
                 const floorLimit = LAVA_Y + 60;
 
-                if (p.x < -120 || p.x > WIDTH + 120 || p.y > floorLimit || p.y < -3000) {
-                    hitResult = 'OUT';
-                } else if (p.x >= 0 && p.x < WIDTH && p.y >= terrain[Math.floor(p.x)]) {
-                    if (p.type === 'DRILL') {
-                        p.vx *= 0.95;
-                        p.vy *= 0.9;
-                        if (Math.abs(p.vx) < 0.5 && Math.abs(p.vy) < 0.5) hitResult = 'TERRAIN';
-                    } else {
-                        hitResult = 'TERRAIN';
+                const segDist = Math.hypot(nextX - oldX, nextY - oldY);
+                const raySteps = Math.max(1, Math.min(20, Math.ceil(segDist / 2.6)));
+                let finalX = nextX;
+                let finalY = nextY;
+
+                for (let s = 1; s <= raySteps; s++) {
+                    const frac = s / raySteps;
+                    const sx = oldX + (nextX - oldX) * frac;
+                    const sy = oldY + (nextY - oldY) * frac;
+
+                    // 1. Verificar colisión precisa contra la Hitbox de cada Tanque
+                    if (!(p.armDelay > 0)) {
+                        const hitT = findTankHitAtPoint(sx, sy, p);
+                        if (hitT) {
+                            finalX = sx;
+                            finalY = sy;
+                            hitResult = 'TANK';
+                            directHitTank = hitT;
+                            break;
+                        }
                     }
-                } else {
-                    for (let t of tanks) {
-                        if (!t.dead) {
-                            const dx = Math.abs(p.x - t.x);
-                            const dy = Math.abs(p.y - (t.y - 10));
-                            if (dx < 20 && dy < 16) {
-                                hitResult = 'TANK';
+
+                    // 2. Verificar captura de caja de suministros por disparo
+                    if (p.type !== 'AIR_MISSILE' && p.type !== 'CLUSTER_FRAG' && p.type !== 'NAPALM_EMBER' && activeTank && p.ownerId === activeTank.id) {
+                        for (let k = items.length - 1; k >= 0; k--) {
+                            const it = items[k];
+                            const iy = (it.y || terrain[Math.floor(it.x)] || HEIGHT) - 15;
+                            if (Math.abs(sx - it.x) < 22 && Math.abs(sy - iy) < 22) {
+                                finalX = sx;
+                                finalY = sy;
+                                hitResult = 'ITEM';
+                                capturedItemIdx = k;
                                 break;
                             }
                         }
+                        if (hitResult === 'ITEM') break;
                     }
-                    if (!hitResult && p.type !== 'AIR_MISSILE' && p.type !== 'CLUSTER_FRAG' && activeTank) {
-                        for (let k = items.length - 1; k >= 0; k--) {
-                            const it = items[k];
-                            const dy = ((terrain[Math.floor(it.x)] || HEIGHT) - 15);
-                            if (p.ownerId === activeTank.id && Math.hypot(p.x - it.x, p.y - dy) < 32) {
-                                projectiles.splice(i, 1);
-                                collectItemHost(tanks.find(z => z.id === p.ownerId), k);
-                                broadcast({ type: 'FLOAT_TEXT', x: it.x, y: dy - 50, text: "🎯 ¡CAJA CAPTURADA!", color: '#00f0ff' });
-                                floatTexts.push({ x: it.x, y: dy - 50, text: "🎯 ¡CAJA CAPTURADA!", color: '#00f0ff', life: 60 });
-                                checkTurnEnd();
-                                return;
-                            }
+
+                    // 3. Verificar colisión contra el terreno 2D sólido
+                    if (sx >= 0 && sx < WIDTH && isSolidAt(sx, sy)) {
+                        finalX = sx;
+                        finalY = sy;
+                        if (p.type === 'DRILL') {
+                            // El taladro sigue avanzando dentro de la tierra hasta el final del segmento de este frame
+                            finalX = nextX;
+                            finalY = nextY;
+                            hitResult = 'DRILL_BORING';
+                        } else {
+                            hitResult = 'TERRAIN';
                         }
+                        break;
+                    }
+                }
+
+                p.x = finalX;
+                p.y = finalY;
+
+                // Actualizar punto de enfoque de cámara en la posición actual de la bala
+                camera.impactFocus = {
+                    x: Math.max(80, Math.min(WIDTH - 80, p.x)),
+                    y: Math.min(LAVA_Y, Math.max(120, p.y))
+                };
+
+                // Estela visual personalizada según el tipo de proyectil (con límite de partículas para 60 FPS)
+                const pType = p.type || 'DEFAULT';
+                if (particles.length < 130) {
+                    if (pType === 'LASER') {
+                        particles.push({
+                            x: p.x, y: p.y,
+                            vx: 0, vy: 0,
+                            life: 16, size: 4.5,
+                            color: 'rgba(232, 121, 249, A)'
+                        });
+                    } else if (pType === 'TELEPORT') {
+                        particles.push({
+                            x: p.x + (Math.random() - 0.5) * 6,
+                            y: p.y + (Math.random() - 0.5) * 6,
+                            vx: (Math.random() - 0.5) * 1.5,
+                            vy: (Math.random() - 0.5) * 1.5,
+                            life: 18, size: 4.2,
+                            color: Math.random() < 0.5 ? 'rgba(0, 240, 255, A)' : 'rgba(192, 132, 252, A)'
+                        });
+                    } else if (pType === 'MAGNET') {
+                        particles.push({
+                            x: p.x + (Math.random() - 0.5) * 10,
+                            y: p.y + (Math.random() - 0.5) * 10,
+                            vx: 0, vy: 0,
+                            life: 18, size: 4,
+                            color: 'rgba(56, 189, 248, A)'
+                        });
+                    } else if (pType === 'SHOCKWAVE') {
+                        particles.push({
+                            x: p.x, y: p.y,
+                            vx: 0, vy: 0,
+                            life: 15, size: 5.5,
+                            color: 'rgba(103, 232, 249, A)'
+                        });
+                    } else if (pType === 'NAPALM' || pType === 'NAPALM_EMBER') {
+                        particles.push({
+                            x: p.x + (Math.random() - 0.5) * 5,
+                            y: p.y + (Math.random() - 0.5) * 5,
+                            vx: (Math.random() - 0.5) * 1.4,
+                            vy: -0.8 - Math.random() * 1.2,
+                            life: 20, size: pType === 'NAPALM' ? 5 : 3.5,
+                            color: Math.random() < 0.5 ? 'rgba(239, 68, 68, A)' : 'rgba(251, 191, 36, A)'
+                        });
+                    } else if (pType === 'TOXIC') {
+                        if (Math.random() < 0.8) {
+                            particles.push({
+                                x: p.x + (Math.random() - 0.5) * 6,
+                                y: p.y + (Math.random() - 0.5) * 6,
+                                vx: (Math.random() - 0.5) * 1.2,
+                                vy: 0.6 + Math.random() * 0.8,
+                                life: 22, size: 3.8,
+                                color: 'rgba(74, 222, 128, A)'
+                            });
+                        }
+                    } else if (pType === 'VAMPIRE') {
+                        particles.push({
+                            x: p.x + (Math.random() - 0.5) * 8,
+                            y: p.y + (Math.random() - 0.5) * 8,
+                            vx: (Math.random() - 0.5) * 1.4,
+                            vy: (Math.random() - 0.5) * 1.4,
+                            life: 20, size: 4,
+                            color: 'rgba(239, 68, 68, A)'
+                        });
+                    } else if (pType === 'TRIPLE' || pType === 'AIR_MISSILE') {
+                        particles.push({
+                            x: p.x - p.vx * 0.4,
+                            y: p.y - p.vy * 0.4,
+                            vx: -p.vx * 0.12 + (Math.random() - 0.5) * 1.2,
+                            vy: -p.vy * 0.12 + (Math.random() - 0.5) * 1.2,
+                            life: 18, size: 4.5,
+                            color: Math.random() < 0.5 ? 'rgba(251, 191, 36, A)' : 'rgba(148, 163, 184, A)'
+                        });
+                    } else if (pType === 'DRILL') {
+                        particles.push({
+                            x: p.x, y: p.y,
+                            vx: (Math.random() - 0.5) * 5,
+                            vy: (Math.random() - 0.5) * 5,
+                            life: 16, size: p.undergroundFrames > 0 ? 4.2 : 3,
+                            color: p.undergroundFrames > 0 ? 'rgba(251, 191, 36, A)' : 'rgba(226, 232, 240, A)'
+                        });
+                    } else if (Math.random() < 0.7) {
+                        particles.push({
+                            x: p.x,
+                            y: p.y,
+                            vx: (Math.random() - 0.5) * 0.6,
+                            vy: (Math.random() - 0.5) * 0.6,
+                            life: 20,
+                            size: pType === 'BIG' ? 6 : 3.2,
+                            color: pType === 'BIG' ? 'rgba(251, 146, 60, A)' : 'rgba(200, 210, 225, A)'
+                        });
+                    }
+                }
+
+                // Procesar el resultado del Raycast de este fotograma
+                if (hitResult === 'ITEM' && capturedItemIdx >= 0 && items[capturedItemIdx]) {
+                    const it = items[capturedItemIdx];
+                    const dy = (it.y || terrain[Math.floor(it.x)] || HEIGHT) - 15;
+                    p.exploded = true;
+                    projectiles.splice(i, 1);
+                    collectItemHost(tanks.find(z => z.id === p.ownerId), capturedItemIdx);
+                    broadcast({ type: 'FLOAT_TEXT', x: it.x, y: dy - 50, text: "🎯 ¡CAJA CAPTURADA!", color: '#00f0ff' });
+                    floatTexts.push({ x: it.x, y: dy - 50, text: "🎯 ¡CAJA CAPTURADA!", color: '#00f0ff', life: 60 });
+                    checkTurnEnd();
+                    continue;
+                }
+
+                if (!hitResult) {
+                    if (p.x < -120 || p.x > WIDTH + 120 || p.y > floorLimit || p.y < -3000) {
+                        if (p.type === 'DRILL' && p.undergroundFrames > 0) {
+                            p.y = Math.min(LAVA_Y - 10, p.y);
+                            hitResult = 'TERRAIN';
+                        } else {
+                            hitResult = 'OUT';
+                        }
+                    } else if (p.type === 'DRILL' && p.undergroundFrames > 0) {
+                        p.undergroundFrames++;
+                        if (p.undergroundFrames >= 30) {
+                            hitResult = 'TERRAIN';
+                        }
+                    }
+                } else if (hitResult === 'DRILL_BORING') {
+                    p.undergroundFrames = (p.undergroundFrames || 0) + 1;
+                    p.vx *= 0.96;
+                    p.vy *= 0.96;
+                    screenShake = Math.max(screenShake, 2.8);
+
+                    if (p.undergroundFrames % 2 === 1) {
+                        carveTerrainCircle(p.x, p.y, 13, false);
+                        broadcast({ type: 'DRILL_CARVE', x: p.x, y: p.y, r: 13 });
+                    }
+                    if (particles.length < 135) {
+                        for (let sp = 0; sp < 2; sp++) {
+                            particles.push({
+                                x: p.x + (Math.random() - 0.5) * 10,
+                                y: p.y + (Math.random() - 0.5) * 10,
+                                vx: -p.vx * 0.35 + (Math.random() - 0.5) * 4,
+                                vy: -p.vy * 0.35 + (Math.random() - 0.5) * 4,
+                                life: 18,
+                                size: 3.5,
+                                color: Math.random() < 0.5 ? 'rgba(253, 224, 71, A)' : 'rgba(148, 163, 184, A)'
+                            });
+                        }
+                    }
+
+                    const speed = Math.hypot(p.vx, p.vy);
+                    if (p.undergroundFrames >= 28 || speed < 1.7 || p.y >= LAVA_Y - 22) {
+                        hitResult = 'TERRAIN';
+                    } else {
+                        hitResult = null; // Continúa perforando
+                    }
+                } else if (hitResult === 'TERRAIN' && p.type === 'BOUNCER') {
+                    // Granada Saltarina: rebota 3 veces con mini-explosión y en el último impacto detona su explosión final (sin doble daño)
+                    if (p.bouncesLeft === undefined) p.bouncesLeft = 3;
+                    if (p.bouncesLeft > 0) {
+                        p.bouncesLeft--;
+                        explode(p.x, p.y, 'BOUNCER_HOP', p.ownerId, null);
+                        p.y = oldY - 3;
+                        p.vy = -Math.max(4.5, Math.abs(p.vy) * 0.68);
+                        p.vx *= 0.82;
+                        hitResult = null; // Sigue en el aire para el siguiente salto
+                    } else {
+                        hitResult = 'TERRAIN';
                     }
                 }
 
                 if (hitResult) {
+                    p.exploded = true;
                     if (hitResult === 'TANK') {
                         const shooter = tanks.find(t => t.id === p.ownerId);
                         if (shooter) shooter.stats.hits++;
@@ -1958,8 +2911,10 @@
                     if (hitResult !== 'OUT') {
                         if (p.type === 'AIRSTRIKE') {
                             triggerAirstrike(p.x, p.ownerId);
+                        } else if (p.type === 'TELEPORT') {
+                            triggerTeleport(p.x, p.y, p.ownerId);
                         } else {
-                            explode(p.x, p.y, p.type, p.ownerId);
+                            explode(p.x, p.y, p.type, p.ownerId, directHitTank);
                         }
                     }
                     projectiles.splice(i, 1);
@@ -1968,24 +2923,64 @@
             }
         }
 
+        // Comprueba si un punto (px, py) del Raycast toca la silueta real de algún tanque (Chasis orientado + Domo de Torreta)
+        function findTankHitAtPoint(px, py, proj) {
+            const isUndergroundDrill = proj && proj.type === 'DRILL' && proj.undergroundFrames > 0;
+            for (let idx = 0; idx < tanks.length; idx++) {
+                const t = tanks[idx];
+                if (t.dead) continue;
+                // Evitar autocolisión en los primeros 4 fotogramas al salir del cañón
+                if (proj && proj.ownerId === t.id && (proj.age || 0) <= 4) continue;
+
+                // Pre-filtro rápido por caja envolvente (AABB) centrada en el cuerpo del tanque (t.x, t.y - 8)
+                const dxWorld = px - t.x;
+                const dyWorld = py - (t.y - 8);
+                if (Math.abs(dxWorld) > 28 || Math.abs(dyWorld) > 26) continue;
+
+                if (isUndergroundDrill) {
+                    if (dxWorld * dxWorld + dyWorld * dyWorld <= 26 * 26) return t;
+                    continue;
+                }
+
+                // Transformar el punto al sistema local inclinado del tanque (slopeAngle)
+                const slope = t._slopeAngle || 0;
+                const cosA = Math.cos(-slope);
+                const sinA = Math.sin(-slope);
+                const relX = px - t.x;
+                const relY = py - t.y;
+                const lx = relX * cosA - relY * sinA;
+                const ly = relX * sinA + relY * cosA;
+
+                // 1) Domo de la torreta: círculo en (0, -11) de radio 10.5px
+                const dTurretSq = lx * lx + (ly + 11) * (ly + 11);
+                if (dTurretSq <= 110) return t;
+
+                // 2) Chasis blindado + Orugas: rectángulo local x ∈ [-20.5, +20.5], y ∈ [-12, +6.5]
+                if (Math.abs(lx) <= 20.5 && ly >= -12 && ly <= 6.5) return t;
+            }
+            return null;
+        }
+
         function updateLocalEffects() {
             if (screenShake > 0) screenShake *= 0.86;
             if (screenShake < 0.3) screenShake = 0;
 
             // Humo de tanques averiados (< 40% HP)
-            tanks.forEach(t => {
-                if (!t.dead && t.hp < 40 && Math.random() < 0.22) {
-                    particles.push({
-                        x: t.x + (Math.random() - 0.5) * 14,
-                        y: t.y - 14,
-                        vx: (Math.random() - 0.5) * 0.8 + windAccel * 18,
-                        vy: -0.9 - Math.random() * 0.8,
-                        life: 40,
-                        size: 4 + Math.random() * 4,
-                        color: 'rgba(60, 60, 70, A)'
-                    });
-                }
-            });
+            if (particles.length < 120) {
+                tanks.forEach(t => {
+                    if (!t.dead && t.hp < 40 && Math.random() < 0.18) {
+                        particles.push({
+                            x: t.x + (Math.random() - 0.5) * 14,
+                            y: t.y - 14,
+                            vx: (Math.random() - 0.5) * 0.8 + windAccel * 18,
+                            vy: -0.9 - Math.random() * 0.8,
+                            life: 34,
+                            size: 4 + Math.random() * 3.5,
+                            color: 'rgba(60, 60, 70, A)'
+                        });
+                    }
+                });
+            }
 
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
@@ -2004,80 +2999,287 @@
                 d.vy += 0.4;
 
                 if (d.x < 0 || d.x >= WIDTH || d.y > LAVA_Y + 50) { debris.splice(i, 1); continue; }
-                const idx = Math.floor(d.x);
-                if (idx < 0 || idx >= WIDTH) { debris.splice(i, 1); continue; }
-
-                const ground = terrain[idx];
-                if (d.y >= ground) {
-                    const pileX = Math.min(WIDTH - 1, Math.max(0, idx));
-                    terrain[pileX] -= 2.5;
-                    if (pileX > 0) terrain[pileX - 1] -= 1;
-                    if (pileX < WIDTH - 1) terrain[pileX + 1] -= 1;
+                if (isSolidAt(d.x, d.y)) {
                     debris.splice(i, 1);
                 }
             }
+
+            // Actualizar piezas físicas de tanques destruidos (torreta, blindaje y orugas volando con fuego y humo)
+            for (let i = tankWreckPieces.length - 1; i >= 0; i--) {
+                const wp = tankWreckPieces[i];
+                wp.x += wp.vx;
+                wp.y += wp.vy;
+                wp.vy += 0.36;
+                wp.rot += wp.vRot;
+                wp.life--;
+
+                // Estela de humo negro y chispas mientras la pieza vuela
+                if (wp.life % 2 === 0 && particles.length < 150) {
+                    particles.push({
+                        x: wp.x + (Math.random() - 0.5) * 6,
+                        y: wp.y + (Math.random() - 0.5) * 6,
+                        vx: (Math.random() - 0.5) * 0.8,
+                        vy: -0.7 - Math.random() * 0.7,
+                        life: 24,
+                        size: 3.8 + Math.random() * 2.5,
+                        color: Math.random() < 0.4 ? 'rgba(251, 146, 60, A)' : 'rgba(30, 35, 45, A)'
+                    });
+                }
+
+                // Rebote contra el terreno 2D
+                if (wp.x >= 0 && wp.x < WIDTH && isSolidAt(wp.x, wp.y)) {
+                    wp.y -= wp.vy * 1.1;
+                    wp.vy = -Math.abs(wp.vy) * 0.42;
+                    wp.vx *= 0.68;
+                    wp.vRot *= 0.65;
+                }
+
+                if (wp.life <= 0 || wp.y > LAVA_Y + 60) {
+                    tankWreckPieces.splice(i, 1);
+                }
+            }
+
+            // Actualizar aviones de ataque aéreo y orbes vampiro
+            for (let i = airstrikePlanes.length - 1; i >= 0; i--) {
+                const pl = airstrikePlanes[i];
+                pl.x += pl.vx;
+                pl.life--;
+                if (pl.life <= 0 || pl.x > WIDTH + 400) airstrikePlanes.splice(i, 1);
+            }
+
+            for (let i = vampireOrbs.length - 1; i >= 0; i--) {
+                const vo = vampireOrbs[i];
+                vo.x += (vo.tx - vo.x) * 0.14;
+                vo.y += (vo.ty - vo.y) * 0.14;
+                vo.life--;
+                if (vo.life <= 0 || Math.hypot(vo.tx - vo.x, vo.ty - vo.y) < 12) {
+                    vampireOrbs.splice(i, 1);
+                }
+            }
+
+            for (let i = laserBeams.length - 1; i >= 0; i--) {
+                laserBeams[i].life--;
+                if (laserBeams[i].life <= 0) laserBeams.splice(i, 1);
+            }
         }
 
-        function triggerLocalTankDeath(x, y) {
-            if (window.ArcadeAudio) ArcadeAudio.sink();
-            screenShake = 18;
-            explosions.push({ x, y, r: 85, life: 45 });
-            for (let i = 0; i < 24; i++) {
+        function spawnMuzzleEffect(x, y, angle, type) {
+            const mx = x + Math.cos(angle) * 26;
+            const my = (y - 11) + Math.sin(angle) * 26;
+            let baseCol = 'rgba(253, 224, 71, A)';
+            if (type === 'LASER') baseCol = 'rgba(232, 121, 249, A)';
+            else if (type === 'TOXIC') baseCol = 'rgba(74, 222, 128, A)';
+            else if (type === 'VAMPIRE') baseCol = 'rgba(239, 68, 68, A)';
+            else if (type === 'CLUSTER') baseCol = 'rgba(192, 132, 252, A)';
+
+            for (let i = 0; i < 12; i++) {
+                const spread = angle + (Math.random() - 0.5) * 0.7;
+                const spd = 2 + Math.random() * 6;
                 particles.push({
-                    x, y,
-                    vx: (Math.random() - 0.5) * 9,
-                    vy: (Math.random() * -6) - 2,
-                    life: 55 + Math.random() * 35,
-                    size: 6 + Math.random() * 10,
-                    color: i % 2 === 0 ? 'rgba(255, 110, 30, A)' : 'rgba(70, 70, 80, A)'
+                    x: mx,
+                    y: my,
+                    vx: Math.cos(spread) * spd,
+                    vy: Math.sin(spread) * spd,
+                    life: 16 + Math.random() * 10,
+                    size: 3 + Math.random() * 4,
+                    color: baseCol
                 });
             }
         }
 
+        function spawnTypedExplosionVisuals(x, y, r, type) {
+            explosions.push({ x, y, r, maxLife: 38, life: 38, expType: type || 'DEFAULT' });
+
+            const count = (type === 'BIG' || type === 'DRILL') ? 28 : 16;
+            for (let i = 0; i < count; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 1.5 + Math.random() * (r * 0.14);
+                let col = 'rgba(255, 140, 30, A)';
+                if (type === 'TOXIC') col = 'rgba(74, 222, 128, A)';
+                else if (type === 'LASER') col = 'rgba(232, 121, 249, A)';
+                else if (type === 'CLUSTER' || type === 'CLUSTER_FRAG') col = 'rgba(192, 132, 252, A)';
+                else if (type === 'VAMPIRE') col = 'rgba(239, 68, 68, A)';
+                else if (type === 'MOUNTAIN') col = 'rgba(163, 230, 53, A)';
+                else if (type === 'DRILL') col = Math.random() < 0.5 ? 'rgba(251, 191, 36, A)' : 'rgba(226, 232, 240, A)';
+
+                particles.push({
+                    x, y,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd - (type === 'BIG' ? 2.2 : 0.8),
+                    life: 30 + Math.random() * 20,
+                    size: 4 + Math.random() * 5,
+                    color: col
+                });
+            }
+        }
+
+        // Animación cinemática de destrucción de tanque: torreta, chasis y orugas saltando por los aires + explosiones en cadena
+        function triggerLocalTankDeath(x, y, tankColor = '#ff5252') {
+            if (window.ArcadeAudio) ArcadeAudio.sink();
+            screenShake = 24;
+            camera.impactFocus = {
+                x: Math.max(80, Math.min(WIDTH - 80, x)),
+                y: Math.min(LAVA_Y, Math.max(120, y - 25))
+            };
+
+            // 1. Onda expansiva principal + cráter bajo el tanque destruido
+            carveTerrainCircle(x, y + 6, 38, true);
+            spawnTypedExplosionVisuals(x, y - 6, 78, 'BIG');
+
+            // 2. Piezas mecánicas del tanque saliendo disparadas y girando con estelas de humo
+            const parts = [
+                { partType: 'TURRET', vx: (Math.random() - 0.5) * 7, vy: -(9.5 + Math.random() * 3.5), vRot: (Math.random() < 0.5 ? 1 : -1) * 0.18 },
+                { partType: 'HULL_L', vx: -(3.5 + Math.random() * 4), vy: -(6.5 + Math.random() * 3), vRot: -0.15 },
+                { partType: 'HULL_R', vx: (3.5 + Math.random() * 4), vy: -(6.5 + Math.random() * 3), vRot: 0.15 },
+                { partType: 'TRACK', vx: (Math.random() - 0.5) * 8, vy: -(5 + Math.random() * 3), vRot: 0.22 },
+                { partType: 'WHEEL', vx: -(2 + Math.random() * 5), vy: -(7 + Math.random() * 3), vRot: -0.28 },
+                { partType: 'WHEEL', vx: (2 + Math.random() * 5), vy: -(7 + Math.random() * 3), vRot: 0.28 }
+            ];
+            parts.forEach(pt => {
+                tankWreckPieces.push({
+                    x: x,
+                    y: y - 10,
+                    vx: pt.vx,
+                    vy: pt.vy,
+                    rot: 0,
+                    vRot: pt.vRot,
+                    partType: pt.partType,
+                    color: tankColor,
+                    life: 78,
+                    maxLife: 78
+                });
+            });
+
+            // 3. Explosiones secundarias en cadena (munición interna detonando)
+            setTimeout(() => {
+                if (gameState !== 'PLAYING') return;
+                if (window.ArcadeAudio) ArcadeAudio.hit();
+                screenShake = Math.max(screenShake, 15);
+                spawnTypedExplosionVisuals(x - 18 + Math.random() * 36, y - 22, 52, 'DEFAULT');
+            }, 160);
+
+            setTimeout(() => {
+                if (gameState !== 'PLAYING') return;
+                screenShake = Math.max(screenShake, 12);
+                spawnTypedExplosionVisuals(x - 14 + Math.random() * 28, y - 34, 44, 'NAPALM');
+            }, 330);
+        }
+
         function triggerAirstrike(latX, ownerId) {
             if (window.ArcadeAudio) ArcadeAudio.alarm();
+            camera.impactFocus = { x: Math.max(80, Math.min(WIDTH - 80, latX)), y: HEIGHT * 0.45 };
+            broadcast({ type: 'AIRSTRIKE_PLANE', latX });
+            airstrikePlanes.push({ x: latX - 520, y: 85, targetX: latX, vx: 18, life: 95 });
             broadcast({ type: 'FLOAT_TEXT', x: latX, y: 120, text: "✈️ ¡ATAQUE AÉREO!", color: '#ff9800' });
             floatTexts.push({ x: latX, y: 120, text: "✈️ ¡ATAQUE AÉREO!", color: '#ff9800', life: 65 });
             for (let k = 0; k < 3; k++) {
                 setTimeout(() => {
                     projectiles.push({
                         x: latX + (k - 1) * 55 + (Math.random() - 0.5) * 25,
-                        y: -180 - (k * 90),
-                        vx: 0,
-                        vy: 15,
+                        y: 85,
+                        vx: 1.5,
+                        vy: 14,
                         type: 'AIR_MISSILE',
                         ownerId: ownerId
                     });
-                }, k * 180);
+                }, 260 + k * 170);
             }
         }
 
-        function explode(x, y, type, ownerId) {
+        function triggerTeleport(destX, destY, ownerId) {
+            const shooter = tanks.find(t => t.id === ownerId);
+            if (!shooter || shooter.dead) return;
+            const safeX = Math.max(30, Math.min(WIDTH - 30, destX));
+            const groundY = getTankGroundY(safeX, destY);
+            if (groundY >= LAVA_Y) return; // Evita teletransportarse directo dentro de la lava
+
+            const oldX = shooter.x;
+            const oldY = shooter.y;
+            shooter.x = safeX;
+            shooter.y = groundY - 18;
+
+            camera.impactFocus = {
+                x: Math.max(80, Math.min(WIDTH - 80, safeX)),
+                y: Math.min(LAVA_Y, Math.max(120, shooter.y - 20))
+            };
+
+            if (window.ArcadeAudio) ArcadeAudio.transition();
+            laserBeams.push({ x1: oldX, y1: 0, x2: oldX, y2: oldY, color: '#00f0ff', life: 22 });
+            laserBeams.push({ x1: safeX, y1: 0, x2: safeX, y2: shooter.y, color: '#c084fc', life: 26 });
+            spawnTypedExplosionVisuals(safeX, shooter.y, 35, 'TELEPORT');
+            broadcast({ type: 'TELEPORT_FX', oldX, oldY, newX: safeX, newY: shooter.y });
+            broadcast({ type: 'FLOAT_TEXT', x: safeX, y: shooter.y - 50, text: "🌀 ¡TELETRANSPORTE!", color: '#00f0ff' });
+            floatTexts.push({ x: safeX, y: shooter.y - 50, text: "🌀 ¡TELETRANSPORTE!", color: '#00f0ff', life: 60 });
+        }
+
+        function explode(x, y, type, ownerId, directHitTank = null) {
             if (window.ArcadeAudio) ArcadeAudio.hit();
-            let r = 42;
-            if (type === 'BIG' || type === 'AIR_MISSILE') r = 82;
-            if (type === 'CLUSTER_FRAG') r = 24;
+            let r = 44;
+            if (type === 'BIG' || type === 'AIR_MISSILE') r = 84;
+            else if (type === 'DRILL') r = 64;
+            else if (type === 'SHOCKWAVE' || type === 'MAGNET') r = 68;
+            else if (type === 'CLUSTER_FRAG' || type === 'BOUNCER_HOP' || type === 'NAPALM_EMBER') r = 24;
 
-            screenShake = Math.max(screenShake, r * 0.22);
-            applyTerrainExplosion(x, y, r, type);
-            explosions.push({ x, y, r, life: 30 });
+            // Mantener la cámara enfocada exactamente donde ocurrió la explosión
+            camera.impactFocus = {
+                x: Math.max(80, Math.min(WIDTH - 80, x)),
+                y: Math.min(LAVA_Y, Math.max(120, y - 20))
+            };
 
+            screenShake = Math.max(screenShake, r * 0.24);
+            if (type !== 'SHOCKWAVE') {
+                applyTerrainExplosion(x, y, r, type);
+            }
+            spawnTypedExplosionVisuals(x, y, r, type);
+
+            if (type === 'DRILL') {
+                broadcast({ type: 'FLOAT_TEXT', x: x, y: y - 45, text: "🔩 ¡DETONACIÓN SUBTERRÁNEA!", color: '#fde047' });
+                floatTexts.push({ x: x, y: y - 45, text: "🔩 ¡DETONACIÓN SUBTERRÁNEA!", color: '#fde047', life: 60 });
+            }
+
+            // Los fragmentos secundarios nacen con armDelay=7 fotogramas para salir en arco sin explotar todos dentro del mismo tanque en el frame 1
             if (type === 'CLUSTER') {
                 for (let i = 0; i < 5; i++) {
                     projectiles.push({
-                        x: x,
-                        y: y - 10,
-                        vx: (Math.random() - 0.5) * 14,
-                        vy: -(Math.random() * 9 + 5),
+                        x: x + (i - 2) * 5,
+                        y: y - 16,
+                        vx: (i - 2) * 3.1 + (Math.random() - 0.5) * 2.5,
+                        vy: -(Math.random() * 7 + 6),
                         type: 'CLUSTER_FRAG',
-                        ownerId: ownerId
+                        ownerId: ownerId,
+                        armDelay: 7
+                    });
+                }
+            } else if (type === 'NAPALM') {
+                // Lluvia de Magma: escupe 6 brasas ardientes alrededor del cráter
+                for (let i = 0; i < 6; i++) {
+                    projectiles.push({
+                        x: x + (i - 2.5) * 5,
+                        y: y - 16,
+                        vx: (i - 2.5) * 2.8 + (Math.random() - 0.5) * 1.8,
+                        vy: -(5 + Math.random() * 5.5),
+                        type: 'NAPALM_EMBER',
+                        ownerId: ownerId,
+                        armDelay: 7
                     });
                 }
             }
 
+            // Set para garantizar que un tanque NUNCA reciba daño duplicado en una misma explosión
+            const damagedTankIds = new Set();
+
             tanks.forEach(t => {
-                const d = Math.hypot(t.x - x, (t.y + 10) - y);
-                if (d < r + 22) {
+                if (t.dead || damagedTankIds.has(t.id)) return;
+
+                // Distancia medida al centro real del blindaje del tanque (t.x, t.y - 8)
+                const tankCenterY = t.y - 8;
+                const d = Math.hypot(t.x - x, tankCenterY - y);
+                const hitRadius = (type === 'SHOCKWAVE' || type === 'MAGNET') ? r + 48 : (type === 'DRILL' ? r + 30 : r + 20);
+                const isDirectHit = directHitTank && directHitTank.id === t.id;
+
+                if (isDirectHit || d < hitRadius) {
+                    damagedTankIds.add(t.id);
+
                     if (t.hasShield) {
                         t.hasShield = false;
                         broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 50, text: "🛡️ ¡BLOQUEADO!", color: '#00ffff' });
@@ -2085,11 +3287,29 @@
                         return;
                     }
 
-                    let dmg = 42 * (1 - d / (r + 22));
+                    // Mecánicas cinéticas especiales: Empuje Sónico (SHOCKWAVE) y Atracción Magnética (MAGNET)
+                    if (type === 'SHOCKWAVE' && !t.dead) {
+                        const pushDir = t.x >= x ? 1 : -1;
+                        const pushDist = (1 - Math.min(1, d / hitRadius)) * 115 + 35;
+                        t.x = Math.max(24, Math.min(WIDTH - 24, t.x + pushDir * pushDist));
+                        broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 65, text: "💨 ¡EMPUJADO!", color: '#38bdf8' });
+                        floatTexts.push({ x: t.x, y: t.y - 65, text: "💨 ¡EMPUJADO!", color: '#38bdf8', life: 55 });
+                    } else if (type === 'MAGNET' && !t.dead) {
+                        t.x = t.x + (x - t.x) * 0.65;
+                        broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 65, text: "🧲 ¡ATRAÍDO!", color: '#38bdf8' });
+                        floatTexts.push({ x: t.x, y: t.y - 65, text: "🧲 ¡ATRAÍDO!", color: '#38bdf8', life: 55 });
+                    }
+
+                    // Si fue impacto directo sobre la hitbox del tanque recibe el daño base íntegro; si fue daño en área por caer en el suelo cercano, escala según la distancia
+                    const falloff = isDirectHit ? 1.0 : Math.max(0.15, 1 - (d / hitRadius));
+                    let dmg = 40 * falloff;
                     if (type === 'BIG') dmg *= 2;
-                    if (type === 'AIR_MISSILE') dmg *= 2.3;
-                    if (type === 'CLUSTER_FRAG') dmg *= 0.55;
-                    if (type === 'MOUNTAIN') dmg *= 0.25;
+                    else if (type === 'AIR_MISSILE') dmg *= 2.2;
+                    else if (type === 'DRILL') dmg *= 1.38;
+                    else if (type === 'CLUSTER_FRAG' || type === 'NAPALM_EMBER') dmg *= 0.38;
+                    else if (type === 'BOUNCER_HOP') dmg *= 0.38;
+                    else if (type === 'SHOCKWAVE') dmg *= 0.55;
+                    else if (type === 'MOUNTAIN') dmg *= 0.25;
 
                     t.hp = Math.max(0, t.hp - dmg);
                     const dmgText = `-${Math.ceil(dmg)}`;
@@ -2102,8 +3322,17 @@
                             const heal = dmg * 0.55;
                             shooter.hp = Math.min(100, shooter.hp + heal);
                             shooter.stats.healed += Math.ceil(heal);
-                            broadcast({ type: 'FLOAT_TEXT', x: shooter.x, y: shooter.y - 40, text: `+${Math.ceil(heal)} HP`, color: '#4ade80' });
-                            floatTexts.push({ x: shooter.x, y: shooter.y - 40, text: `+${Math.ceil(heal)} HP`, color: '#4ade80', life: 60 });
+                            for (let vo = 0; vo < 6; vo++) {
+                                vampireOrbs.push({
+                                    x: t.x + (Math.random() - 0.5) * 20,
+                                    y: t.y - 10 + (Math.random() - 0.5) * 20,
+                                    tx: shooter.x,
+                                    ty: shooter.y - 10,
+                                    life: 28
+                                });
+                            }
+                            broadcast({ type: 'FLOAT_TEXT', x: shooter.x, y: shooter.y - 40, text: `🧛 +${Math.ceil(heal)} HP`, color: '#4ade80' });
+                            floatTexts.push({ x: shooter.x, y: shooter.y - 40, text: `🧛 +${Math.ceil(heal)} HP`, color: '#4ade80', life: 60 });
                         }
                     }
 
@@ -2116,8 +3345,8 @@
                     if (t.hp <= 0 && !t.dead) {
                         t.dead = true;
                         broadcast({ type: 'FLOAT_TEXT', x: t.x, y: t.y - 60, text: "💥 ¡DESTRUIDO!", color: '#ff5252' });
-                        broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y });
-                        triggerLocalTankDeath(t.x, t.y);
+                        broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y, color: t.color });
+                        triggerLocalTankDeath(t.x, t.y, t.color);
 
                         if (ownerId) {
                             const killer = tanks.find(k => k.id === ownerId);
@@ -2134,46 +3363,22 @@
         function applyTerrainExplosion(x, y, r, type) {
             const bTheme = BIOMES[activeBiomeKey] || BIOMES.valley;
             if (type === 'MOUNTAIN') {
-                const mr = 64;
-                const mrSq = mr * mr;
-                for (let i = Math.floor(x - mr); i < x + mr; i++) {
-                    if (i >= 0 && i < WIDTH) {
-                        const distSq = (i - x) ** 2;
-                        if (distSq < mrSq) terrain[i] -= Math.sqrt(mrSq - distSq);
-                    }
-                }
+                addTerrainMountain(x, y, 64);
             } else {
-                const chunksToSpawn = Math.floor(r / 2.2);
-                for (let i = Math.floor(x - r); i < x + r; i++) {
-                    if (i >= 0 && i < WIDTH) {
-                        const distSq = (i - x) ** 2;
-                        if (distSq < r * r) {
-                            let cut = Math.sqrt(r * r - distSq);
-                            cut += (Math.random() - 0.5) * 4;
-                            if (cut < 0) cut = 0;
+                // Cráter circular 2D real en (x, y): excava cuevas en bases de paredes y cavernas subterráneas sin rebanar el techo
+                carveTerrainCircle(x, y, r, true);
 
-                            const currentY = terrain[i];
-                            const rockY = stoneLevels[i];
-                            if (currentY >= rockY) {
-                                cut *= 0.5;
-                            } else if (currentY + cut > rockY) {
-                                const dirtPart = rockY - currentY;
-                                const stonePart = (cut - dirtPart) * 0.5;
-                                cut = dirtPart + stonePart;
-                            }
-                            terrain[i] += cut;
-                        }
-                    }
-                }
-
+                const chunksToSpawn = Math.min(18, Math.floor(r / 2.6));
                 for (let k = 0; k < chunksToSpawn; k++) {
-                    debris.push({
-                        x: x + (Math.random() - 0.5) * r,
-                        y: y,
-                        vx: (Math.random() - 0.5) * 10,
-                        vy: -(Math.random() * 10 + 4),
-                        color: Math.random() < 0.5 ? bTheme.dirt : bTheme.stone
-                    });
+                    if (debris.length < 55) {
+                        debris.push({
+                            x: x + (Math.random() - 0.5) * r,
+                            y: y,
+                            vx: (Math.random() - 0.5) * 10,
+                            vy: -(Math.random() * 10 + 4),
+                            color: Math.random() < 0.5 ? bTheme.dirt : bTheme.stone
+                        });
+                    }
                 }
             }
         }
@@ -2181,14 +3386,18 @@
         function fireWeapon(tank, power) {
             if (!tank || tank.dead || projectiles.length > 0) return;
             if (window.ArcadeAudio) ArcadeAudio.shoot();
-            broadcast({ type: 'SHOOT_SFX' });
-
-            tank.lastPower = power;
-            camera.autoFollow = true;
-            camera.overviewMode = false;
 
             const type = tank.specialWeapon;
             tank.specialWeapon = null;
+            tank.lastPower = power;
+            tank.livePower = 0;
+            camera.autoFollow = true;
+            camera.overviewMode = false;
+            camera.impactFocus = { x: tank.x, y: tank.y - 40 };
+            updateCameraButtonLabel();
+
+            spawnMuzzleEffect(tank.x, tank.y, tank.angle, type);
+            broadcast({ type: 'SHOOT_SFX', x: tank.x, y: tank.y, angle: tank.angle, wType: type });
 
             const spawn = (off) => {
                 projectiles.push({
@@ -2228,8 +3437,7 @@
                 if (px < 0 || px >= WIDTH || py > LAVA_Y + 60) {
                     return { hitX: px, hitY: py, out: true };
                 }
-                const groundY = terrain[Math.floor(px)] || HEIGHT;
-                if (py >= groundY) {
+                if (isSolidAt(px, py)) {
                     return { hitX: px, hitY: py, out: false };
                 }
             }
@@ -2262,7 +3470,11 @@
                 }
                 const dir = Math.sign(moveSteps);
                 if (bot.fuel > 0) {
-                    bot.x = Math.max(30, Math.min(WIDTH - 30, bot.x + dir * 3));
+                    const nextX = Math.max(30, Math.min(WIDTH - 30, bot.x + dir * 3));
+                    const nextGround = getTankGroundY(nextX, bot.y + 18);
+                    if ((bot.y + 18) - nextGround <= 22) {
+                        bot.x = nextX;
+                    }
                     bot.fuel = Math.max(0, bot.fuel - 0.8);
                 }
                 stepCount++;
@@ -2300,14 +3512,35 @@
             const angleSpread = diff === 'hard' ? 0.025 : (diff === 'normal' ? 0.065 : 0.13);
             const powerSpread = diff === 'hard' ? 0.45 : (diff === 'normal' ? 1.25 : 2.4);
 
-            bot.angle = Math.max(-Math.PI + 0.08, Math.min(-0.08, bestAngle + (Math.random() - 0.5) * angleSpread * 2));
+            const targetAngle = Math.max(-Math.PI + 0.08, Math.min(-0.08, bestAngle + (Math.random() - 0.5) * angleSpread * 2));
             const finalPower = Math.max(5, Math.min(MAX_POWER, bestPower + (Math.random() - 0.5) * powerSpread * 2));
 
-            setTimeout(() => {
-                if (gameState === 'PLAYING' && !bot.dead && tanks[turnIndex] === bot) {
-                    fireWeapon(bot, finalPower);
+            // Animar el apuntado del cañón y la barra de carga de potencia del Bot para que todos los jugadores la vean
+            const startAngle = bot.angle;
+            let chargeTick = 0;
+            const totalChargeTicks = 24;
+            bot.livePower = 0;
+
+            const botChargeTimer = setInterval(() => {
+                if (gameState !== 'PLAYING' || bot.dead || tanks[turnIndex] !== bot) {
+                    clearInterval(botChargeTimer);
+                    bot.livePower = 0;
+                    return;
                 }
-            }, 550);
+                chargeTick++;
+                const tProg = Math.min(1, chargeTick / totalChargeTicks);
+                bot.angle = startAngle + (targetAngle - startAngle) * Math.min(1, tProg * 1.4);
+                bot.livePower = finalPower * tProg;
+
+                if (chargeTick >= totalChargeTicks) {
+                    clearInterval(botChargeTimer);
+                    setTimeout(() => {
+                        if (gameState === 'PLAYING' && !bot.dead && tanks[turnIndex] === bot) {
+                            fireWeapon(bot, finalPower);
+                        }
+                    }, 120);
+                }
+            }, 26);
         }
 
         function collectItemHost(tank, idx) {
@@ -2341,7 +3574,8 @@
         function checkTurnEnd() {
             if (projectiles.length === 0 && !isTurnTransition) {
                 isTurnTransition = true;
-                setTimeout(nextTurn, 1050);
+                // Pausa de 1.85s en el punto de impacto para apreciar la explosión, el cráter y el daño al rival
+                setTimeout(nextTurn, 1850);
             }
         }
 
@@ -2360,6 +3594,7 @@
 
             // Daño por veneno al cambiar el turno
             tanks.forEach(t => {
+                t.livePower = 0;
                 if (!t.dead && t.poison) {
                     t.hp = Math.max(0, t.hp - t.poison.dmg);
                     t.poison.turns--;
@@ -2369,8 +3604,8 @@
 
                     if (t.hp <= 0) {
                         t.dead = true;
-                        broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y });
-                        triggerLocalTankDeath(t.x, t.y);
+                        broadcast({ type: 'TANK_DEATH', x: t.x, y: t.y, color: t.color });
+                        triggerLocalTankDeath(t.x, t.y, t.color);
                         checkWin();
                     }
                     if (t.poison.turns <= 0) t.poison = null;
@@ -2384,6 +3619,7 @@
 
             if (active) {
                 active.fuel = 100;
+                active.livePower = 0;
                 if (playerInputs[active.id]) {
                     playerInputs[active.id].charging = false;
                     playerInputs[active.id].space = false;
@@ -2446,9 +3682,9 @@
 
         function gameOver(winner, stats, duration) {
             gameState = 'GAMEOVER';
+            document.body.classList.remove('is-playing');
             if (window.ArcadeAudio) ArcadeAudio.victory();
             document.getElementById('ui-layer').style.pointerEvents = 'auto';
-            document.getElementById('touch-controls').style.display = 'none';
             document.getElementById('main-hud').style.display = 'none';
             showScreen('game-over-screen');
 
@@ -2483,7 +3719,11 @@
         }
 
         function spawnItemHost() {
-            const types = ['HEALTH', 'TRIPLE', 'BIG', 'MOUNTAIN', 'SHIELD', 'TOXIC', 'LASER', 'CLUSTER', 'DRILL', 'VAMPIRE', 'AIRSTRIKE'];
+            const types = [
+                'HEALTH', 'TRIPLE', 'BIG', 'MOUNTAIN', 'SHIELD', 'TOXIC',
+                'LASER', 'CLUSTER', 'DRILL', 'VAMPIRE', 'AIRSTRIKE',
+                'TELEPORT', 'MAGNET', 'BOUNCER', 'SHOCKWAVE', 'NAPALM'
+            ];
             let x, valid = false, attempts = 0;
 
             while (!valid && attempts < 20) {
@@ -2501,16 +3741,24 @@
             }
 
             if (valid && items.length < 7) {
-                items.push({ x: x, type: types[Math.floor(Math.random() * types.length)] });
+                items.push({ x: x, y: getTopSurfaceY(x), type: types[Math.floor(Math.random() * types.length)] });
                 broadcast({ type: 'SYNC_ITEMS', items: items });
             }
         }
 
-        // --- RENDERIZADO VISUAL Y BUCLE DEL CLIENTE ---
+        // --- BUCLE UNIFICADO DE FÍSICAS + RENDERIZADO (EVITA DOBLE RAF Y LAG) ---
         let lastTrackedTurnIdx = -1;
+        let lastDisplayedWeaponKey = null;
 
         function clientRenderLoop() {
             if (gameState !== 'PLAYING') return;
+
+            if (isHost) {
+                updatePhysics();
+                hostBroadcastSnapshot();
+            } else {
+                updateLocalEffects();
+            }
 
             const active = tanks[turnIndex];
             if (turnIndex !== lastTrackedTurnIdx) {
@@ -2518,16 +3766,44 @@
                 centerCameraOnActiveTank();
             }
 
-            // Elegir qué tanque mostrar en las estadísticas del HUD
-            const hudTank = (active && isTankControlledLocally(active))
-                ? active
-                : (tanks.find(t => t.id === myPeerId) || active || tanks[0]);
+            // Ocultar la barra inferior de potencia cuando ya se realizó el disparo (proyectil en vuelo o viendo explosión)
+            const aimHudBar = document.getElementById('aim-hud-bar');
+            const shotInProgress = projectiles.length > 0 || isTurnTransition;
+            if (aimHudBar) {
+                if (shotInProgress) {
+                    aimHudBar.classList.add('hidden-during-shot');
+                } else {
+                    aimHudBar.classList.remove('hidden-during-shot');
+                }
+            }
+
+            // Actualizar SIEMPRE la interfaz con los datos del jugador que tiene el turno actual
+            const hudTank = active || tanks.find(t => t.id === myPeerId) || tanks[0];
 
             if (hudTank) {
-                document.getElementById('hp-disp').innerText = Math.ceil(hudTank.hp);
-                document.getElementById('fuel-disp').innerText = Math.ceil(hudTank.fuel);
-                const wName = hudTank.specialWeapon ? (WEAPON_NAMES[hudTank.specialWeapon] || hudTank.specialWeapon) : '💣 Cañón Base';
-                document.getElementById('weapon-badge').innerText = wName;
+                document.getElementById('hud-tank-name').innerText = hudTank.name;
+                const dotEl = document.getElementById('hud-tank-dot');
+                dotEl.style.background = hudTank.color || (hudTank.team === 'RED' ? '#ff5252' : '#38bdf8');
+                dotEl.style.boxShadow = `0 0 8px ${dotEl.style.background}`;
+
+                const hpVal = Math.ceil(hudTank.hp);
+                const hpEl = document.getElementById('hp-disp');
+                hpEl.innerText = hpVal;
+                hpEl.style.color = hpVal > 50 ? '#4ade80' : (hpVal > 25 ? '#fbbf24' : '#ef4444');
+
+                const fuelVal = Math.max(0, Math.ceil(hudTank.fuel));
+                document.getElementById('fuel-disp').innerText = fuelVal;
+
+                const wKey = hudTank.specialWeapon || 'DEFAULT';
+                const wName = WEAPON_NAMES[wKey] || wKey;
+                document.getElementById('weapon-badge-text').innerText = wName;
+
+                if (wKey !== lastDisplayedWeaponKey) {
+                    lastDisplayedWeaponKey = wKey;
+                    if (document.getElementById('weapon-tooltip').classList.contains('visible')) {
+                        populateWeaponTooltip(wKey);
+                    }
+                }
 
                 // Mostrar ángulo en grados comprensibles (0° a 90°)
                 const degFromHoriz = Math.round(Math.abs(Math.sin(hudTank.angle)) * 90);
@@ -2555,7 +3831,7 @@
             }
 
             // Enviar controles si el tanque activo es controlado desde este dispositivo
-            if (active && isTankControlledLocally(active) && projectiles.length === 0 && !isTurnTransition) {
+            if (active && isTankControlledLocally(active) && !shotInProgress) {
                 const inp = {
                     left: !!(keys['ArrowLeft'] || keys['a'] || keys['A']),
                     right: !!(keys['ArrowRight'] || keys['d'] || keys['D']),
@@ -2580,6 +3856,7 @@
 
                 // Barra de potencia (por botón/tecla Espacio o por Resortera táctil)
                 if (isSlingshotAiming) {
+                    active.livePower = slingPower;
                     const pct = Math.round((slingPower / MAX_POWER) * 100);
                     document.getElementById('fire-power-fill').style.width = pct + '%';
                     document.getElementById('power-disp').innerText = `⚡ Potencia: ${pct}%`;
@@ -2593,28 +3870,40 @@
                         if (chargePower >= MAX_POWER) { chargePower = MAX_POWER; chargeDir = -1; }
                         if (chargePower <= 3) { chargePower = 3; chargeDir = 1; }
                     }
+                    active.livePower = chargePower;
                     const pct = Math.round((chargePower / MAX_POWER) * 100);
                     document.getElementById('fire-power-fill').style.width = pct + '%';
                     document.getElementById('power-disp').innerText = `⚡ Potencia: ${pct}%`;
                 } else {
                     isCharging = false;
+                    active.livePower = 0;
                     document.getElementById('fire-power-fill').style.width = '0%';
                     document.getElementById('power-disp').innerText = `⚡ Potencia: 0%`;
                 }
+            } else if (active && !shotInProgress) {
+                // Turno de otro jugador o de un Bot IA: mostrar su barra de carga de potencia en vivo
+                const otherPwr = active.livePower || 0;
+                const pct = Math.round((otherPwr / MAX_POWER) * 100);
+                document.getElementById('fire-power-fill').style.width = pct + '%';
+                document.getElementById('power-disp').innerText = `⚡ Potencia: ${pct}%`;
             } else {
                 document.getElementById('fire-power-fill').style.width = '0%';
+                document.getElementById('power-disp').innerText = `⚡ Potencia: 0%`;
             }
 
-            if (!isHost) {
-                updateLocalEffects();
-            }
-
-            // Cámara Inteligente Suave: sigue al proyectil en vuelo o al tanque activo
+            // Cámara Inteligente Suave:
+            // 1) Sigue al proyectil en vuelo
+            // 2) Al impactar, se QUEDA donde la bala acabó para apreciar la explosión, el cráter y el daño al enemigo
+            // 3) Solo pasa al siguiente tanque cuando inicia el nuevo turno
             if (camera.autoFollow) {
                 if (projectiles.length > 0) {
                     const leadP = projectiles[0];
                     camera.targetX = leadP.x;
                     camera.targetY = Math.min(LAVA_Y, Math.max(120, leadP.y));
+                    camera.impactFocus = { x: camera.targetX, y: camera.targetY };
+                } else if (camera.impactFocus) {
+                    camera.targetX = camera.impactFocus.x;
+                    camera.targetY = camera.impactFocus.y;
                 } else if (active && !active.dead) {
                     camera.targetX = active.x;
                     camera.targetY = active.y - 40;
@@ -2626,8 +3915,8 @@
             camera.zoom += (camera.targetZoom - camera.zoom) * 0.14;
 
             drawGame();
-            drawMinimap();
-            requestAnimationFrame(clientRenderLoop);
+            if (frameCounter % 3 === 0) drawMinimap();
+            mainLoopId = requestAnimationFrame(clientRenderLoop);
             frameCounter++;
         }
 
@@ -2640,7 +3929,11 @@
             } else {
                 camera.x = Math.max(halfW, Math.min(camera.x, WIDTH - halfW));
             }
-            camera.y = Math.max(halfH - 180, Math.min(camera.y, LAVA_Y + 60 - halfH * 0.5));
+
+            // Impedir que la cámara baje más allá del borde inferior de la lava/agua (evita la franja negra inferior)
+            const worldBottom = LAVA_Y + 62;
+            const maxCamY = Math.max(halfH, worldBottom - halfH);
+            camera.y = Math.max(halfH - 220, Math.min(camera.y, maxCamY));
         }
 
         function screenToWorld(clientX, clientY) {
@@ -2669,88 +3962,73 @@
             CTX.scale(camera.zoom, camera.zoom);
             CTX.translate(-camera.x, -camera.y);
 
+            // Calcular límites visibles de la cámara en coordenadas del mundo (Viewport Culling)
+            const halfVisW = (CANVAS.width / 2) / camera.zoom + 60;
+            const halfVisH = (CANVAS.height / 2) / camera.zoom + 60;
+            const viewLeft = Math.max(0, Math.floor(camera.x - halfVisW));
+            const viewRight = Math.min(WIDTH, Math.ceil(camera.x + halfVisW));
+            const viewTop = Math.max(0, Math.floor(camera.y - halfVisH));
+            const viewBottom = Math.min(T_HEIGHT, Math.ceil(camera.y + halfVisH));
+
             // 2. Estrellas y Montañas en Parallax de Fondo
             CTX.fillStyle = 'rgba(255, 255, 255, 0.55)';
             bgStars.forEach(st => {
-                CTX.beginPath();
-                CTX.arc(st.x, st.y, st.r, 0, Math.PI * 2);
-                CTX.fill();
+                if (st.x >= viewLeft && st.x <= viewRight) {
+                    CTX.fillRect(st.x - st.r, st.y - st.r, st.r * 2, st.r * 2);
+                }
             });
 
             // Cordillera lejana
             CTX.fillStyle = bTheme.mountainFar;
             CTX.beginPath();
-            CTX.moveTo(0, LAVA_Y);
-            for (let x = 0; x <= WIDTH; x += 120) {
+            const mStart = Math.max(0, Math.floor(viewLeft / 120) * 120);
+            const mEnd = Math.min(WIDTH, Math.ceil(viewRight / 120) * 120);
+            CTX.moveTo(mStart, LAVA_Y);
+            for (let x = mStart; x <= mEnd; x += 120) {
                 const mh = 340 + Math.sin(x * 0.0035 + 1.2) * 110 + Math.cos(x * 0.008) * 45;
                 CTX.lineTo(x, mh);
             }
-            CTX.lineTo(WIDTH, LAVA_Y);
+            CTX.lineTo(mEnd, LAVA_Y);
             CTX.closePath();
             CTX.fill();
 
-            // 3. Capa de Roca Madre (Stone)
-            CTX.fillStyle = bTheme.stone;
-            CTX.beginPath();
-            CTX.moveTo(0, WORLD_HEIGHT + 1200);
-            for (let x = 0; x < WIDTH; x += 2) {
-                const top = Math.max(terrain[x], stoneLevels[x]);
-                CTX.lineTo(x, top);
-            }
-            CTX.lineTo(WIDTH, WORLD_HEIGHT + 1200);
-            CTX.fill();
-
-            // 4. Capa de Tierra / Arena / Nieve (Dirt)
-            const dirtGrad = CTX.createLinearGradient(0, 250, 0, LAVA_Y);
-            dirtGrad.addColorStop(0, bTheme.dirt);
-            dirtGrad.addColorStop(1, bTheme.dirtDark);
-            CTX.fillStyle = dirtGrad;
-            CTX.beginPath();
-            CTX.moveTo(0, Math.max(terrain[0], stoneLevels[0]));
-            for (let x = 0; x < WIDTH; x++) {
-                CTX.lineTo(x, terrain[x]);
-            }
-            for (let x = WIDTH - 1; x >= 0; x -= 2) {
-                CTX.lineTo(x, Math.max(terrain[x], stoneLevels[x]));
-            }
-            CTX.closePath();
-            CTX.fill();
-
-            // 5. Superficie brillante del terreno
-            CTX.lineWidth = 4;
-            for (let x = 0; x < WIDTH - 2; x += 2) {
-                CTX.beginPath();
-                CTX.moveTo(x, terrain[x]);
-                CTX.lineTo(x + 2, terrain[x + 2]);
-                const isStone = terrain[x] >= stoneLevels[x];
-                CTX.strokeStyle = isStone ? bTheme.stone : bTheme.grass;
-                CTX.stroke();
+            // 3-5. Terreno Destruible 2D Real (Solo dibuja la porción visible en cámara para no saturar GPU/CPU)
+            const sliceW = viewRight - viewLeft;
+            const sliceH = viewBottom - viewTop;
+            if (sliceW > 0 && sliceH > 0) {
+                CTX.drawImage(terrainCanvas, viewLeft, viewTop, sliceW, sliceH, viewLeft, viewTop, sliceW, sliceH);
             }
 
-            // 6. Mar de Lava / Agua Abisal Animado
+            // 6. Mar de Lava / Agua Abisal Profundo (Optimizado sin shadowBlur de software)
             CTX.save();
-            CTX.shadowBlur = 22;
-            CTX.shadowColor = bTheme.lavaGlow;
-            CTX.fillStyle = bTheme.lava;
-            CTX.fillRect(0, LAVA_Y, WIDTH, 65);
+            const lavaGrad = CTX.createLinearGradient(0, LAVA_Y, 0, LAVA_Y + 320);
+            lavaGrad.addColorStop(0, bTheme.lava);
+            lavaGrad.addColorStop(1, '#09060b');
+            CTX.fillStyle = lavaGrad;
+            CTX.fillRect(viewLeft, LAVA_Y, Math.max(1, viewRight - viewLeft), 900);
+
+            // Resplandor superior ligero sin filtro Gaussiano costoso
+            CTX.fillStyle = bTheme.lavaGlow;
+            CTX.globalAlpha = 0.22;
+            CTX.fillRect(viewLeft, LAVA_Y - 8, Math.max(1, viewRight - viewLeft), 12);
+            CTX.globalAlpha = 1.0;
 
             CTX.strokeStyle = '#ffffff';
             CTX.lineWidth = 2.5;
             CTX.beginPath();
-            for (let x = 0; x <= WIDTH; x += 40) {
+            const lStart = Math.max(0, Math.floor(viewLeft / 40) * 40);
+            const lEnd = Math.min(WIDTH, Math.ceil(viewRight / 40) * 40);
+            for (let x = lStart; x <= lEnd; x += 40) {
                 const wy = LAVA_Y + Math.sin(x * 0.03 + frameCounter * 0.08) * 2.5;
-                if (x === 0) CTX.moveTo(x, wy);
+                if (x === lStart) CTX.moveTo(x, wy);
                 else CTX.lineTo(x, wy);
             }
             CTX.stroke();
             CTX.restore();
 
-            CTX.fillStyle = '#05080f';
-            CTX.fillRect(0, LAVA_Y + 65, WIDTH, 1500);
-
             // 7. Cajas de Suministros y Armas
             items.forEach(it => {
-                const y = terrain[Math.floor(it.x)] || HEIGHT;
+                const y = it.y || terrain[Math.floor(it.x)] || HEIGHT;
                 CTX.save();
                 CTX.translate(it.x, y - 16);
                 CTX.fillStyle = '#f59e0b';
@@ -2777,6 +4055,11 @@
                 else if (it.type === 'DRILL') s = '🔩';
                 else if (it.type === 'VAMPIRE') s = '🧛';
                 else if (it.type === 'AIRSTRIKE') s = '✈️';
+                else if (it.type === 'TELEPORT') s = '🌀';
+                else if (it.type === 'MAGNET') s = '🧲';
+                else if (it.type === 'BOUNCER') s = '🏀';
+                else if (it.type === 'SHOCKWAVE') s = '💨';
+                else if (it.type === 'NAPALM') s = '🔥';
                 CTX.fillText(s, 0, 1);
                 CTX.restore();
             });
@@ -2788,10 +4071,15 @@
                 if (t.dead) return;
                 const isCurrentTurn = activeTank && activeTank.id === t.id;
 
-                // Calcular inclinación suave según la pendiente del terreno bajo las orugas
-                const lx = Math.max(0, Math.min(WIDTH - 1, Math.floor(t.x - 10)));
-                const rx = Math.max(0, Math.min(WIDTH - 1, Math.floor(t.x + 10)));
-                const slopeAngle = Math.atan2((terrain[rx] || t.y) - (terrain[lx] || t.y), 20) * 0.45;
+                // Usar pendiente en caché (se recalcula solo cuando el tanque se mueve o el terreno cambia)
+                if (t._slopeAngle === undefined || t._lastSlopeVer !== terrainVersion || t._lastSlopeX !== t.x) {
+                    const ly = getTankGroundY(t.x - 10, t.y + 18);
+                    const ry = getTankGroundY(t.x + 10, t.y + 18);
+                    t._slopeAngle = Math.atan2(ry - ly, 20) * 0.42;
+                    t._lastSlopeVer = terrainVersion;
+                    t._lastSlopeX = t.x;
+                }
+                const slopeAngle = t._slopeAngle;
 
                 CTX.save();
                 CTX.translate(t.x, t.y);
@@ -2930,44 +4218,324 @@
                 }
             });
 
-            // 9. Proyectiles en Vuelo
+            // 9. Proyectiles en Vuelo con Diseño Único por Tipo de Arma
             projectiles.forEach(p => {
                 CTX.save();
-                let col = '#ff5252';
-                if (p.type === 'TOXIC') col = '#4ade80';
-                else if (p.type === 'LASER') col = '#e879f9';
-                else if (p.type === 'DRILL') col = '#cbd5e1';
-                else if (p.type === 'VAMPIRE') col = '#ef4444';
-                else if (p.type === 'CLUSTER' || p.type === 'CLUSTER_FRAG') col = '#c084fc';
-                else if (p.type === 'AIRSTRIKE' || p.type === 'AIR_MISSILE') col = '#fb923c';
+                const pType = p.type || 'DEFAULT';
+                const velAngle = Math.atan2(p.vy || 0, p.vx || 1);
 
-                CTX.shadowColor = col;
-                CTX.shadowBlur = 12;
-                CTX.fillStyle = col;
+                if (pType === 'LASER') {
+                    // Haz de plasma alargado de francotirador
+                    CTX.translate(p.x, p.y);
+                    CTX.rotate(velAngle);
+                    CTX.shadowColor = '#e879f9';
+                    CTX.shadowBlur = 18;
+                    CTX.strokeStyle = '#f0abfc';
+                    CTX.lineWidth = 6;
+                    CTX.beginPath();
+                    CTX.moveTo(-22, 0);
+                    CTX.lineTo(10, 0);
+                    CTX.stroke();
+                    CTX.strokeStyle = '#ffffff';
+                    CTX.lineWidth = 2.5;
+                    CTX.beginPath();
+                    CTX.moveTo(-18, 0);
+                    CTX.lineTo(10, 0);
+                    CTX.stroke();
+                } else if (pType === 'TRIPLE' || pType === 'AIR_MISSILE') {
+                    // Cohete con aletas y llama propulsora trasera
+                    CTX.translate(p.x, p.y);
+                    CTX.rotate(velAngle);
+                    // Llama trasera
+                    CTX.fillStyle = '#fbbf24';
+                    CTX.beginPath();
+                    CTX.moveTo(-8, -3);
+                    CTX.lineTo(-18 - Math.random() * 6, 0);
+                    CTX.lineTo(-8, 3);
+                    CTX.closePath();
+                    CTX.fill();
+                    // Cuerpo del misil
+                    CTX.fillStyle = pType === 'AIR_MISSILE' ? '#f97316' : '#38bdf8';
+                    CTX.strokeStyle = '#ffffff';
+                    CTX.lineWidth = 1.2;
+                    CTX.beginPath();
+                    CTX.roundRect(-8, -4, 16, 8, 3);
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (pType === 'BIG') {
+                    // Ojiva Nuclear pulsante con halo radiactivo
+                    CTX.translate(p.x, p.y);
+                    CTX.rotate(velAngle);
+                    const pulseR = 12 + Math.sin(frameCounter * 0.4) * 2.5;
+                    CTX.fillStyle = 'rgba(251, 191, 36, 0.25)';
+                    CTX.beginPath();
+                    CTX.arc(0, 0, pulseR + 5, 0, Math.PI * 2);
+                    CTX.fill();
+
+                    CTX.shadowColor = '#f59e0b';
+                    CTX.shadowBlur = 16;
+                    CTX.fillStyle = '#fbbf24';
+                    CTX.strokeStyle = '#18181b';
+                    CTX.lineWidth = 2.5;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 10, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (pType === 'TOXIC') {
+                    // Cápsula bioquímica burbujeante
+                    CTX.translate(p.x, p.y);
+                    CTX.shadowColor = '#4ade80';
+                    CTX.shadowBlur = 16;
+                    CTX.fillStyle = '#22c55e';
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 7, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.fillStyle = '#bbf7d0';
+                    CTX.beginPath();
+                    CTX.arc(-2, -2, 2.5, 0, Math.PI * 2);
+                    CTX.fill();
+                } else if (pType === 'DRILL') {
+                    // Taladro cónico giratorio
+                    CTX.translate(p.x, p.y);
+                    CTX.rotate(velAngle);
+                    CTX.shadowColor = '#e2e8f0';
+                    CTX.shadowBlur = 10;
+                    CTX.fillStyle = '#94a3b8';
+                    CTX.strokeStyle = '#f8fafc';
+                    CTX.lineWidth = 1.5;
+                    CTX.beginPath();
+                    CTX.moveTo(11, 0);
+                    CTX.lineTo(-8, -6);
+                    CTX.lineTo(-8, 6);
+                    CTX.closePath();
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (pType === 'VAMPIRE') {
+                    // Orbe carmesí vampírico con aura oscura
+                    CTX.translate(p.x, p.y);
+                    CTX.shadowColor = '#ef4444';
+                    CTX.shadowBlur = 18;
+                    CTX.fillStyle = '#991b1b';
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 8.5, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.fillStyle = '#fca5a5';
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 4, 0, Math.PI * 2);
+                    CTX.fill();
+                } else if (pType === 'CLUSTER' || pType === 'CLUSTER_FRAG') {
+                    // Bomba de racimo violeta eléctrica
+                    CTX.translate(p.x, p.y);
+                    const r = pType === 'CLUSTER' ? 8 : 5;
+                    CTX.shadowColor = '#c084fc';
+                    CTX.shadowBlur = 14;
+                    CTX.fillStyle = '#9333ea';
+                    CTX.strokeStyle = '#f3e8ff';
+                    CTX.lineWidth = 1.8;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, r, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (pType === 'TELEPORT') {
+                    // Vórtice dimensional con anillos giratorios cian y violeta
+                    CTX.translate(p.x, p.y);
+                    CTX.rotate(frameCounter * 0.25);
+                    CTX.shadowColor = '#00f0ff';
+                    CTX.shadowBlur = 16;
+                    CTX.strokeStyle = '#00f0ff';
+                    CTX.lineWidth = 2.5;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 9, 0, Math.PI * 1.4);
+                    CTX.stroke();
+                    CTX.fillStyle = '#c084fc';
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 4.5, 0, Math.PI * 2);
+                    CTX.fill();
+                } else if (pType === 'MAGNET') {
+                    // Núcleo gravitatorio oscuro con campo magnético eléctrico
+                    CTX.translate(p.x, p.y);
+                    CTX.shadowColor = '#38bdf8';
+                    CTX.shadowBlur = 16;
+                    CTX.fillStyle = '#090d16';
+                    CTX.strokeStyle = '#38bdf8';
+                    CTX.lineWidth = 2.5;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 8.5, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (pType === 'BOUNCER') {
+                    // Granada Saltarina ámbar con núcleo elástico brillante
+                    CTX.translate(p.x, p.y);
+                    CTX.shadowColor = '#fbbf24';
+                    CTX.shadowBlur = 14;
+                    CTX.fillStyle = '#f59e0b';
+                    CTX.strokeStyle = '#fef08a';
+                    CTX.lineWidth = 2.2;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 8, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (pType === 'SHOCKWAVE') {
+                    // Esfera sónica turquesa con anillos de presión
+                    CTX.translate(p.x, p.y);
+                    CTX.shadowColor = '#22d3ee';
+                    CTX.shadowBlur = 16;
+                    CTX.fillStyle = '#ecfeff';
+                    CTX.strokeStyle = '#06b6d4';
+                    CTX.lineWidth = 3;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 7.5, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (pType === 'NAPALM' || pType === 'NAPALM_EMBER') {
+                    // Bola de magma incandescente
+                    CTX.translate(p.x, p.y);
+                    const r = pType === 'NAPALM' ? 9 : 5;
+                    CTX.shadowColor = '#ef4444';
+                    CTX.shadowBlur = 16;
+                    CTX.fillStyle = '#dc2626';
+                    CTX.beginPath();
+                    CTX.arc(0, 0, r, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.fillStyle = '#fde047';
+                    CTX.beginPath();
+                    CTX.arc(0, 0, r * 0.5, 0, Math.PI * 2);
+                    CTX.fill();
+                } else if (pType === 'MOUNTAIN') {
+                    // Orbe tectónico esmeralda
+                    CTX.translate(p.x, p.y);
+                    CTX.shadowColor = '#a3e635';
+                    CTX.shadowBlur = 14;
+                    CTX.fillStyle = '#65a30d';
+                    CTX.strokeStyle = '#ecfccb';
+                    CTX.lineWidth = 2;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 7.5, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.stroke();
+                } else {
+                    // Obús de Artillería Estándar orientado en su dirección
+                    CTX.translate(p.x, p.y);
+                    CTX.rotate(velAngle);
+                    CTX.shadowColor = '#fb923c';
+                    CTX.shadowBlur = 12;
+                    CTX.fillStyle = '#f97316';
+                    CTX.beginPath();
+                    CTX.ellipse(0, 0, 7.5, 4.5, 0, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.fillStyle = '#fde047';
+                    CTX.beginPath();
+                    CTX.arc(3, 0, 2.5, 0, Math.PI * 2);
+                    CTX.fill();
+                }
+                CTX.restore();
+            });
+
+            // 9.5 Bombarderos de Ataque Aéreo y Orbes de Robo de Vida Vampiro
+            airstrikePlanes.forEach(pl => {
+                CTX.save();
+                // Columna láser marcadora sobre el objetivo
+                CTX.strokeStyle = 'rgba(239, 68, 68, 0.38)';
+                CTX.lineWidth = 3;
+                CTX.setLineDash([8, 8]);
                 CTX.beginPath();
-                CTX.arc(p.x, p.y, p.type === 'BIG' ? 9 : 5, 0, Math.PI * 2);
+                CTX.moveTo(pl.targetX, 0);
+                CTX.lineTo(pl.targetX, LAVA_Y);
+                CTX.stroke();
+                CTX.setLineDash([]);
+
+                // Silueta del avión caza-bombardero
+                CTX.translate(pl.x, pl.y);
+                CTX.fillStyle = '#e2e8f0';
+                CTX.shadowColor = '#f97316';
+                CTX.shadowBlur = 14;
+                CTX.beginPath();
+                CTX.moveTo(28, 0);
+                CTX.lineTo(-22, -14);
+                CTX.lineTo(-12, 0);
+                CTX.lineTo(-22, 14);
+                CTX.closePath();
                 CTX.fill();
                 CTX.restore();
             });
 
-            // 10. Explosiones con Onda Expansiva
+            vampireOrbs.forEach(vo => {
+                CTX.save();
+                CTX.shadowColor = '#ef4444';
+                CTX.shadowBlur = 12;
+                CTX.fillStyle = '#f43f5e';
+                CTX.beginPath();
+                CTX.arc(vo.x, vo.y, 5, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.restore();
+            });
+
+            laserBeams.forEach(lb => {
+                CTX.save();
+                CTX.strokeStyle = lb.color;
+                CTX.shadowColor = lb.color;
+                CTX.shadowBlur = 18;
+                CTX.lineWidth = Math.max(1, (lb.life / 24) * 10);
+                CTX.beginPath();
+                CTX.moveTo(lb.x1, lb.y1);
+                CTX.lineTo(lb.x2, lb.y2);
+                CTX.stroke();
+                CTX.restore();
+            });
+
+            // 10. Explosiones Personalizadas por Tipo de Arma
             for (let i = explosions.length - 1; i >= 0; i--) {
                 const e = explosions[i];
                 e.life--;
-                const progress = e.life / 30;
+                const maxL = e.maxLife || 30;
+                const progress = Math.max(0, e.life / maxL);
+                const expand = 1.2 - progress * 0.35;
+                const et = e.expType || 'DEFAULT';
+
                 CTX.save();
+                let fillCol = `rgba(255, 130, 20, ${progress * 0.78})`;
+                let ringCol = `rgba(255, 240, 150, ${progress})`;
+                if (et === 'TOXIC') {
+                    fillCol = `rgba(34, 197, 94, ${progress * 0.75})`;
+                    ringCol = `rgba(187, 247, 208, ${progress})`;
+                } else if (et === 'LASER') {
+                    fillCol = `rgba(217, 70, 239, ${progress * 0.78})`;
+                    ringCol = `rgba(103, 232, 249, ${progress})`;
+                } else if (et === 'CLUSTER' || et === 'CLUSTER_FRAG') {
+                    fillCol = `rgba(147, 51, 234, ${progress * 0.75})`;
+                    ringCol = `rgba(233, 213, 255, ${progress})`;
+                } else if (et === 'VAMPIRE') {
+                    fillCol = `rgba(220, 38, 38, ${progress * 0.78})`;
+                    ringCol = `rgba(254, 202, 202, ${progress})`;
+                } else if (et === 'MOUNTAIN') {
+                    fillCol = `rgba(101, 163, 13, ${progress * 0.7})`;
+                    ringCol = `rgba(217, 249, 157, ${progress})`;
+                } else if (et === 'DRILL') {
+                    fillCol = `rgba(245, 158, 11, ${progress * 0.82})`;
+                    ringCol = `rgba(254, 240, 138, ${progress})`;
+                }
+
                 CTX.beginPath();
-                CTX.arc(e.x, e.y, e.r * (1.15 - progress * 0.3), 0, Math.PI * 2);
-                CTX.fillStyle = `rgba(255, 130, 20, ${progress * 0.75})`;
+                CTX.arc(e.x, e.y, e.r * expand, 0, Math.PI * 2);
+                CTX.fillStyle = fillCol;
                 CTX.fill();
-                CTX.lineWidth = 3;
-                CTX.strokeStyle = `rgba(255, 240, 150, ${progress})`;
+                CTX.lineWidth = (et === 'BIG' || et === 'DRILL') ? 5 : 3;
+                CTX.strokeStyle = ringCol;
                 CTX.stroke();
+
+                // Segundo anillo de onda expansiva para Bomba Atómica, Taladro Subterráneo y Misiles Aéreos
+                if (et === 'BIG' || et === 'AIR_MISSILE' || et === 'DRILL') {
+                    CTX.beginPath();
+                    CTX.arc(e.x, e.y, e.r * (1.55 - progress * 0.5), 0, Math.PI * 2);
+                    CTX.strokeStyle = `rgba(251, 191, 36, ${progress * 0.85})`;
+                    CTX.lineWidth = 2.5;
+                    CTX.stroke();
+                }
                 CTX.restore();
                 if (e.life <= 0) explosions.splice(i, 1);
             }
 
-            // 11. Partículas y Escombros
+            // 11. Partículas, Escombros y Piezas de Tanques Destruidos
             particles.forEach(p => {
                 CTX.beginPath();
                 CTX.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -2978,6 +4546,56 @@
             debris.forEach(d => {
                 CTX.fillStyle = d.color;
                 CTX.fillRect(d.x - 2.5, d.y - 2.5, 5, 5);
+            });
+
+            tankWreckPieces.forEach(wp => {
+                CTX.save();
+                CTX.translate(wp.x, wp.y);
+                CTX.rotate(wp.rot);
+                CTX.globalAlpha = Math.min(1, wp.life / 20);
+                if (wp.partType === 'TURRET') {
+                    // Domo de torreta + cañón volando por los aires
+                    CTX.fillStyle = '#cbd5e1';
+                    CTX.fillRect(0, -2.5, 20, 5);
+                    CTX.fillStyle = wp.color;
+                    CTX.strokeStyle = '#1e293b';
+                    CTX.lineWidth = 1.5;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 8.5, Math.PI, 0);
+                    CTX.closePath();
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (wp.partType === 'HULL_L' || wp.partType === 'HULL_R') {
+                    // Placas de chasis blindado fracturadas
+                    CTX.fillStyle = wp.color;
+                    CTX.strokeStyle = '#0f172a';
+                    CTX.lineWidth = 1.4;
+                    CTX.beginPath();
+                    CTX.moveTo(-9, -5);
+                    CTX.lineTo(8, -4);
+                    CTX.lineTo(10, 5);
+                    CTX.lineTo(-8, 4);
+                    CTX.closePath();
+                    CTX.fill();
+                    CTX.stroke();
+                } else if (wp.partType === 'TRACK') {
+                    // Oruga metálica rota
+                    CTX.fillStyle = '#1e293b';
+                    CTX.strokeStyle = '#64748b';
+                    CTX.lineWidth = 1.4;
+                    CTX.fillRect(-12, -3.5, 24, 7);
+                    CTX.strokeRect(-12, -3.5, 24, 7);
+                } else {
+                    // Rueda de tracción
+                    CTX.fillStyle = '#94a3b8';
+                    CTX.strokeStyle = '#0f172a';
+                    CTX.lineWidth = 1.2;
+                    CTX.beginPath();
+                    CTX.arc(0, 0, 4.2, 0, Math.PI * 2);
+                    CTX.fill();
+                    CTX.stroke();
+                }
+                CTX.restore();
             });
 
             // 12. Textos Flotantes de Daño / Eventos
@@ -3052,10 +4670,17 @@
                     } else {
                         playerInputs[conn.peer] = data.inputs;
                     }
+                } else if (data.type === 'SLING_AIM') {
+                    const active = tanks[turnIndex];
+                    if (active && active.id === conn.peer && !active.dead && projectiles.length === 0) {
+                        active.angle = data.angle;
+                        active.livePower = data.power || 0;
+                    }
                 } else if (data.type === 'SLING_SHOOT') {
                     const active = tanks[turnIndex];
                     if (active && active.id === conn.peer && !active.dead && projectiles.length === 0) {
                         active.angle = data.angle;
+                        active.livePower = 0;
                         fireWeapon(active, data.power);
                     }
                 } else if (data.type === 'HELLO') {
@@ -3095,22 +4720,52 @@
                             l.x = s.x; l.y = s.y; l.angle = s.angle; l.hp = s.hp;
                             l.fuel = s.fuel; l.dead = s.dead; l.specialWeapon = s.sw;
                             l.hasShield = s.hs; l.poison = s.psn; l.lastPower = s.lp || l.lastPower;
+                            l.livePower = s.cp || 0;
                         }
                     });
                     projectiles = data.projectiles;
                     turnIndex = data.turnIndex;
                     turnTimer = data.timer;
                     if (typeof data.wind === 'number') windAccel = data.wind;
+                    if (typeof data.trans === 'boolean') isTurnTransition = data.trans;
                 } else if (data.type === 'SHOOT_SFX') {
                     if (window.ArcadeAudio) ArcadeAudio.shoot();
+                    if (typeof data.x === 'number') {
+                        spawnMuzzleEffect(data.x, data.y, data.angle, data.wType);
+                        camera.impactFocus = { x: data.x, y: data.y - 40 };
+                    }
                     camera.autoFollow = true;
+                    camera.overviewMode = false;
+                    updateCameraButtonLabel();
+                } else if (data.type === 'DRILL_CARVE') {
+                    carveTerrainCircle(data.x, data.y, data.r || 13, false);
+                    camera.impactFocus = {
+                        x: Math.max(80, Math.min(WIDTH - 80, data.x)),
+                        y: Math.min(LAVA_Y, Math.max(120, data.y))
+                    };
+                } else if (data.type === 'AIRSTRIKE_PLANE') {
+                    airstrikePlanes.push({ x: data.latX - 520, y: 85, targetX: data.latX, vx: 18, life: 95 });
+                    camera.impactFocus = { x: Math.max(80, Math.min(WIDTH - 80, data.latX)), y: HEIGHT * 0.45 };
+                } else if (data.type === 'TELEPORT_FX') {
+                    if (window.ArcadeAudio) ArcadeAudio.transition();
+                    laserBeams.push({ x1: data.oldX, y1: 0, x2: data.oldX, y2: data.oldY, color: '#00f0ff', life: 22 });
+                    laserBeams.push({ x1: data.newX, y1: 0, x2: data.newX, y2: data.newY, color: '#c084fc', life: 26 });
+                    spawnTypedExplosionVisuals(data.newX, data.newY, 35, 'TELEPORT');
+                    camera.impactFocus = {
+                        x: Math.max(80, Math.min(WIDTH - 80, data.newX)),
+                        y: Math.min(LAVA_Y, Math.max(120, data.newY - 20))
+                    };
                 } else if (data.type === 'EXPLOSION') {
                     if (window.ArcadeAudio) ArcadeAudio.hit();
                     screenShake = Math.max(screenShake, data.r * 0.22);
+                    camera.impactFocus = {
+                        x: Math.max(80, Math.min(WIDTH - 80, data.x)),
+                        y: Math.min(LAVA_Y, Math.max(120, data.y - 20))
+                    };
                     applyTerrainExplosion(data.x, data.y, data.r, data.expType);
-                    explosions.push({ x: data.x, y: data.y, r: data.r, life: 30 });
+                    spawnTypedExplosionVisuals(data.x, data.y, data.r, data.expType);
                 } else if (data.type === 'TANK_DEATH') {
-                    triggerLocalTankDeath(data.x, data.y);
+                    triggerLocalTankDeath(data.x, data.y, data.color);
                 } else if (data.type === 'FLOAT_TEXT') {
                     floatTexts.push({ x: data.x, y: data.y, text: data.text, color: data.color, life: 60 });
                 } else if (data.type === 'SYNC_ITEMS' || data.type === 'ITEM_COLLECT') {
@@ -3185,6 +4840,7 @@
             // Si no tocó el tanque, arrastrar con 1 dedo o clic mueve la cámara libremente
             isMouseDragging = true;
             camera.autoFollow = false;
+            updateCameraButtonLabel();
             lastMouse.x = e.clientX;
             lastMouse.y = e.clientY;
         });
@@ -3202,6 +4858,7 @@
 
                 if (pullDist < 14) {
                     slingPower = 0;
+                    active.livePower = 0;
                     return;
                 }
 
@@ -3210,6 +4867,10 @@
                 if (ang > 0) ang = ang > Math.PI / 2 ? -Math.PI + 0.08 : -0.08;
                 active.angle = Math.max(-Math.PI + 0.08, Math.min(-0.08, ang));
                 slingPower = Math.min(MAX_POWER, Math.max(4, (pullDist / 160) * MAX_POWER));
+                active.livePower = slingPower;
+                if (!isHost && frameCounter % 3 === 0) {
+                    send({ type: 'SLING_AIM', angle: active.angle, power: slingPower });
+                }
                 return;
             }
 
@@ -3230,12 +4891,15 @@
                 isSlingshotAiming = false;
                 slingPointerId = null;
                 const active = tanks[turnIndex];
+                if (active) active.livePower = 0;
                 if (active && slingPower >= 4 && projectiles.length === 0) {
                     if (isHost) {
                         fireWeapon(active, slingPower);
                     } else {
                         send({ type: 'SLING_SHOOT', angle: active.angle, power: slingPower });
                     }
+                } else if (!isHost) {
+                    send({ type: 'SLING_AIM', angle: active ? active.angle : -0.8, power: 0 });
                 }
                 slingPower = 0;
             }
@@ -3283,6 +4947,7 @@
             if (gameState !== 'PLAYING') return;
             e.preventDefault();
             camera.autoFollow = false;
+            updateCameraButtonLabel();
             const zoomSensitivity = 0.0015;
             camera.targetZoom = Math.max(0.35, Math.min(2.4, camera.targetZoom - e.deltaY * zoomSensitivity));
         }, { passive: false });
