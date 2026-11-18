@@ -450,6 +450,10 @@
             z-index: 25;
         }
 
+        body.is-playing .arcade-back-btn {
+            display: none !important;
+        }
+
         #hud-top-stack {
             position: absolute;
             top: 0;
@@ -457,8 +461,8 @@
             right: 0;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            padding: 10px 14px 0 118px;
+            gap: 6px;
+            padding: 8px 12px 0 12px;
             pointer-events: none;
         }
 
@@ -839,8 +843,8 @@
                 border-radius: 9px;
             }
             #hud-top-stack {
-                padding: 8px 8px 0 88px;
-                gap: 5px;
+                padding: 6px 8px 0 8px;
+                gap: 4px;
             }
             .hud-pill {
                 padding: 5px 10px;
@@ -880,22 +884,117 @@
             }
         }
 
-        /* Ajustes específicos para Móvil en VERTICAL (Portrait) */
+        /* Ajustes específicos para Móvil en VERTICAL (Portrait) — Ergonomía y distribución limpia */
         @media (max-width: 760px) and (orientation: portrait) {
+            #hud-top-stack {
+                padding: 6px 6px 0 6px;
+                gap: 4px;
+            }
+            .hud-top-bar {
+                padding: 5px 8px;
+                gap: 5px 8px;
+                border-radius: 12px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .hud-group {
+                width: 100%;
+                justify-content: space-between;
+                gap: 4px 6px;
+                flex-wrap: nowrap;
+            }
+            .active-tank-chip {
+                padding: 2px 8px;
+                font-size: 0.74rem;
+                max-width: 118px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .hud-stat-item {
+                font-size: 0.74rem;
+                gap: 3px;
+            }
+            #weapon-badge {
+                padding: 3px 8px;
+                font-size: 0.73rem;
+                border-radius: 8px;
+            }
+            .mini-btn {
+                padding: 3px 7px;
+                font-size: 0.68rem;
+            }
+            .hud-sub-row {
+                justify-content: center;
+            }
+            .turn-banner {
+                font-size: 0.76rem;
+                padding: 3px 12px;
+            }
             #minimap-wrap {
                 display: none;
             }
+
+            /* Barra de Ángulo y Potencia anclada abajo al borde para no tapar el campo de batalla */
             #aim-hud-bar {
-                bottom: 196px;
-                width: 90vw;
+                bottom: 8px;
+                left: 8px;
+                right: 8px;
+                width: auto;
+                max-width: none;
+                transform: none;
+                padding: 5px 12px;
+                border-radius: 12px;
+                gap: 4px;
             }
+            #aim-hud-bar.hidden-during-shot {
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(16px);
+            }
+            .aim-metrics {
+                font-size: 0.73rem;
+                gap: 4px;
+                flex-wrap: nowrap;
+                justify-content: space-between;
+            }
+            .hint-mobile {
+                font-size: 0.68rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            #fire-power-bar {
+                height: 11px;
+            }
+
+            /* Cruceta y botón de Fuego compactos justo encima de la barra inferior */
             .touch-left {
-                left: 18px;
-                bottom: 16px;
+                left: 10px;
+                bottom: 60px;
             }
             .touch-right {
-                right: 22px;
-                bottom: 38px;
+                right: 14px;
+                bottom: 74px;
+            }
+            .dpad-cross {
+                grid-template-columns: repeat(3, 40px);
+                grid-template-rows: repeat(3, 38px);
+                gap: 3px;
+                padding: 4px;
+                border-radius: 16px;
+                background: rgba(8, 14, 26, 0.78);
+            }
+            .touch-btn {
+                font-size: 1rem;
+                border-radius: 9px;
+            }
+            .touch-btn small {
+                font-size: 0.45rem;
+            }
+            .btn-fire {
+                width: 76px;
+                height: 76px;
+                font-size: 0.92rem;
             }
         }
 
@@ -1147,6 +1246,7 @@
                     <span class="hud-stat-item" id="wind-disp">🌬️ Viento: Calma</span>
                     <span class="hud-stat-item">⏱️ <strong id="turn-timer-disp" style="color:#fbbf24;">40</strong>s</span>
                     <button id="btn-cam-mode" class="mini-btn" onclick="handleSmartCameraButton()" title="Alternar entre vista de mapa completo y centrar en el tanque">🔍 Ver Mapa</button>
+                    <button type="button" class="mini-btn" style="border-color:rgba(248,113,113,0.45);color:#fca5a5;" onclick="leaveToMainMenu()" title="Salir al menú de Tanques">⬅ Salir</button>
                 </div>
             </div>
 
@@ -1161,9 +1261,9 @@
         <div id="aim-hud-bar">
             <div class="aim-metrics">
                 <span id="angle-disp">📐 Ángulo: 45°</span>
-                <span id="power-disp" style="color:#fde047;">⚡ Potencia: 0%</span>
                 <span class="hint-pc">⌨️ [A/D] Mover • [W/S] Cañón • [ESPACIO] o Arrastra tu Tanque</span>
-                <span class="hint-mobile">🎯 Cruceta + 🔥 o Arrastra tu Tanque</span>
+                <span class="hint-mobile">🎯 Cruceta o Arrastra</span>
+                <span id="power-disp" style="color:#fde047;">⚡ Potencia: 0%</span>
             </div>
             <div id="fire-power-bar">
                 <div id="fire-power-fill"></div>
