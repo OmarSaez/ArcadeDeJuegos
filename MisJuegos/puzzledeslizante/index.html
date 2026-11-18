@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Puzzle Deslizante - Arcade</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <script src="../../sounds.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600;700&display=swap"
         rel="stylesheet">
@@ -1164,26 +1165,22 @@
 
         function createP2PRoom() {
             isHost = true;
-            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
             document.getElementById('multi-menu-step').style.display = 'none';
             document.getElementById('multi-wait-step').style.display = 'block';
             document.getElementById('host-code-display').innerText = '....';
 
-            if (peer) peer.destroy();
-            peer = new Peer(shortId);
-
-            peer.on('open', id => {
-                document.getElementById('host-code-display').innerText = id;
-                document.getElementById('room-tag').innerText = `SALA: ${id}`;
-            });
-
-            peer.on('connection', c => {
-                setupP2PConnection(c);
-            });
-
-            peer.on('error', err => {
-                if (err.type === 'unavailable-id') createP2PRoom();
-                else alert('Error P2P: ' + err.message);
+            ArcadeP2P.createHost({
+                game: 'PUZZLEDESLIZANTE',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    document.getElementById('host-code-display').innerText = code;
+                    document.getElementById('room-tag').innerText = `SALA: ${code}`;
+                },
+                onIncomingConnection: (c) => {
+                    setupP2PConnection(c);
+                },
+                onError: (err, msg) => alert('Error P2P: ' + msg)
             });
         }
 
@@ -1192,16 +1189,16 @@
             if (code.length < 4) return alert('Ingresa un código de 4 letras');
             isHost = false;
 
-            if (peer) peer.destroy();
-            peer = new Peer();
-
-            peer.on('open', () => {
-                const c = peer.connect(code);
-                document.getElementById('room-tag').innerText = `SALA: ${code}`;
-                setupP2PConnection(c);
+            ArcadeP2P.joinRoom(code, {
+                game: 'PUZZLEDESLIZANTE',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onConnecting: (c) => {
+                    document.getElementById('room-tag').innerText = `SALA: ${code}`;
+                    setupP2PConnection(c);
+                },
+                onError: (err, msg) => alert('No se pudo conectar: ' + msg)
             });
-
-            peer.on('error', err => alert('No se pudo conectar: ' + err.message));
         }
 
         function setupP2PConnection(c) {

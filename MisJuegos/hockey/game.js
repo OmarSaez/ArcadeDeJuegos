@@ -85,43 +85,36 @@ function sendLobbyUpdate() {
 function createRoom() {
     myNick = document.getElementById('input-nick').value || myNick;
     localStorage.setItem('hockey_nick', myNick);
-    
-    // Generar un ID de 4 caracteres
-    const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    peer = new Peer(shortId);
-    
-    peer.on('open', id => {
-        isHost = true;
-        myId = id;
-        document.getElementById('lobby-code').innerText = id;
-        document.getElementById('host-controls').classList.remove('hidden');
-        showScreen('screen-lobby');
-        
-        initHostPhysics();
-        addPlayer(myId, myNick);
-        sendLobbyUpdate(); // Registra localmente
-    });
-    
-    peer.on('connection', conn => {
-        conn.on('open', () => {
+
+    ArcadeP2P.createHost({
+        game: 'HOCKEY',
+        peer: peer,
+        onPeerCreated: (p) => { peer = p; },
+        onOpen: (code) => {
+            isHost = true;
+            myId = code;
+            document.getElementById('lobby-code').innerText = code;
+            document.getElementById('host-controls').classList.remove('hidden');
+            showScreen('screen-lobby');
+
+            initHostPhysics();
+            addPlayer(myId, myNick);
+            sendLobbyUpdate(); // Registra localmente
+        },
+        onConnection: (conn) => {
             clientConns[conn.peer] = conn;
-            conn.on('data', data => handleHostData(conn.peer, data));
-        });
-        conn.on('close', () => {
+        },
+        onData: (data, conn) => handleHostData(conn.peer, data),
+        onClose: (conn) => {
             if (players[conn.peer] && players[conn.peer].body) {
                 Matter.World.remove(world, players[conn.peer].body);
             }
             delete players[conn.peer];
             delete clientConns[conn.peer];
             broadcastLobby();
-        });
-    });
-
-    peer.on('error', err => {
-        if (err.type === 'unavailable-id') {
-            createRoom(); // Reintentar con otro código
-        } else {
-            alert("Error de red: " + err);
+        },
+        onError: (err, msg) => {
+            alert("Error de red: " + msg);
         }
     });
 }
@@ -131,20 +124,26 @@ function joinRoom() {
     localStorage.setItem('hockey_nick', myNick);
     const code = document.getElementById('input-code').value.trim().toUpperCase();
     if (!code) return;
-    
-    peer = new Peer();
-    peer.on('open', id => {
-        myId = id;
-        isHost = false;
-        hostConn = peer.connect(code);
-        hostConn.on('open', () => {
+
+    ArcadeP2P.joinRoom(code, {
+        game: 'HOCKEY',
+        peer: peer,
+        onPeerCreated: (p, c) => {
+            peer = p;
+            if (c) hostConn = c;
+        },
+        onOpen: (conn, id) => {
+            myId = id;
+            isHost = false;
+            hostConn = conn;
             document.getElementById('lobby-code').innerText = code;
             document.getElementById('wait-msg').classList.remove('hidden');
             showScreen('screen-lobby');
-            
+
             hostConn.send({ type: 'JOIN', nick: myNick, team: myTeam, color: myColor });
-            hostConn.on('data', handleClientData);
-        });
+        },
+        onData: handleClientData,
+        onError: (err, msg) => alert("Error de conexión: " + msg)
     });
 }
 

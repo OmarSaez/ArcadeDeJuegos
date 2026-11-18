@@ -342,6 +342,7 @@
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <script src="../../sounds.js"></script>
     <script>
         if (window.ArcadeAudio) ArcadeAudio.bindUI();
@@ -859,39 +860,45 @@
         }
 
         function initPeer() {
-            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-            peer = new Peer(shortId);
-
-            peer.on('open', (id) => {
-                myId = id;
-                if (isHost) {
+            ArcadeP2P.createHost({
+                game: 'DUAL',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myId = code;
                     player.color = '#0ff'; // Host es Cyan
                     enemy.color = '#ff00ff'; // Cliente es Magenta
                     document.getElementById('start-screen').style.display = 'none';
                     document.getElementById('mode-selection-screen').style.display = 'none';
                     document.getElementById('waiting-screen').style.display = 'block';
-                    document.getElementById('display-code').innerText = id;
+                    document.getElementById('display-code').innerText = code;
+                },
+                onIncomingConnection: (c) => {
+                    handleConnection(c);
+                },
+                onError: (err, msg) => {
+                    alert("Error P2P: " + msg);
                 }
             });
-
-            peer.on('connection', (c) => {
-                handleConnection(c);
-            });
-
-            peer.on('error', (err) => alert("Error P2P: " + err));
         }
 
         function joinGame() {
-            const code = document.getElementById('room-code').value.toUpperCase();
+            const code = document.getElementById('room-code').value.trim().toUpperCase();
             if (!code) return;
             isHost = false;
             player.color = '#ff00ff'; // Cliente es Magenta
             enemy.color = '#0ff'; // Host es Cyan
 
-            peer = new Peer();
-            peer.on('open', () => {
-                const c = peer.connect(code);
-                handleConnection(c);
+            ArcadeP2P.joinRoom(code, {
+                game: 'DUAL',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onConnecting: (c) => {
+                    handleConnection(c);
+                },
+                onError: (err, msg) => {
+                    alert("No se pudo conectar a la sala " + code + ": " + msg);
+                }
             });
         }
 

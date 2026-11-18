@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pinturillo Arcade</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <script src="../../sounds.js"></script>
     <style>
         /* --- ESTILOS GENERALES (TEMA PINTURILLO) --- */
@@ -798,42 +799,50 @@
 
         function tryCreateRoom() {
             myName = document.getElementById('my-name').value.trim() || "Host";
-            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
 
-            peer = new Peer(shortId);
+            ArcadeP2P.createHost({
+                game: 'PINTURILLO',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    isHost = true;
+                    myId = code;
+                    players = [{ id: code, name: myName, score: 0, correct: false }];
 
-            peer.on('open', (id) => {
-                isHost = true;
-                myId = id;
-                players = [{ id: id, name: myName, score: 0, correct: false }];
-
-                show('screen-lobby');
-                document.getElementById('lobby-code-display').innerText = id;
-                document.getElementById('game-room-code').innerText = id; // Set for game screen too
-                document.getElementById('host-controls').classList.remove('hidden');
-                document.getElementById('waiting-host-msg').classList.add('hidden');
-                updateLobbyUI();
+                    show('screen-lobby');
+                    document.getElementById('lobby-code-display').innerText = code;
+                    document.getElementById('game-room-code').innerText = code; // Set for game screen too
+                    document.getElementById('host-controls').classList.remove('hidden');
+                    document.getElementById('waiting-host-msg').classList.add('hidden');
+                    updateLobbyUI();
+                },
+                onIncomingConnection: (c) => handleHostConnection(c),
+                onError: (e, msg) => alert("Error P2P: " + msg)
             });
-
-            peer.on('connection', (c) => handleHostConnection(c));
-            peer.on('error', (e) => alert("Error P2P: " + e));
         }
 
         function tryJoinRoom() {
             myName = document.getElementById('my-name').value.trim() || "Jugador";
-            const code = document.getElementById('room-code-input').value.toUpperCase();
+            const code = document.getElementById('room-code-input').value.trim().toUpperCase();
             if (!code) return;
 
-            peer = new Peer(); // ID Auto
-            peer.on('open', (id) => {
-                myId = id;
-                hostConn = peer.connect(code);
-                setupClientConnection(hostConn);
-                show('screen-lobby');
-                document.getElementById('lobby-code-display').innerText = code;
-                document.getElementById('game-room-code').innerText = code; // Set for game screen too
+            ArcadeP2P.joinRoom(code, {
+                game: 'PINTURILLO',
+                peer: peer,
+                onPeerCreated: (p, c) => {
+                    peer = p;
+                    if (c) hostConn = c;
+                },
+                onConnecting: (c, assignedId) => {
+                    myId = assignedId;
+                    hostConn = c;
+                    setupClientConnection(hostConn);
+                    show('screen-lobby');
+                    document.getElementById('lobby-code-display').innerText = code;
+                    document.getElementById('game-room-code').innerText = code; // Set for game screen too
+                },
+                onError: (e, msg) => alert("Error uniendo: " + msg)
             });
-            peer.on('error', (e) => alert("Error uniendo: " + e));
         }
 
         // --- HOST SIDE ---

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Master Puzzle Deluxe: Real Table Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="../../p2p.js"></script>
     <script src="../../sounds.js"></script>
     <script>
         /**
@@ -1348,46 +1349,38 @@
         }
         function closeP2PModal() { document.getElementById('p2p-modal').style.display = 'none'; }
 
-        // --- PEER LOGIC ---
+        // --- PEER LOGIC (ArcadeP2P Universal Module) ---
 
         function initPeer() {
-            if (peer) return peer;
-            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-            peer = new Peer(shortId);
+            if (peer && !peer.destroyed) return peer;
+            ArcadeP2P.createHost({
+                game: 'ROMPECABEZA',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myPeerId = code;
+                    document.getElementById('room-display').style.display = 'inline-block';
+                    document.getElementById('room-code-display').innerText = code;
+                    const dot = document.getElementById('my-color-dot');
+                    if (dot) dot.style.backgroundColor = myPlayerColor;
 
-            peer.on('open', (id) => {
-                myPeerId = id;
-                console.log('Mi ID P2P:', id);
-
-                // Mostrar código de sala en la barra superior
-                document.getElementById('room-display').style.display = 'inline-block';
-                document.getElementById('room-code-display').innerText = id;
-                const dot = document.getElementById('my-color-dot');
-                if (dot) dot.style.backgroundColor = myPlayerColor;
-
-                if (isHost) {
-                    document.getElementById('p2p-step-1').style.display = 'none';
-                    document.getElementById('p2p-step-waiting').style.display = 'block';
-                    document.getElementById('my-room-code').innerText = id;
-                }
-            });
-
-            peer.on('connection', (conn) => {
-                if (isHost) {
-                    setupConnection(conn);
-                    // Silently accept. setupConnection handles auto-sync.
-                    closeP2PModal();
-                } else {
-                    conn.close();
-                }
-            });
-
-            peer.on('error', (err) => {
-                console.error(err);
-                if (err.type === 'unavailable-id') {
-                    peer = null; initPeer();
-                } else {
-                    alert("Error P2P: " + err.type);
+                    if (isHost) {
+                        document.getElementById('p2p-step-1').style.display = 'none';
+                        document.getElementById('p2p-step-waiting').style.display = 'block';
+                        document.getElementById('my-room-code').innerText = code;
+                    }
+                },
+                onIncomingConnection: (conn) => {
+                    if (isHost) {
+                        setupConnection(conn);
+                        closeP2PModal();
+                    } else {
+                        conn.close();
+                    }
+                },
+                onError: (err, msg) => {
+                    console.error(err);
+                    alert("Error P2P: " + msg);
                 }
             });
             return peer;
@@ -1405,22 +1398,24 @@
 
         function joinRoom() {
             if (typeof Peer === 'undefined') { alert('Error: La librería PeerJS no se cargó.'); return; }
-            const code = document.getElementById('room-code-input').value.toUpperCase();
+            const code = document.getElementById('room-code-input').value.trim().toUpperCase();
             if (!code) return;
             isHost = false;
 
-            // Mostrar código en la barra superior (asumimos éxito, si falla se puede alertar)
             document.getElementById('room-display').style.display = 'inline-block';
             document.getElementById('room-code-display').innerText = code;
             const dot = document.getElementById('my-color-dot');
             if (dot) dot.style.backgroundColor = myPlayerColor;
 
-            peer = new Peer();
-            peer.on('open', () => {
-                const conn = peer.connect(code);
-                setupConnection(conn);
+            ArcadeP2P.joinRoom(code, {
+                game: 'ROMPECABEZA',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onConnecting: (conn) => {
+                    setupConnection(conn);
+                },
+                onError: (err, msg) => alert("No se pudo conectar a la sala " + code + ": " + msg)
             });
-            peer.on('error', (err) => alert("No se pudo conectar a la sala " + code));
         }
 
         let retryIntervals = {};

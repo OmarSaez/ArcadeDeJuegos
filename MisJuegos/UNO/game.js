@@ -57,61 +57,46 @@ class NetworkManager {
     initHost(nickname, onOpen) {
         this.isHost = true;
         this.myNickname = nickname;
-        const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-        this.peer = new Peer(shortId);
-
-        this.peer.on('open', (id) => {
-            this.myId = id;
-            this.playersReady = [{ id: id, nickname: nickname, isMe: true }];
-            onOpen(id);
-        });
-
-        this.peer.on('connection', (conn) => {
-            this.setupConnection(conn);
-        });
-
-        this.peer.on('error', (err) => {
-            if (err.type === 'unavailable-id') this.initHost(nickname, onOpen);
-            else alert("Error P2P: " + err);
+        ArcadeP2P.createHost({
+            game: 'UNO',
+            peer: this.peer,
+            onPeerCreated: (p) => { this.peer = p; },
+            onOpen: (code) => {
+                this.myId = code;
+                this.playersReady = [{ id: code, nickname: nickname, isMe: true }];
+                onOpen(code);
+            },
+            onIncomingConnection: (conn) => {
+                this.setupConnection(conn);
+            },
+            onError: (err, msg) => {
+                alert("Error P2P: " + msg);
+            }
         });
     }
 
     joinGame(nickname, hostId, onOpen, onError) {
         this.isHost = false;
         this.myNickname = nickname;
-        const timeout = setTimeout(() => {
-            if (!this.peer || this.connections.length === 0) {
-                this.cleanup();
-                onError("No se encontró la sala. Verifica el código.");
-            }
-        }, 5000);
 
-        this.peer = new Peer();
-        this.peer.on('open', (id) => {
-            this.myId = id;
-            const conn = this.peer.connect(hostId, { metadata: { nickname: nickname } });
-
-            conn.on('open', () => {
-                clearTimeout(timeout);
+        ArcadeP2P.joinRoom(hostId, {
+            game: 'UNO',
+            peer: this.peer,
+            metadata: { nickname: nickname },
+            timeoutMs: 12000,
+            onPeerCreated: (p) => { this.peer = p; },
+            onConnecting: (conn, assignedId) => {
+                this.myId = assignedId;
                 this.setupConnection(conn);
-                
-                // Trigger clock sync with host
+            },
+            onOpen: (conn) => {
                 conn.send({ type: 'PING_SYNC', clientTime: Date.now() });
-                
                 onOpen();
-            });
-
-            conn.on('error', (err) => {
-                clearTimeout(timeout);
-                onError("Error al conectar.");
+            },
+            onError: (err, msg) => {
                 this.cleanup();
-            });
-        });
-
-        this.peer.on('error', (err) => {
-            clearTimeout(timeout);
-            onError("La sala no existe o no responde.");
-            this.cleanup();
+                onError(msg || "No se encontró la sala. Verifica el código.");
+            }
         });
     }
 

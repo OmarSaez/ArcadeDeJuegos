@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tic-Tac-Boom 💣</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <script src="dictionary.js"></script>
     <style>
         :root {
@@ -715,31 +716,32 @@
         function showMenu() { show('screen-menu'); }
         function showJoin() { show('screen-join'); }
 
-        // --- PEERJS SETUP (Reuse Logic) ---
+        // --- PEERJS SETUP (ArcadeP2P Universal Module) ---
         function tryCreateRoom() {
             myName = document.getElementById('my-name').value || "Host";
-            peer = new Peer(Math.random().toString(36).substr(2, 4).toUpperCase());
-            peer.on('open', id => {
-                myId = id; isHost = true;
-                players = [{ id, name: myName, lives: 2, timeRemaining: 0 }]; // 2 Vidas
-                setupHost();
-                updateLobby();
-                show('screen-lobby');
-                document.getElementById('lobby-code').innerText = id;
-            });
-        }
-
-        function setupHost() {
             document.getElementById('host-controls').classList.remove('hidden');
             document.getElementById('wait-msg').classList.add('hidden');
-            peer.on('connection', conn => {
-                clientConns[conn.peer] = conn;
-                conn.on('open', () => {
+
+            ArcadeP2P.createHost({
+                game: 'TICTACBOOM',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myId = code; isHost = true;
+                    players = [{ id: code, name: myName, lives: 2, timeRemaining: 0 }]; // 2 Vidas
+                    updateLobby();
+                    show('screen-lobby');
+                    document.getElementById('lobby-code').innerText = code;
+                },
+                onIncomingConnection: (conn) => {
+                    clientConns[conn.peer] = conn;
+                },
+                onConnection: (conn) => {
                     conn.send({ type: 'UPDATE_PLAYERS', list: players });
-                    // Also send current difficulty to new joiners
                     conn.send({ type: 'UPDATE_DIFFICULTY', difficulty: currentDiffKey });
-                });
-                conn.on('data', data => handleHostData(conn.peer, data));
+                },
+                onData: (data, conn) => handleHostData(conn.peer, data),
+                onError: (err, msg) => alert("Error P2P: " + msg)
             });
         }
 
@@ -749,42 +751,30 @@
 
             if (!code) return alert("Por favor ingresa un código.");
 
-            peer = new Peer();
-
-            peer.on('error', err => {
-                if (err.type === 'peer-unavailable') {
-                    alert("⚠️ Sala no encontrada. El código " + code + " no existe o el anfitrión no está conectado.");
-                    show('screen-join');
-                    if (hostConn) hostConn.close();
-                } else {
-                    console.error("Peer Error:", err);
-                }
-            });
-
-            peer.on('open', id => {
-                myId = id;
-                hostConn = peer.connect(code);
-
-                hostConn.on('open', () => {
+            ArcadeP2P.joinRoom(code, {
+                game: 'TICTACBOOM',
+                peer: peer,
+                onPeerCreated: (p, c) => {
+                    peer = p;
+                    if (c) hostConn = c;
+                },
+                onOpen: (conn, id) => {
+                    myId = id;
+                    hostConn = conn;
                     hostConn.send({ type: 'LOGIN', name: myName });
                     show('screen-lobby');
                     document.getElementById('lobby-code').innerText = code;
-
-                    hostConn.on('data', handleClientData);
-                    hostConn.on('close', () => {
-                        alert("Desconectado de la sala.");
-                        location.reload();
-                    });
-                });
-
-                // Connection Timeout
-                setTimeout(() => {
-                    if (!hostConn || !hostConn.open) {
-                        if (document.getElementById('screen-lobby').classList.contains('hidden')) {
-                            console.warn("Connection Timed Out");
-                        }
-                    }
-                }, 5000);
+                },
+                onData: handleClientData,
+                onClose: () => {
+                    alert("Desconectado de la sala.");
+                    location.reload();
+                },
+                onError: (err, msg) => {
+                    alert("⚠️ " + msg);
+                    show('screen-join');
+                    if (hostConn) hostConn.close();
+                }
             });
         }
 

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Damas - Arcade</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -517,54 +518,52 @@
 
         // --- P2P LOGIC ---
 
-        function initPeer(id) {
-            peer = new Peer(id);
-            peer.on('open', (assignedId) => {
-                myId = assignedId;
-                if (isHost) {
-                    document.getElementById('display-code').innerText = assignedId;
-                }
-            });
-
-            peer.on('connection', (c) => {
-                if (isHost && !conn) {
-                    handleConnection(c);
-                } else {
-                    c.on('open', () => {
-                        c.send({ type: 'ERROR', msg: 'SALA LLENA' });
-                        setTimeout(() => c.close(), 500);
-                    });
-                }
-            });
-
-            peer.on('error', (err) => {
-                if (err.type === 'unavailable-id' && isHost) {
-                    hostGame(); // Reintentar con otro ID
-                } else {
-                    showNotification("Error: " + err.type);
-                }
-            });
-        }
-
         function hostGame() {
             isHost = true;
             myColor = 'red';
-            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
             document.getElementById('lobby-main').style.display = 'none';
             document.getElementById('lobby-waiting').style.display = 'block';
-            initPeer(shortId);
+
+            ArcadeP2P.createHost({
+                game: 'DAMAS',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myId = code;
+                    document.getElementById('display-code').innerText = code;
+                },
+                onIncomingConnection: (c) => {
+                    if (isHost && !conn) {
+                        handleConnection(c);
+                    } else {
+                        c.on('open', () => {
+                            c.send({ type: 'ERROR', msg: 'SALA LLENA' });
+                            setTimeout(() => c.close(), 500);
+                        });
+                    }
+                },
+                onError: (err, msg) => {
+                    showNotification(msg);
+                }
+            });
         }
 
         function joinGame() {
-            const hostCode = document.getElementById('code-input').value.toUpperCase();
+            const hostCode = document.getElementById('code-input').value.trim().toUpperCase();
             if (!hostCode) return;
 
             isHost = false;
             myColor = 'black';
-            peer = new Peer();
-            peer.on('open', () => {
-                const c = peer.connect(hostCode);
-                handleConnection(c);
+            ArcadeP2P.joinRoom(hostCode, {
+                game: 'DAMAS',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onConnecting: (c) => {
+                    handleConnection(c);
+                },
+                onError: (err, msg) => {
+                    showNotification(msg);
+                }
             });
         }
 

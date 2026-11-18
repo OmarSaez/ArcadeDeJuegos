@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mini Golf Caos - Arcade de Juegos</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;600;800;900&display=swap');
 
@@ -2367,27 +2368,28 @@
         }
 
         function initHostPeer() {
-            if (peer) peer.destroy();
             clientConns = {};
-            const code = generateRoomCode();
             document.getElementById('room-code-box').classList.remove('hidden');
             document.getElementById('room-code-text').innerText = '....';
 
-            peer = new Peer('ARCADEMG_' + code);
-            peer.on('open', () => {
-                myId = peer.id;
-                lobbyRoster[0].id = myId;
-                document.getElementById('room-code-text').innerText = code;
-                renderLobbyPlayers();
-            });
-            peer.on('connection', (conn) => {
-                conn.on('data', (data) => handleHostNetworkData(conn, data));
-                conn.on('close', () => {
+            ArcadeP2P.createHost({
+                game: 'MINIGOLF',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myId = code;
+                    lobbyRoster[0].id = myId;
+                    document.getElementById('room-code-text').innerText = code;
+                    renderLobbyPlayers();
+                },
+                onData: (data, conn) => handleHostNetworkData(conn, data),
+                onClose: (conn) => {
                     delete clientConns[conn.peer];
                     lobbyRoster = lobbyRoster.filter(p => p.id !== conn.peer);
                     renderLobbyPlayers();
                     broadcastLobbyState();
-                });
+                },
+                onError: (err, msg) => alert('Error P2P: ' + msg)
             });
         }
 
@@ -2402,13 +2404,17 @@
 
             currentMode = 'online';
             isHost = false;
-            if (peer) peer.destroy();
-            peer = new Peer();
 
-            peer.on('open', (id) => {
-                myId = id;
-                hostConn = peer.connect('ARCADEMG_' + code);
-                hostConn.on('open', () => {
+            ArcadeP2P.joinRoom(code, {
+                game: 'MINIGOLF',
+                peer: peer,
+                onPeerCreated: (p, c) => {
+                    peer = p;
+                    if (c) hostConn = c;
+                },
+                onOpen: (conn, assignedId) => {
+                    myId = assignedId;
+                    hostConn = conn;
                     showScreen('screen-lobby');
                     document.getElementById('lobby-title').innerText = `🌐 SALA ${code}`;
                     document.getElementById('lobby-sub').innerText = 'Esperando a que el anfitrión inicie el torneo...';
@@ -2416,12 +2422,15 @@
                     document.getElementById('host-config-panel').style.opacity = '0.6';
                     document.getElementById('btn-start-match').classList.add('hidden');
                     hostConn.send({ type: 'JOIN', nick: myNick, color: myColor });
-                });
-                hostConn.on('data', (data) => handleClientNetworkData(data));
-                hostConn.on('close', () => {
+                },
+                onData: (data) => handleClientNetworkData(data),
+                onClose: () => {
                     alert('Se cerró la conexión con la sala.');
                     leaveToMenu();
-                });
+                },
+                onError: (err, msg) => {
+                    alert(msg);
+                }
             });
         }
 

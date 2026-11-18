@@ -1,91 +1,89 @@
-DOCUMENTACIÓN TÉCNICA: PROTOCOLO P2P "FAST-DUAL" (Estándar Arcade)
-==================================================================
-Versión: 2.0 (Estable/Robusta)
-Fecha: Enero 2026
-Estado: Aprobado y probado en producción (Battleship, DualWeb)
+DOCUMENTACIÓN TÉCNICA: MÓDULO UNIVERSAL P2P (`p2p.js`) - Estándar Arcade
+========================================================================
+Versión: 3.0 (Arquitectura Modular Resiliente STUN + TURN/TURNS)
+Fecha: Noviembre 2026
+Estado: Estándar Oficial en los 18 juegos multijugador del Arcade
 
 1. INTRODUCCIÓN
 ---------------
-Este protocolo define el estándar de conectividad multijugador para el proyecto "Arcade de Juegos".
-Su objetivo es lograr una conexión Peer-to-Peer (P2P) extremadamente rápida (< 500ms), confiable y sin necesidad de configurar servidores de señalización propios (backend-less), utilizando la infraestructura pública de PeerJS de manera eficiente.
+El módulo universal `/p2p.js` centraliza toda la conectividad multijugador WebRTC/PeerJS del Arcade en un único archivo independiente (separado del motor de audio `/sounds.js`).
+Soluciona de raíz:
+- Bloqueos en redes Wi-Fi con *AP Isolation* (Aislamiento de clientes) o routers sin *NAT Loopback*.
+- Bloqueos de puertos UDP mediante retransmisión automática por servidores `TURN`/`TURNS` en puertos `80` y `443` (UDP/TCP/TLS).
+- Colisiones de códigos de 4 letras en el servidor global de PeerJS mediante prefijos automáticos por juego (`ARCD_<JUEGO>_<CODIGO>`), manteniendo en pantalla únicamente el código corto de 4 letras.
+- **Alfabeto Anticonfusión (`ACEFHJKMNPRTWXY3479`)**: Elimina automáticamente todos los números y letras que se parecen entre sí en fuentes arcade/pixeladas (`0/O/Q/D`, `1/I/L`, `2/Z`, `5/S`, `8/B`, `6/G`, `U/V`), garantizando que ningún jugador se equivoque al leer o dictar el código de sala.
 
-La clave del éxito de este protocolo (vs versiones anteriores) es la "Generación de ID en Cliente" y el manejo asíncrono robusto.
+2. DEPENDENCIAS EN CADA JUEGO
+-----------------------------
+Incluir en el `<head>` de cada juego multijugador:
+```html
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="../../p2p.js"></script>
+<script src="../../sounds.js"></script>
+```
 
-2. ARQUITECTURA
----------------
-- **Librería Core:** PeerJS (v1.5.1 o superior)
-- **Topología:** P2P Directo (Mesh/Star). Los datos viajan navegador-a-navegador.
-- **Broker/Signaling:** Servidor público de PeerJS (solo handshake inicial).
-- **Transporte:** WebRTC (UDP/TCP según disponibilidad).
-
-3. IMPLEMENTACIÓN BASE (Copiar y Pegar)
+3. USO DE LA API GENÉRICA (`ArcadeP2P`)
 ---------------------------------------
 
-### A. Dependencias
-Incluir en el `<head>` o antes del script principal:
-`<script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>`
-
-### B. Inicialización del HOST (Quien crea la partida)
-El Host NO pregunta al servidor por un ID. El Host INVENTA un ID corto aleatorio y le dice al servidor "Este es mi ID". Esto elimina latencia de red.
+### A. Crear Sala como HOST (`ArcadeP2P.createHost`)
+Genera automáticamente un código limpio de 4 letras, aplica el prefijo del juego, reintenta solo si el código está ocupado (`unavailable-id`) y gestiona reconexiones:
 
 ```javascript
-let peer;       // Instancia propia (mi identidad)
-let conn;       // La conexión con el rival
-let isHost = false;
-
-function initPeer() {
-    // 1. Generamos ID localmente (4 chars es suficiente para evitar colisiones casuales)
-    const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    
-    // 2. Inicializamos Peer forzando este ID
-    peer = new Peer(shortId);
-
-    peer.on('open', (id) => {
-        console.log("Sala Creada con ÉXITO. ID:", id);
+ArcadeP2P.createHost({
+    game: 'MIJUEGO',
+    peer: peer,
+    onPeerCreated: (p) => { peer = p; },
+    onOpen: (code) => {
         isHost = true;
-        // AQUÍ: Mostrar UI de "Sala de Espera" y mostrar 'id' al usuario
-        document.getElementById('display-code').innerText = id;
-    });
-
-    peer.on('connection', (c) => {
-        // Un rival se ha conectado
-        handleConnection(c);
-    });
-
-    peer.on('error', (err) => {
-        console.error("Error P2P:", err);
-        // Si el ID ya existe (colisión rara), reintentar recursivamente
-        if (err.type === 'unavailable-id') {
-            initPeer(); 
-        } else {
-            alert("Error de red: " + err);
-        }
-    });
-}
+        myId = code; // Código limpio de 4 letras (ej: "K7M9")
+        document.getElementById('display-code').innerText = code;
+    },
+    onConnection: (conn) => {
+        // Se ejecuta cuando el canal P2P con el cliente ya está abierto
+        clientConns[conn.peer] = conn;
+    },
+    onData: (data, conn) => {
+        handleHostData(conn.peer, data);
+    },
+    onClose: (conn) => {
+        delete clientConns[conn.peer];
+    },
+    onError: (err, userMsg) => {
+        alert("Error P2P: " + userMsg);
+    }
+});
 ```
 
-### C. Inicialización del CLIENTE (Quien se une)
-El Cliente no necesita un ID bonito. Deja que el servidor le asigne uno largo UUID. Solo necesita saber el ID corto del Host.
+### B. Unirse a una Sala como CLIENTE (`ArcadeP2P.joinRoom`)
+Recibe el código de 4 letras escrito por el jugador, resuelve el namespace del juego, configura `reliable: true` + watchdog de timeout + ICE Restart automático:
 
 ```javascript
-function joinGame() {
-    const hostCode = document.getElementById('code-input').value.toUpperCase();
-    if (!hostCode) return;
-
-    isHost = false;
-    
-    // Sin argumentos = ID automático del servidor
-    peer = new Peer();
-
-    peer.on('open', () => {
-        // Ya tenemos identidad, ahora llamamos al Host
-        const c = peer.connect(hostCode);
-        handleConnection(c);
-    });
-
-    peer.on('error', (err) => alert("No se pudo conectar: " + err));
-}
+const code = document.getElementById('code-input').value.trim().toUpperCase();
+ArcadeP2P.joinRoom(code, {
+    game: 'MIJUEGO',
+    peer: peer,
+    onPeerCreated: (p, c) => {
+        peer = p;
+        if (c) conn = c;
+    },
+    onOpen: (c, myAssignedId) => {
+        isHost = false;
+        myId = myAssignedId;
+        conn = c;
+        conn.send({ type: 'JOIN', nick: myNick });
+    },
+    onData: (data) => {
+        handleClientData(data);
+    },
+    onClose: () => {
+        alert("El anfitrión cerró la sala.");
+    },
+    onError: (err, userMsg) => {
+        alert("No se pudo conectar: " + userMsg);
+    }
+});
 ```
+
 
 ### D. Manejo de Conexión (Común)
 Esta función unifica la lógica una vez que el "cable" está tendido entre los dos jugadores.
@@ -133,12 +131,17 @@ function handleConnection(c) {
 }
 ```
 
-4. BUENAS PRÁCTICAS Y NOTAS
----------------------------
+4. BUENAS PRÁCTICAS Y ARQUITECTURA V3.0 (STUN + TURN + NAMESPACE EN SOUNDS.JS)
+------------------------------------------------------------------------------
+- **Inyección Automática en Todo el Arcade (`sounds.js` -> `ArcadeP2P`):**
+  Al incluir `<script src="../../sounds.js"></script>`, el motor `ArcadeP2P` envuelve automáticamente `window.Peer` en todos los juegos del Arcade e inyecta:
+  1. **Servidores STUN múltiples:** Google (`19302`) + Cloudflare (`3478`) para conexión directa ultrarrápida.
+  2. **Servidores TURN / TURNS de respaldo:** PeerJS Cloud (`3478`) + OpenRelay (`80` UDP/TCP y `443` UDP/TCP/TLS) para atravesar redes Wi-Fi con *AP Isolation* (aislamiento de clientes), falta de *NAT Loopback* o Firewalls UDP estrictos.
+  3. **Prefijo de Namespace Automático por Juego (`ARCD_<JUEGO>_<CODIGO>`):** El jugador sigue viendo e ingresando códigos limpios de 4 caracteres, pero en el servidor global de PeerJS se registra con prefijo único por juego para evitar colisiones mundiales.
+  4. **Reconexión e ICE Restart Automático:** Mantiene vivo el WebSocket de señalización (`pingInterval: 5000`) y ejecuta `restartIce()` automáticamente si falla el primer intento UDP.
 - **Cierre de Conexiones:** Siempre manejar `conn.on('close')`. Las redes móviles suelen cortar conexiones brevemente.
 - **Reinicio:** Si se quiere reiniciar la partida, enviar un mensaje `{type: 'RESTART'}` en lugar de recargar la página, para mantener el túnel abierto.
 - **Datos:** Enviar objetos JSON simples es lo mejor. Para juegos de acción (tiempo real), enviar solo los inputs o posiciones clave, no todo el estado del juego cada frame.
-- **Colisiones:** La probabilidad de colisión con un ID de 4 caracteres alfanuméricos es baja para un uso casual, pero el código del Host maneja el error `unavailable-id` reintentando automáticamente por seguridad.
 
 5. EJEMPLO DE FLUJO DE MENSAJES (BATTLESHIP)
 --------------------------------------------

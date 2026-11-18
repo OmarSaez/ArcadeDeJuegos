@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cartas Contra la Humanidad</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
 
@@ -2730,55 +2731,7 @@
 
 
 
-        /* --- NETWORK SETUP --- */
-        function initPeer(customId = null) {
-            // 1. Create Peer
-            if (customId) {
-                peer = new Peer(customId);
-            } else {
-                peer = new Peer(); // Auto ID for client
-            }
-
-            // 2. Event Listeners
-            peer.on('open', (id) => {
-                console.log('My Peer ID:', id);
-                myId = id;
-
-                // HOST LOGIC
-                if (isHost) {
-                    // Update my own ID in player list
-                    if (players.length > 0) {
-                        players[0].id = id;
-                        updateLobbyUI();
-                    }
-                }
-                // CLIENT LOGIC
-                else {
-                    if (pendingJoinCode) {
-                        connectToHost(pendingJoinCode);
-                    }
-                }
-            });
-
-            peer.on('connection', (conn) => {
-                // Incoming connection (Host logic mostly)
-                handleConnection(conn);
-            });
-
-            peer.on('error', (err) => {
-                console.error("P2P Error:", err);
-                if (err.type === 'peer-unavailable') {
-                    showGameAlert({ title: 'Sala No Encontrada', message: 'No se encontró la sala. Verifica el código ingresado.' });
-                    showScreen('screen-menu');
-                } else if (err.type === 'unavailable-id') {
-                    showGameAlert({ title: 'Código Ocupado', message: 'El código de sala ya está en uso. Intenta con otro.' });
-                    showScreen('screen-menu');
-                } else {
-                    console.log("Error no critico:", err);
-                }
-            });
-        }
-
+        /* --- NETWORK SETUP (ArcadeP2P Universal Module) --- */
         function handleConnection(conn) {
             // Check if already connected
             if (connections[conn.peer]) return;
@@ -2823,20 +2776,39 @@
         /* --- HOST LOGIC --- */
         function createRoom() {
             myName = document.getElementById('nickname').value || "Host";
-            const code = Math.random().toString(36).substr(2, 4).toUpperCase();
             isHost = true;
-            players = [{ id: "HOST", name: myName, score: 0, hand: [], isBot: false }]; // Temp ID
+            connections = {};
+            players = [{ id: "HOST", name: myName, score: 0, hand: [], isBot: false }];
             botCounter = 1;
             clearBotTimeouts();
 
             showScreen('screen-lobby');
             document.getElementById('host-controls').classList.remove('hidden');
 
-            // Set display code immediately
-            document.getElementById('lobby-code').innerText = code;
-            updateLobbyUI();
-
-            initPeer("cah_" + code);
+            ArcadeP2P.createHost({
+                game: 'CAH',
+                peer: peer,
+                onPeerCreated: (p, code) => {
+                    peer = p;
+                    document.getElementById('lobby-code').innerText = code;
+                    updateLobbyUI();
+                },
+                onOpen: (code) => {
+                    myId = code;
+                    document.getElementById('lobby-code').innerText = code;
+                    if (players.length > 0) {
+                        players[0].id = code;
+                        updateLobbyUI();
+                    }
+                },
+                onIncomingConnection: (conn) => {
+                    handleConnection(conn);
+                },
+                onError: (err, msg) => {
+                    showGameAlert({ title: 'Error P2P', message: msg });
+                    showScreen('screen-menu');
+                }
+            });
         }
 
         /* --- CLIENT LOGIC --- */
@@ -2846,15 +2818,21 @@
             if (!code) return showGameAlert({ title: 'Código Requerido', message: 'Por favor ingresa un código de sala para unirte.' });
 
             isHost = false;
-            pendingJoinCode = code; // Store for when open fires
-            initPeer(); // No ID = Client
-        }
+            pendingJoinCode = code;
 
-        function connectToHost(code) {
-            console.log("Conectando a:", "cah_" + code);
-            const conn = peer.connect("cah_" + code);
-            // We must setup connection handlers on the OUTGOING connection object too
-            handleConnection(conn);
+            ArcadeP2P.joinRoom(code, {
+                game: 'CAH',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onConnecting: (conn, assignedId) => {
+                    myId = assignedId;
+                    handleConnection(conn);
+                },
+                onError: (err, msg) => {
+                    showGameAlert({ title: 'Sala No Encontrada', message: msg });
+                    showScreen('screen-menu');
+                }
+            });
         }
 
         /* --- GAME LOGIC --- */

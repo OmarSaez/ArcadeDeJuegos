@@ -7,6 +7,7 @@
     <title>Tron: Ciclos de Luz - Arcade de Omar</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <style>
         :root {
             --bg-dark: #050811;
@@ -1187,37 +1188,35 @@
             currentMode = 'online';
             isHost = true;
 
-            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-            if (peer) peer.destroy();
-            peer = new Peer(code);
+            ArcadeP2P.createHost({
+                game: 'TRON',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myId = code;
+                    lobbyPlayers = [{ id: myId, nick: myNick, color: myColor, isBot: false }];
+                    document.getElementById('lobby-title').innerText = '🌐 SALA MULTIJUGADOR TRON';
+                    document.getElementById('online-code-box').classList.remove('hidden');
+                    document.getElementById('lobby-code-display').innerText = code;
+                    document.getElementById('host-settings').classList.remove('hidden');
+                    document.getElementById('row-map-select').classList.remove('hidden');
+                    document.getElementById('row-speed-select').classList.remove('hidden');
+                    document.getElementById('row-overdrive-info').classList.add('hidden');
+                    document.getElementById('row-bots-count').classList.remove('hidden');
+                    document.getElementById('row-bot-diff').classList.remove('hidden');
+                    document.getElementById('row-wins').classList.remove('hidden');
+                    document.getElementById('sel-bots').value = '1';
+                    document.getElementById('client-wait-msg').classList.add('hidden');
+                    document.getElementById('btn-start-match').classList.remove('hidden');
 
-            peer.on('open', (id) => {
-                myId = id;
-                lobbyPlayers = [{ id: myId, nick: myNick, color: myColor, isBot: false }];
-                document.getElementById('lobby-title').innerText = '🌐 SALA MULTIJUGADOR TRON';
-                document.getElementById('online-code-box').classList.remove('hidden');
-                document.getElementById('lobby-code-display').innerText = id;
-                document.getElementById('host-settings').classList.remove('hidden');
-                document.getElementById('row-map-select').classList.remove('hidden');
-                document.getElementById('row-speed-select').classList.remove('hidden');
-                document.getElementById('row-overdrive-info').classList.add('hidden');
-                document.getElementById('row-bots-count').classList.remove('hidden');
-                document.getElementById('row-bot-diff').classList.remove('hidden');
-                document.getElementById('row-wins').classList.remove('hidden');
-                document.getElementById('sel-bots').value = '1';
-                document.getElementById('client-wait-msg').classList.add('hidden');
-                document.getElementById('btn-start-match').classList.remove('hidden');
-
-                syncLobbyConfig();
-                showScreen('screen-lobby');
-            });
-
-            peer.on('connection', (conn) => {
-                conn.on('open', () => {
+                    syncLobbyConfig();
+                    showScreen('screen-lobby');
+                },
+                onConnection: (conn) => {
                     clientConns[conn.peer] = conn;
-                    conn.on('data', (data) => handleHostNetwork(conn.peer, data));
-                });
-                conn.on('close', () => {
+                },
+                onData: (data, conn) => handleHostNetwork(conn.peer, data),
+                onClose: (conn) => {
                     delete clientConns[conn.peer];
                     lobbyPlayers = lobbyPlayers.filter(p => p.id !== conn.peer);
                     if (riders[conn.peer] && riders[conn.peer].alive) {
@@ -1225,12 +1224,8 @@
                     }
                     renderLobbyPlayers();
                     broadcastLobbyState();
-                });
-            });
-
-            peer.on('error', (err) => {
-                if (err.type === 'unavailable-id') createOnlineRoom();
-                else alert('Error P2P: ' + err.message);
+                },
+                onError: (err, msg) => alert('Error P2P: ' + msg)
             });
         }
 
@@ -1241,13 +1236,17 @@
 
             currentMode = 'online';
             isHost = false;
-            if (peer) peer.destroy();
-            peer = new Peer();
 
-            peer.on('open', (id) => {
-                myId = id;
-                hostConn = peer.connect(code);
-                hostConn.on('open', () => {
+            ArcadeP2P.joinRoom(code, {
+                game: 'TRON',
+                peer: peer,
+                onPeerCreated: (p, c) => {
+                    peer = p;
+                    if (c) hostConn = c;
+                },
+                onOpen: (conn, assignedId) => {
+                    myId = assignedId;
+                    hostConn = conn;
                     if (window.ArcadeAudio) ArcadeAudio.notification();
                     document.getElementById('lobby-title').innerText = '🌐 SALA ' + code;
                     document.getElementById('online-code-box').classList.remove('hidden');
@@ -1258,12 +1257,13 @@
                     showScreen('screen-lobby');
 
                     hostConn.send({ type: 'JOIN', nick: myNick, color: myColor });
-                });
-                hostConn.on('data', handleClientNetwork);
-                hostConn.on('close', () => {
+                },
+                onData: handleClientNetwork,
+                onClose: () => {
                     alert('El Host cerró la sala.');
                     quitToMenu();
-                });
+                },
+                onError: (err, msg) => alert('Error al unirse: ' + msg)
             });
         }
 

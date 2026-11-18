@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>STOP - Tutti Frutti</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <style>
         :root {
             --bg-color: #f0f4f8;
@@ -494,25 +495,7 @@
             broadcastState({ type: 'LOBBY_UPDATE', players: players, config: { cats: activeCategories, rounds: gameState.maxRounds } });
         }
 
-        // --- PEERJS & NETWORKING ---
-        function initPeer(id = null) {
-            peer = new Peer(id);
-
-            peer.on('open', (id) => {
-                myId = id;
-                console.log('My ID:', id);
-            });
-
-            peer.on('connection', (conn) => {
-                handleConnection(conn);
-            });
-
-            peer.on('error', err => {
-                console.error(err);
-                showToast("Error de conexión: " + err.type);
-            });
-        }
-
+        // --- PEERJS & NETWORKING (ArcadeP2P Universal Module) ---
         function handleConnection(conn) {
             conn.on('open', () => {
                 connections[conn.peer] = conn;
@@ -631,18 +614,34 @@
         function createRoom() {
             const nick = document.getElementById('nickname').value.trim() || "Anfitrión";
             myNickname = nick;
-
-            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-            initPeer("stop_game_" + code);
-            roomCode = code;
             isHost = true;
-            players = [{ id: "HOST", name: nick, score: 0 }]; // Will update ID later
+            connections = {};
+            players = [{ id: "HOST", name: nick, score: 0 }];
             showScreen('screen-lobby');
-            document.getElementById('lobby-code').innerText = code;
             document.getElementById('host-config').style.display = 'block';
 
-            // Wait for ID then update self
-            setTimeout(() => { if (myId) { players[0].id = myId; updateLobbyUI(); } }, 1000);
+            ArcadeP2P.createHost({
+                game: 'STOP',
+                peer: peer,
+                onPeerCreated: (p, code) => {
+                    peer = p;
+                    roomCode = code;
+                    document.getElementById('lobby-code').innerText = code;
+                },
+                onOpen: (code) => {
+                    roomCode = code;
+                    myId = code;
+                    players[0].id = myId;
+                    document.getElementById('lobby-code').innerText = code;
+                    updateLobbyUI();
+                },
+                onIncomingConnection: (conn) => {
+                    handleConnection(conn);
+                },
+                onError: (err, msg) => {
+                    showToast(msg);
+                }
+            });
         }
 
         function joinRoom() {
@@ -651,25 +650,27 @@
 
             const code = document.getElementById('room-code-input').value.trim().toUpperCase();
             if (!code) return showToast("Ingresa un código");
-            const peerId = "stop_game_" + code;
-            initPeer();
 
-            // Wait for open
-            setTimeout(() => {
-                const conn = peer.connect(peerId);
-                hostConn = conn;
-
-                conn.on('open', () => {
+            ArcadeP2P.joinRoom(code, {
+                game: 'STOP',
+                peer: peer,
+                onPeerCreated: (p, c) => {
+                    peer = p;
+                    if (c) hostConn = c;
+                },
+                onOpen: (conn, id) => {
+                    myId = id;
+                    hostConn = conn;
                     isHost = false;
                     showScreen('screen-lobby');
                     document.getElementById('lobby-code').innerText = code;
                     document.getElementById('host-config').style.display = 'none';
                     document.getElementById('btn-start').style.display = 'none';
                     conn.send({ type: 'HELLO', name: myNickname });
-                });
-
-                conn.on('data', data => handleData(data, peerId));
-            }, 1000);
+                },
+                onData: (data, conn) => handleData(data, conn.peer),
+                onError: (err, msg) => showToast(msg)
+            });
         }
 
         function updateLobbyUI() {

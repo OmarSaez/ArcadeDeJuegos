@@ -20,6 +20,7 @@
         //# sourceMappingURL=/sm/6de00f2697a1683b235e589897df757a94e6809643432a9e3ad259420752442d.map
     </script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="../../p2p.js"></script>
     <script src="../../sounds.js"></script>
     <style>
         :root {
@@ -1275,39 +1276,41 @@
 
 
         function initPeer() {
-            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-            peer = new Peer(shortId);
-
-            peer.on('open', (id) => {
-                console.log("Peer Open:", id);
-                isHost = true;
-                show('screen-lobby');
-                document.getElementById('lobby-code').innerText = id;
-                document.getElementById('room-id-display').innerText = "SALA: " + id;
-            });
-
-            peer.on('connection', (c) => {
-                handleConnection(c);
-            });
-
-            peer.on('error', (err) => {
-                console.error("Peer Error:", err);
-                alert("Error P2P: " + err);
+            ArcadeP2P.createHost({
+                game: 'NAVAL',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    isHost = true;
+                    show('screen-lobby');
+                    document.getElementById('lobby-code').innerText = code;
+                    document.getElementById('room-id-display').innerText = "SALA: " + code;
+                },
+                onIncomingConnection: (c) => {
+                    handleConnection(c);
+                },
+                onError: (err, msg) => {
+                    console.error("Peer Error:", err);
+                    alert("Error P2P: " + msg);
+                }
             });
         }
 
         function joinGame() {
-            const code = document.getElementById('join-code').value.toUpperCase();
+            const code = document.getElementById('join-code').value.trim().toUpperCase();
             if (!code) return;
             isHost = false;
 
-            peer = new Peer();
-            peer.on('open', () => {
-                const c = peer.connect(code);
-                handleConnection(c);
-                document.getElementById('room-id-display').innerText = "SALA: " + code;
+            ArcadeP2P.joinRoom(code, {
+                game: 'NAVAL',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onConnecting: (c) => {
+                    handleConnection(c);
+                    document.getElementById('room-id-display').innerText = "SALA: " + code;
+                },
+                onError: (err, msg) => alert("Error P2P: " + msg)
             });
-            peer.on('error', (err) => alert("Error P2P: " + err));
         }
 
         function handleConnection(c) {

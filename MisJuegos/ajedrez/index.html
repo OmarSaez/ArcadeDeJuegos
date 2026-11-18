@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ajedrez - Arcade</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -657,33 +658,36 @@
         function hostGame() {
             isLocalMode = false;
             isHost = true; myColor = 'w';
-            const id = Math.random().toString(36).substring(2, 6).toUpperCase();
             document.getElementById('lobby-main').style.display = 'none';
             document.getElementById('lobby-waiting').style.display = 'block';
-            initPeer(id);
+            ArcadeP2P.createHost({
+                game: 'AJEDREZ',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myId = code;
+                    document.getElementById('display-code').innerText = code;
+                },
+                onIncomingConnection: (c) => {
+                    if (isHost && !conn) handleConnection(c);
+                    else { c.on('open', () => c.close()); }
+                }
+            });
         }
 
         function joinGame() {
-            const code = document.getElementById('code-input').value.toUpperCase();
+            const code = document.getElementById('code-input').value.trim().toUpperCase();
             if (!code) return;
             isLocalMode = false;
             isHost = false; myColor = 'b';
-            initPeer();
-            peer.on('open', () => {
-                conn = peer.connect(code);
-                handleConnection(conn);
-            });
-        }
-
-        function initPeer(id) {
-            peer = new Peer(id);
-            peer.on('open', (assignedId) => {
-                myId = assignedId;
-                if (isHost) document.getElementById('display-code').innerText = assignedId;
-            });
-            peer.on('connection', c => {
-                if (isHost && !conn) handleConnection(c);
-                else { c.on('open', () => c.close()); }
+            ArcadeP2P.joinRoom(code, {
+                game: 'AJEDREZ',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onConnecting: (c) => {
+                    conn = c;
+                    handleConnection(c);
+                }
             });
         }
 

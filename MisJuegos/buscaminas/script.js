@@ -128,30 +128,28 @@ function createRoom(r, c, mines) {
     connections = [];
     players = [];
 
-    const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    roomCode = shortId;
-
-    peer = new Peer(shortId);
-
-    peer.on('open', (id) => {
-        myId = id;
-        players.push({ id: myId, nickname: myNickname, status: 'playing' });
-        updateLobbyUI();
-        showView('view-lobby');
-        document.getElementById('room-code-display').innerText = id;
-        document.getElementById('host-controls').style.display = 'block';
-        document.getElementById('lobby-status').innerText = "Esperando jugadores...";
-    });
-
-    peer.on('connection', (conn) => {
-        setupHostConnection(conn);
-    });
-
-    peer.on('error', (err) => {
-        if (err.type === 'unavailable-id') {
-            createRoom(r, c); // Reintento
-        } else {
-            alert("Error P2P: " + err);
+    ArcadeP2P.createHost({
+        game: 'BUSCAMINAS',
+        peer: peer,
+        onPeerCreated: (p, code) => {
+            peer = p;
+            roomCode = code;
+        },
+        onOpen: (code) => {
+            roomCode = code;
+            myId = code;
+            players.push({ id: myId, nickname: myNickname, status: 'playing' });
+            updateLobbyUI();
+            showView('view-lobby');
+            document.getElementById('room-code-display').innerText = code;
+            document.getElementById('host-controls').style.display = 'block';
+            document.getElementById('lobby-status').innerText = "Esperando jugadores...";
+        },
+        onIncomingConnection: (conn) => {
+            setupHostConnection(conn);
+        },
+        onError: (err, msg) => {
+            alert("Error P2P: " + msg);
         }
     });
 }
@@ -198,27 +196,29 @@ function broadcast(data) {
 // Sistema P2P - CLIENTE
 // ----------------------------------------------------
 function joinRoom() {
-    const code = document.getElementById('join-code').value.toUpperCase();
+    const code = document.getElementById('join-code').value.trim().toUpperCase();
     if (!code) return;
 
     document.getElementById('join-status').innerText = "Conectando...";
     isHost = false;
     roomCode = code;
 
-    peer = new Peer();
-
-    peer.on('open', (id) => {
-        myId = id;
-        hostConnection = peer.connect(code);
-
-        hostConnection.on('open', () => {
+    ArcadeP2P.joinRoom(code, {
+        game: 'BUSCAMINAS',
+        peer: peer,
+        onPeerCreated: (p, c) => {
+            peer = p;
+            if (c) hostConnection = c;
+        },
+        onOpen: (conn, id) => {
+            myId = id;
+            hostConnection = conn;
             hostConnection.send({ type: 'JOIN', nickname: myNickname });
             showView('view-lobby');
             document.getElementById('room-code-display').innerText = code;
             document.getElementById('host-controls').style.display = 'none';
-        });
-
-        hostConnection.on('data', (data) => {
+        },
+        onData: (data) => {
             if (data.type === 'PLAYERS_UPDATE') {
                 players = data.players;
                 updateLobbyUI();
@@ -260,16 +260,14 @@ function joinRoom() {
             } else if (data.type === 'HOVER_SYNC') {
                 processHoverSync(data);
             }
-        });
-
-        hostConnection.on('close', () => {
+        },
+        onClose: () => {
             alert("El host cerró la sala.");
             leaveRoom();
-        });
-    });
-
-    peer.on('error', (err) => {
-        document.getElementById('join-status').innerText = "Error: " + err;
+        },
+        onError: (err, msg) => {
+            document.getElementById('join-status').innerText = "Error: " + msg;
+        }
     });
 }
 
