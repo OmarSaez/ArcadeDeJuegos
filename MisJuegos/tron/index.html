@@ -2417,20 +2417,92 @@
             advanceToNextOverdriveWave();
         }
 
+        let clientLastSpeedMult = 1.0;
+
+        function fillClientTrailSegment(c0, r0, c1, r1, slotCode, ownerId) {
+            const dist = Math.abs(c1 - c0) + Math.abs(r1 - r0);
+            if (dist === 0 || dist > 6) {
+                if (grid[r1] && grid[r1][c1] === EMPTY) {
+                    grid[r1][c1] = slotCode;
+                    trailOwner[r1][c1] = ownerId;
+                }
+                return;
+            }
+            const steps = Math.max(Math.abs(c1 - c0), Math.abs(r1 - r0));
+            for (let s = 0; s <= steps; s++) {
+                const cc = Math.round(c0 + ((c1 - c0) * s) / steps);
+                const rr = Math.round(r0 + ((r1 - r0) * s) / steps);
+                if (grid[rr] && grid[rr][cc] === EMPTY) {
+                    grid[rr][cc] = slotCode;
+                    trailOwner[rr][cc] = ownerId;
+                }
+            }
+        }
+
         function applyClientState(data) {
             items = data.items || [];
             scores = data.scores || scores;
+            clientLastSpeedMult = data.speedMult || 1.0;
+
             Object.entries(data.riderStates || {}).forEach(([id, st]) => {
                 if (riders[id]) {
-                    Object.assign(riders[id], st);
-                    if (st.alive && grid[st.r] && grid[st.r][st.c] === EMPTY) {
-                        grid[st.r][st.c] = st.slotCode;
-                        trailOwner[st.r][st.c] = id;
+                    const r = riders[id];
+                    const prevC = typeof r.c === 'number' ? r.c : st.c;
+                    const prevR = typeof r.r === 'number' ? r.r : st.r;
+
+                    if (st.alive) {
+                        fillClientTrailSegment(prevC, prevR, st.c, st.r, st.slotCode, id);
                     }
+
+                    const newTargetX = (st.c + 0.5) * CELL;
+                    const newTargetY = (st.r + 0.5) * CELL;
+                    const curRx = typeof r.renderX === 'number' ? r.renderX : newTargetX;
+                    const curRy = typeof r.renderY === 'number' ? r.renderY : newTargetY;
+
+                    Object.assign(r, st);
+
+                    // Si hubo teletransporte por portal o inicio de ronda (> 6 celdas), saltar directo
+                    if (Math.hypot(newTargetX - curRx, newTargetY - curRy) > CELL * 6 || !st.alive) {
+                        r.renderX = newTargetX;
+                        r.renderY = newTargetY;
+                    } else {
+                        r.renderX = curRx;
+                        r.renderY = curRy;
+                    }
+                    r.targetX = newTargetX;
+                    r.targetY = newTargetY;
                 }
             });
-            updateHUD(data.speedMult || 1.0);
+            updateHUD(clientLastSpeedMult);
             updateMyStatsBar();
+        }
+
+        function updateClientInterpolation(dt) {
+            if (countdownTimer > 0) {
+                countdownTimer = Math.max(0, countdownTimer - dt);
+                return;
+            }
+            const speedInfo = getCurrentBaseSpeed();
+            const basePixelsPerSec = speedInfo.stepsPerSec * CELL * clientLastSpeedMult;
+            const blend = Math.min(1, dt * 24);
+
+            Object.values(riders).forEach(r => {
+                if (!r || !r.alive) return;
+                if (typeof r.renderX !== 'number') r.renderX = (r.c + 0.5) * CELL;
+                if (typeof r.renderY !== 'number') r.renderY = (r.r + 0.5) * CELL;
+                if (typeof r.targetX !== 'number') r.targetX = r.renderX;
+                if (typeof r.targetY !== 'number') r.targetY = r.renderY;
+
+                const turboMult = r.turboTimer > 0 ? 1.52 : 1.0;
+                const stepPx = basePixelsPerSec * turboMult * dt * 0.55;
+
+                // Avanzar ligeramente el objetivo en la dirección actual de la moto entre paquetes
+                r.targetX += (r.dx || 0) * stepPx;
+                r.targetY += (r.dy || 0) * stepPx;
+
+                r.renderX += (r.targetX - r.renderX) * blend;
+                r.renderY += (r.targetY - r.renderY) * blend;
+            });
         }
 
         // ==========================================
@@ -2663,12 +2735,19 @@
                 CTX.fillText(icon, ix, iy + 1);
             });
 
-            // Dibujar Motos de Luz (Light Cycles)
+            // Dibujar Motos de Luz (Light Cycles) con interpolación fluida sub-celda a 60 FPS
             Object.values(riders).forEach(r => {
                 if (!r.alive) return;
 
-                const cx = (r.c + 0.5) * CELL;
-                const cy = (r.r + 0.5) * CELL;
+                let cx, cy;
+                if (isHost) {
+                    const sub = (countdownTimer <= 0 && gameActive) ? ((r.stepAccum || 0) - 0.5) : 0;
+                    cx = (r.c + 0.5 + (r.dx || 0) * sub) * CELL;
+                    cy = (r.r + 0.5 + (r.dy || 0) * sub) * CELL;
+                } else {
+                    cx = typeof r.renderX === 'number' ? r.renderX : (r.c + 0.5) * CELL;
+                    cy = typeof r.renderY === 'number' ? r.renderY : (r.r + 0.5) * CELL;
+                }
 
                 // Halo de Escudo o Fase Fantasma
                 if (r.hasShield) {
@@ -2763,6 +2842,8 @@
             if (gameActive) {
                 if (isHost) {
                     updateHostGame(dt);
+                } else {
+                    updateClientInterpolation(dt);
                 }
                 renderArena(dt, nowMs);
             }

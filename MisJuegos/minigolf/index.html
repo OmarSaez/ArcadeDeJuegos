@@ -2663,10 +2663,72 @@
 
         function applyClientState(data) {
             holeTime = data.holeTime;
-            balls = data.balls;
+            if (data.balls) {
+                const nextBalls = {};
+                Object.entries(data.balls).forEach(([id, srvB]) => {
+                    const prev = balls[id];
+                    if (prev && !srvB.sunk) {
+                        const dist = Math.hypot(srvB.x - prev.x, srvB.y - prev.y);
+                        // Si la distancia es muy grande (teletransporte o reinicio por agua/lava), saltar directo
+                        if (dist > 110) {
+                            nextBalls[id] = {
+                                ...srvB,
+                                targetX: srvB.x,
+                                targetY: srvB.y,
+                                trail: Array.isArray(srvB.trail) ? srvB.trail : []
+                            };
+                        } else {
+                            nextBalls[id] = {
+                                ...srvB,
+                                x: prev.x,
+                                y: prev.y,
+                                targetX: srvB.x,
+                                targetY: srvB.y,
+                                trail: Array.isArray(prev.trail) ? prev.trail : []
+                            };
+                        }
+                    } else {
+                        nextBalls[id] = {
+                            ...srvB,
+                            targetX: srvB.x,
+                            targetY: srvB.y,
+                            trail: Array.isArray(srvB.trail) ? srvB.trail : []
+                        };
+                    }
+                });
+                balls = nextBalls;
+            }
             collectedGems = new Set(data.gems || []);
             updateHUD();
             updateTurnStatusText();
+        }
+
+        function updateClientBallsInterpolation(dt) {
+            const blend = Math.min(1, dt * 24);
+            Object.values(balls).forEach(b => {
+                if (!b || b.sunk) return;
+                if (typeof b.targetX !== 'number' || typeof b.targetY !== 'number') {
+                    b.targetX = b.x;
+                    b.targetY = b.y;
+                }
+                if (b.moving) {
+                    // Avanzar ligeramente el objetivo según la velocidad real (vx, vy) entre paquetes
+                    b.targetX += (b.vx || 0) * dt * 0.42;
+                    b.targetY += (b.vy || 0) * dt * 0.42;
+                    b.vx = (b.vx || 0) * Math.pow(0.45, dt);
+                    b.vy = (b.vy || 0) * Math.pow(0.45, dt);
+                }
+                b.x += (b.targetX - b.x) * blend;
+                b.y += (b.targetY - b.y) * blend;
+
+                if (!Array.isArray(b.trail)) b.trail = [];
+                if (b.moving && !b.sunk) {
+                    b.trail.push({ x: b.x, y: b.y });
+                    if (b.trail.length > 16) b.trail.shift();
+                } else if (b.trail.length > 0) {
+                    b.trail.shift();
+                }
+            });
         }
 
         // =========================================================================
@@ -4265,6 +4327,7 @@
                 } else {
                     holeTime += dt;
                     activeHole.spinners.forEach(sp => { sp.angle += sp.speed * dt; });
+                    updateClientBallsInterpolation(dt);
                 }
                 renderCourse(dt);
             }

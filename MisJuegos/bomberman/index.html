@@ -2955,14 +2955,95 @@
         function applyClientState(data) {
             grid = data.grid;
             if (data.activeMapTheme) activeMapTheme = data.activeMapTheme;
-            entities = data.entities;
-            bombs = data.bombs;
+
+            // Interpolación suave de jugadores entre paquetes de red
+            if (data.entities) {
+                const nextEntities = {};
+                Object.entries(data.entities).forEach(([id, srvP]) => {
+                    const prev = entities[id];
+                    if (prev && prev.alive && srvP.alive) {
+                        const dist = Math.hypot(srvP.x - prev.x, srvP.y - prev.y);
+                        // Si la distancia es grande (ej. teletransporte por portal o inicio de ronda), saltar directo
+                        if (dist > TILE * 2.2) {
+                            nextEntities[id] = { ...srvP, targetX: srvP.x, targetY: srvP.y, netVx: 0, netVy: 0 };
+                        } else {
+                            // Estimar velocidad instantánea entre paquetes (~25Hz) para extrapolación suave
+                            const estVx = (srvP.x - (prev.targetX ?? prev.x)) / 0.04;
+                            const estVy = (srvP.y - (prev.targetY ?? prev.y)) / 0.04;
+                            nextEntities[id] = {
+                                ...srvP,
+                                x: prev.x,
+                                y: prev.y,
+                                targetX: srvP.x,
+                                targetY: srvP.y,
+                                netVx: Math.abs(estVx) > 8 ? Math.max(-260, Math.min(260, estVx)) : 0,
+                                netVy: Math.abs(estVy) > 8 ? Math.max(-260, Math.min(260, estVy)) : 0
+                            };
+                        }
+                    } else {
+                        nextEntities[id] = { ...srvP, targetX: srvP.x, targetY: srvP.y, netVx: 0, netVy: 0 };
+                    }
+                });
+                entities = nextEntities;
+            }
+
+            // Interpolación suave de bombas pateadas / deslizándose
+            if (Array.isArray(data.bombs)) {
+                bombs = data.bombs.map(srvB => {
+                    const prevB = bombs.find(b => b.c === srvB.c && b.r === srvB.r && b.ownerId === srvB.ownerId) ||
+                                  bombs.find(b => Math.hypot((b.targetX ?? b.x) - srvB.x, (b.targetY ?? b.y) - srvB.y) < TILE * 1.4);
+                    if (prevB && Math.hypot(srvB.x - prevB.x, srvB.y - prevB.y) < TILE * 2.2) {
+                        return {
+                            ...srvB,
+                            x: prevB.x,
+                            y: prevB.y,
+                            targetX: srvB.x,
+                            targetY: srvB.y
+                        };
+                    }
+                    return { ...srvB, targetX: srvB.x, targetY: srvB.y };
+                });
+            }
+
             flames = data.flames;
             powerups = data.powerups;
             scores = data.scores;
             roundTimer = data.roundTimer;
             updateMyStatsBar();
             updateScoreboardHUD();
+        }
+
+        function updateClientInterpolation(dt) {
+            const blend = Math.min(1, dt * 22);
+            Object.values(entities).forEach(p => {
+                if (!p || !p.alive) return;
+                if (typeof p.targetX === 'number' && typeof p.targetY === 'number') {
+                    // Proyección ligera por inercia + acercamiento suave al objetivo del paquete
+                    p.targetX += (p.netVx || 0) * dt * 0.28;
+                    p.targetY += (p.netVy || 0) * dt * 0.28;
+                    p.netVx = (p.netVx || 0) * Math.pow(0.08, dt);
+                    p.netVy = (p.netVy || 0) * Math.pow(0.08, dt);
+                    p.x += (p.targetX - p.x) * blend;
+                    p.y += (p.targetY - p.y) * blend;
+                }
+                if (p.invulnTimer > 0) p.invulnTimer = Math.max(0, p.invulnTimer - dt);
+            });
+
+            bombs.forEach(b => {
+                if (typeof b.targetX === 'number' && typeof b.targetY === 'number') {
+                    b.targetX += (b.vx || 0) * dt * 0.45;
+                    b.targetY += (b.vy || 0) * dt * 0.45;
+                    b.x += (b.targetX - b.x) * blend;
+                    b.y += (b.targetY - b.y) * blend;
+                }
+                if (b.timer > 0) b.timer = Math.max(0, b.timer - dt);
+            });
+
+            flames.forEach(f => {
+                if (f.timer > 0) f.timer = Math.max(0, f.timer - dt);
+            });
+
+            if (roundTimer > 0) roundTimer = Math.max(0, roundTimer - dt);
         }
 
         function showMatchOver(headline, color, scoreboard, isVictory = true, subText = 'Dominio explosivo en la arena', allowEndless = false) {
@@ -3350,6 +3431,8 @@
                 pollLocalInputs();
                 if (isHost) {
                     updateHostGame(dt);
+                } else {
+                    updateClientInterpolation(dt);
                 }
                 renderArena(dt, nowMs);
             }
