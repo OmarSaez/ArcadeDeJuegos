@@ -1402,16 +1402,31 @@
             if (backBtn) backBtn.classList.toggle('hidden', screenId !== 'screen-menu');
         }
 
+        const COOP_TIME_TARGETS = { 300: 1800, 600: 4000, 900: 6500 };
+
         function configureFormatDropdownForMode(mode) {
             const sel = document.getElementById('sel-format');
             const timeOpts = ['t_300', 't_600', 't_900'];
+            const allowTime = (mode === 'competitive' || mode === 'coop');
+            const labelsCoop = {
+                t_300: '⏱️ 5 Min (Meta: 1.800 pts)',
+                t_600: '⏱️ 10 Min (Meta: 4.000 pts)',
+                t_900: '⏱️ 15 Min (Meta: 6.500 pts)'
+            };
+            const labelsComp = {
+                t_300: '⏱️ Por Tiempo: 5 Minutos',
+                t_600: '⏱️ Por Tiempo: 10 Minutos',
+                t_900: '⏱️ Por Tiempo: 15 Minutos'
+            };
             Array.from(sel.options).forEach(opt => {
                 const isTimeOpt = timeOpts.includes(opt.value);
-                // Solo Competitivo permite modalidad por 5, 10 o 15 minutos además de 10-20 preguntas
-                opt.hidden = isTimeOpt && mode !== 'competitive';
-                opt.disabled = isTimeOpt && mode !== 'competitive';
+                opt.hidden = isTimeOpt && !allowTime;
+                opt.disabled = isTimeOpt && !allowTime;
+                if (isTimeOpt) {
+                    opt.text = mode === 'coop' ? labelsCoop[opt.value] : labelsComp[opt.value];
+                }
             });
-            if (mode !== 'competitive' && timeOpts.includes(sel.value)) {
+            if (!allowTime && timeOpts.includes(sel.value)) {
                 sel.value = 'q_15';
             }
         }
@@ -1812,6 +1827,10 @@
                 targetQuestions = 9999;
             }
 
+            const coopTargetScore = (currentMode === 'coop' && durationType === 'time')
+                ? (COOP_TIME_TARGETS[totalSeconds] || 1800)
+                : 0;
+
             const initPayload = {
                 type: 'START_MATCH',
                 mode: currentMode,
@@ -1819,7 +1838,8 @@
                 roster: lobbyRoster,
                 durationType,
                 targetQuestions,
-                totalSeconds
+                totalSeconds,
+                coopTargetScore
             };
 
             if (isOnlineRoom) hostBroadcast(initPayload);
@@ -1844,7 +1864,7 @@
             matchState.matchUsedIds = new Set();
             matchState.sectorCounts = { historia: 0, geografia: 0, ciencia: 0, arte: 0, entretenimiento: 0, deportes: 0, corona: 0 };
             matchState.lastSectorKey = null;
-            matchState.coop = { score: 0, streak: 0, correct: 0, wrong: 0, crowns: [] };
+            matchState.coop = { score: 0, streak: 0, correct: 0, wrong: 0, crowns: [], targetScore: payload.coopTargetScore || 0 };
             matchState.lifelines = { '5050': 2, 'time': 2, 'special': 2 };
 
             matchState.players = {};
@@ -1989,13 +2009,21 @@
             if (currentMode === 'coop') {
                 const teamPill = document.createElement('div');
                 teamPill.className = 'p-chip is-me';
-                teamPill.innerHTML = `🤝 <span>Equipo:</span> <strong style="color:#fbbf24;">${matchState.coop.score} pts</strong> <span>🔥${matchState.coop.streak}</span>`;
+                const target = matchState.coop.targetScore || 0;
+                if (matchState.durationType === 'time' && target > 0) {
+                    const reached = matchState.coop.score >= target;
+                    teamPill.innerHTML = `🤝 <span>Meta:</span> <strong style="color:${reached ? '#4ade80' : '#fbbf24'};">${matchState.coop.score} / ${target} pts</strong> <span>🔥${matchState.coop.streak}</span>`;
+                } else {
+                    teamPill.innerHTML = `🤝 <span>Equipo:</span> <strong style="color:#fbbf24;">${matchState.coop.score} pts</strong> <span>🔥${matchState.coop.streak}</span>`;
+                }
                 strip.appendChild(teamPill);
 
                 lobbyRoster.forEach(p => {
+                    const ind = matchState.players[p.id];
+                    const indPts = ind ? ind.score : 0;
                     const m = document.createElement('div');
-                    m.className = 'p-chip';
-                    m.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block;"></span><span>${p.nick}</span>`;
+                    m.className = 'p-chip' + (p.id === myId ? ' is-me' : '');
+                    m.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block;"></span><span>${p.nick}</span><strong style="color:#93c5fd;">${indPts}</strong>`;
                     strip.appendChild(m);
                 });
                 return;
@@ -2516,12 +2544,17 @@
 
             let pts = 0;
             let earnedCrown = false;
+            const picker = matchState.players[pickerId];
             if (isCorrect) {
                 const speedBonus = Math.round((matchState.qTimeLeft / 20) * 50);
                 pts = calcTriviaPoints(speedBonus, matchState.coop.streak, matchState.coop.crowns.length, matchState.isCrownQ);
                 matchState.coop.score += pts;
                 matchState.coop.streak++;
                 matchState.coop.correct++;
+                if (picker) {
+                    picker.score += pts;
+                    picker.correct++;
+                }
                 if ((matchState.isCrownQ || matchState.coop.streak % 3 === 0) && !matchState.coop.crowns.includes(matchState.currentCat)) {
                     matchState.coop.crowns.push(matchState.currentCat);
                     earnedCrown = true;
@@ -2529,6 +2562,7 @@
             } else {
                 matchState.coop.streak = 0;
                 matchState.coop.wrong++;
+                if (picker) picker.wrong++;
             }
 
             const resultPayload = {
@@ -2541,6 +2575,7 @@
                 pts,
                 earnedCrown,
                 coopState: matchState.coop,
+                playersSnapshot: matchState.players,
                 fact: q.fact
             };
             if (isOnlineRoom) hostBroadcast(resultPayload);
@@ -2568,6 +2603,7 @@
             clearInterval(questionInterval);
             lockAllOptionButtons();
             matchState.coop = payload.coopState;
+            if (payload.playersSnapshot) matchState.players = payload.playersSnapshot;
 
             const chosenBtn = document.getElementById(`opt-btn-${payload.optionIdx}`);
             const rightBtn = document.getElementById(`opt-btn-${payload.correctIdx}`);
@@ -3055,16 +3091,38 @@
                 const c = payload.coop;
                 const total = c.correct + c.wrong;
                 const acc = total > 0 ? Math.round((c.correct / total) * 100) : 0;
-                document.getElementById('gameover-icon').innerText = '🤝';
-                document.getElementById('gameover-title').innerText = `¡EQUIPO: ${c.score} PTS!`;
-                document.getElementById('gameover-sub').innerText = `${c.correct}/${total} correctas (${acc}%) • ${c.crowns.length}/6 Coronas${c.fullCrownBonus ? ' (+300 pts bonus)' : ''}`;
-                didIWin = acc >= 50;
+                if (c.targetScore > 0) {
+                    const reached = c.score >= c.targetScore;
+                    const diff = c.score - c.targetScore;
+                    const diffText = reached ? `+${diff} sobre la meta` : `Faltaron ${Math.abs(diff)} pts`;
+                    document.getElementById('gameover-icon').innerText = reached ? '🏆' : '⌛';
+                    document.getElementById('gameover-title').innerText = reached ? '¡META ALCANZADA!' : '¡TIEMPO AGOTADO!';
+                    document.getElementById('gameover-sub').innerText = `${c.score} / ${c.targetScore} pts (${diffText}) • ${c.correct}/${total} correctas (${acc}%) • ${c.crowns.length}/6 Coronas${c.fullCrownBonus ? ' (+300 pts bonus)' : ''}`;
+                    didIWin = reached;
+                } else {
+                    document.getElementById('gameover-icon').innerText = '🤝';
+                    document.getElementById('gameover-title').innerText = `¡EQUIPO: ${c.score} PTS!`;
+                    document.getElementById('gameover-sub').innerText = `${c.correct}/${total} correctas (${acc}%) • ${c.crowns.length}/6 Coronas${c.fullCrownBonus ? ' (+300 pts bonus)' : ''}`;
+                    didIWin = acc >= 50;
+                }
 
                 const row = document.createElement('div');
                 row.className = 'player-row';
                 row.style.borderLeft = '4px solid #38bdf8';
-                row.innerHTML = `<span>🤝 Equipo (${lobbyRoster.map(p => p.nick).join(', ')})</span><strong style="color:#fbbf24;">${c.score} pts</strong>`;
+                row.innerHTML = `<span>🤝 Total del Equipo</span><strong style="color:#fbbf24;">${c.score} pts</strong>`;
                 box.appendChild(row);
+
+                const list = payload.standings || [];
+                list.forEach((p, idx) => {
+                    const pRow = document.createElement('div');
+                    pRow.className = 'player-row';
+                    pRow.style.borderLeft = `4px solid ${p.color}`;
+                    pRow.innerHTML = `
+                        <span>#${idx + 1} ${p.nick} <small style="color:#94a3b8;">(✅${p.correct} ❌${p.wrong})</small></span>
+                        <strong style="color:#93c5fd;">${p.score} pts</strong>
+                    `;
+                    box.appendChild(pRow);
+                });
             } else {
                 const list = payload.standings || [];
                 const winner = list[0];
