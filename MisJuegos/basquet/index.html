@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Básquet Neón: Fiebre de Canastas - Arcade de Omar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
+    <script src="../../sounds.js"></script>
+    <style>
+        :root {
+            --bg-dark: #060913;
+            --panel-bg: rgba(12, 19, 35, 0.94);
+            --orange-neon: #ff6b00;
+            --amber-neon: #fbbf24;
+            --cyan-neon: #00f0ff;
+            --lime-neon: #4ade80;
+            --rose-neon: #f43f5e;
+            --purple-neon: #c084fc;
+            --text-light: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            background: radial-gradient(circle at 50% 20%, #131c36 0%, #050811 100%);
+            color: var(--text-light);
+            font-family: 'Outfit', sans-serif;
+            touch-action: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* BOTÓN VOLVER AL ARCADE (SOLO VISIBLE EN MENÚ PRINCIPAL) */
+        .back-btn {
+            position: fixed;
+            top: 10px;
+            left: 12px;
+            z-index: 200;
+            background: rgba(12, 19, 35, 0.92);
+            border: 1.5px solid rgba(255, 107, 0, 0.55);
+            color: #fdba74;
+            padding: 7px 13px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+            transition: all 0.2s;
+        }
+        .back-btn:hover {
+            background: rgba(255, 107, 0, 0.2);
+            border-color: var(--orange-neon);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* PANTALLAS DE MENÚ / LOBBY / PODIO */
+        .screen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 52px 14px 26px 14px;
+            background: radial-gradient(circle at 50% 20%, rgba(28, 25, 54, 0.95) 0%, rgba(5, 8, 17, 0.98) 100%);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 2px solid rgba(255, 107, 0, 0.38);
+            border-radius: 24px;
+            padding: 22px 20px;
+            width: 100%;
+            max-width: 720px;
+            margin: auto 0;
+            flex-shrink: 0;
+            box-shadow: 0 20px 55px rgba(0, 0, 0, 0.8), 0 0 32px rgba(255, 107, 0, 0.14);
+            text-align: center;
+            backdrop-filter: blur(12px);
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(1.2rem, 3.6vw, 2.1rem);
+            line-height: 1.35;
+            background: linear-gradient(90deg, #ff6b00, #fbbf24, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 14px;
+        }
+
+        .profile-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            background: rgba(6, 11, 22, 0.8);
+            border: 1px solid #243554;
+            padding: 10px 14px;
+            border-radius: 16px;
+            margin-bottom: 14px;
+        }
+
+        .nick-input {
+            background: #081020;
+            border: 1.5px solid #334155;
+            color: #fff;
+            padding: 9px 13px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 0.95rem;
+            width: 165px;
+            text-align: center;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        .nick-input:focus {
+            border-color: var(--orange-neon);
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 7px;
+            align-items: center;
+        }
+        .color-swatch {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.15s;
+        }
+        .color-swatch.active {
+            border-color: #fff;
+            transform: scale(1.18);
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 11px;
+            margin: 12px 0;
+        }
+
+        .mode-card {
+            background: rgba(17, 27, 48, 0.88);
+            border: 2px solid #273c61;
+            border-radius: 16px;
+            padding: 14px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .mode-card:hover {
+            border-color: var(--orange-neon);
+            background: rgba(27, 42, 72, 0.96);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.55), 0 0 18px rgba(255, 107, 0, 0.22);
+        }
+        .mode-card .m-icon { font-size: 1.9rem; }
+        .mode-card .m-title { font-weight: 900; font-size: 1rem; color: #f8fafc; }
+        .mode-card .m-desc { font-size: 0.78rem; color: #94a3b8; line-height: 1.3; }
+
+        .join-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .code-input {
+            background: #060e1a;
+            border: 2px solid #294066;
+            color: var(--amber-neon);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            text-align: center;
+            width: 170px;
+            text-transform: uppercase;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        .arcade-btn {
+            background: linear-gradient(135deg, #ff6b00, #ea580c);
+            color: #fff;
+            border: none;
+            padding: 11px 18px;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 0, 0.35);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+        .arcade-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        .arcade-btn.cyan {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.35);
+        }
+        .arcade-btn.secondary {
+            background: #1e293b;
+            border: 1px solid #475569;
+            box-shadow: none;
+        }
+
+        .feature-pills {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+            gap: 8px;
+            margin-top: 13px;
+            text-align: left;
+        }
+        .f-pill {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 10px;
+            padding: 7px 10px;
+            font-size: 0.76rem;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: #cbd5e1;
+        }
+
+        /* LOBBY */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 14px 0;
+            text-align: left;
+        }
+        .config-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #233b5c;
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+        .config-box label {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 5px;
+            font-weight: 800;
+        }
+        .config-select {
+            width: 100%;
+            background: #060e1a;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            padding: 7px 8px;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.88rem;
+            outline: none;
+        }
+
+        .room-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(251, 191, 36, 0.12);
+            border: 2px dashed var(--amber-neon);
+            padding: 8px 18px;
+            border-radius: 14px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.05rem;
+            color: var(--amber-neon);
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin: 12px 0;
+            max-height: 190px;
+            overflow-y: auto;
+        }
+        .player-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.88);
+            border: 1px solid #233b5c;
+            border-radius: 11px;
+            padding: 8px 14px;
+            font-weight: 800;
+        }
+
+        .row-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+
+        /* =========================================================================
+           ESTRUCTURA DE CANCHA ACTIVA — ALTURA BLOQUEADA (CERO SALTOS EN MÓVIL O PC)
+           ========================================================================= */
+        #game-shell {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            background: #050811;
+            overflow: hidden;
+        }
+
+        #top-hud {
+            width: 100%;
+            height: 50px;
+            min-height: 50px;
+            max-height: 50px;
+            background: rgba(8, 13, 24, 0.96);
+            border-bottom: 1.5px solid rgba(255, 107, 0, 0.35);
+            padding: 4px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            z-index: 30;
+            flex-shrink: 0;
+        }
+
+        .hud-scores-strip {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            overflow-x: auto;
+            flex: 1;
+            min-width: 0;
+            scrollbar-width: none;
+        }
+        .hud-scores-strip::-webkit-scrollbar { display: none; }
+
+        .p-score-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(17, 27, 46, 0.94);
+            border: 1.5px solid #334155;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .p-score-chip.on-fire {
+            border-color: #ff6b00;
+            box-shadow: 0 0 12px rgba(255, 107, 0, 0.55);
+            background: rgba(67, 20, 7, 0.85);
+        }
+
+        .hud-clock-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .shot-clock {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.88rem;
+            color: var(--amber-neon);
+            background: #050a14;
+            border: 1.5px solid rgba(251, 191, 36, 0.5);
+            padding: 5px 9px;
+            border-radius: 8px;
+            min-width: 68px;
+            text-align: center;
+        }
+        .shot-clock.danger {
+            color: #f43f5e;
+            border-color: #f43f5e;
+            animation: pulseClock 0.5s infinite alternate;
+        }
+        @keyframes pulseClock {
+            from { transform: scale(1); }
+            to { transform: scale(1.06); }
+        }
+
+        .small-exit-btn {
+            background: rgba(30, 41, 59, 0.92);
+            border: 1px solid rgba(248, 113, 113, 0.45);
+            color: #fca5a5;
+            padding: 5px 10px;
+            border-radius: 9px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.74rem;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        #court-stage {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 4px;
+        }
+
+        #hoop-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            max-width: 640px;
+            max-height: 100%;
+            border-radius: 16px;
+            border: 2px solid rgba(255, 107, 0, 0.3);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8);
+            background: #070d19;
+            touch-action: none;
+            cursor: grab;
+        }
+        #hoop-canvas:active {
+            cursor: grabbing;
+        }
+
+        /* BARRA INFERIOR DE ESTADO Y RACK DE BALONES (ALTURA FIJA 48PX) */
+        #bottom-hud {
+            width: 100%;
+            height: 48px;
+            min-height: 48px;
+            max-height: 48px;
+            background: rgba(8, 13, 24, 0.96);
+            border-top: 1.5px solid rgba(255, 107, 0, 0.3);
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-shrink: 0;
+            z-index: 30;
+        }
+
+        .streak-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 900;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(255, 107, 0, 0.14);
+            border: 1px solid rgba(255, 107, 0, 0.45);
+            color: #fdba74;
+        }
+
+        #status-tip {
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: #cbd5e1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ball-rack-preview {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            #top-hud {
+                height: 46px;
+                min-height: 46px;
+                max-height: 46px;
+                padding: 4px 8px;
+            }
+            .p-score-chip {
+                font-size: 0.72rem;
+                padding: 2px 7px;
+            }
+            .shot-clock {
+                font-size: 0.76rem;
+                padding: 4px 7px;
+                min-width: 58px;
+            }
+            #bottom-hud {
+                height: 44px;
+                min-height: 44px;
+                max-height: 44px;
+                padding: 4px 8px;
+                gap: 6px;
+            }
+            .streak-pill {
+                font-size: 0.72rem;
+                padding: 2px 8px;
+            }
+            #status-tip {
+                font-size: 0.72rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <a id="arcade-back-btn" href="../../index.html" class="back-btn">⬅ Volver al Arcade</a>
+
+    <!-- PANTALLA 1: MENÚ PRINCIPAL -->
+    <div id="screen-menu" class="screen">
+        <div class="glass-panel">
+            <h1 class="game-title">🏀 BÁSQUET NEÓN</h1>
+            <p class="subtitle">Desliza para lanzar, encadena Swish limpios, activa el Modo ON FIRE 🔥 y sabotea el aro rival</p>
+
+            <div class="profile-bar">
+                <input type="text" id="input-nick" class="nick-input" maxlength="12" placeholder="Tu Nombre">
+                <div id="menu-colors" class="color-picker"></div>
+            </div>
+
+            <div class="mode-grid">
+                <div class="mode-card" onclick="openLobby('solo_arcade')">
+                    <div class="m-icon">⏱️</div>
+                    <div class="m-title">Fiebre Arcade (Solo)</div>
+                    <div class="m-desc">Contrarreloj con fases de aro móvil, viento, bonus de tablero y tiempo extra</div>
+                </div>
+                <div class="mode-card" onclick="openLobby('vs_bots')">
+                    <div class="m-icon">🤖</div>
+                    <div class="m-title">Torneo vs Bots IA</div>
+                    <div class="m-desc">Compite en vivo contra tiradores IA y congela su aro con balones de sabotaje</div>
+                </div>
+                <div class="mode-card" onclick="openLobby('survival')">
+                    <div class="m-icon">💀</div>
+                    <div class="m-title">Supervivencia Swish</div>
+                    <div class="m-desc">3 Vidas: cada fallo quita 1 corazón, cada 3 Swish limpios recupera 1 vida</div>
+                </div>
+                <div class="mode-card" onclick="openLobby('online_host')">
+                    <div class="m-icon">🌐</div>
+                    <div class="m-title">Crear Sala Online</div>
+                    <div class="m-desc">Duelo multijugador P2P en tiempo real (2 a 6 jugadores + Bots opcionales)</div>
+                </div>
+            </div>
+
+            <div class="join-bar">
+                <input type="text" id="input-room-code" class="code-input" maxlength="4" placeholder="CÓDIGO">
+                <button class="arcade-btn cyan" onclick="joinOnlineRoom()">🚀 UNIRSE A SALA</button>
+            </div>
+
+            <div class="feature-pills">
+                <div class="f-pill">👆 <b>Gesto Directo:</b> Desliza hacia el aro; tu velocidad define la altura y curva</div>
+                <div class="f-pill">✨ <b>Swish + Tablero:</b> Entrar limpio sin tocar el aro o acertar al recuadro iluminado da bonus</div>
+                <div class="f-pill">🌈 <b>5 Balones Especiales:</b> Tricolor x2, Crono +4s, Imán ⚡, Fuego 🔥 y Sabotaje ❄️</div>
+                <div class="f-pill">🌪️ <b>4 Fases Dinámicas:</b> Aro móvil, oscilación vertical, viento de estadio y ángulos laterales</div>
+            </div>
+
+            <div style="margin-top: 12px; font-size: 0.84rem; color: #fbbf24; font-weight: 800;">
+                <span id="best-record-badge">🏆 Récord Personal: 0 pts</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA 2: LOBBY DE CONFIGURACIÓN -->
+    <div id="screen-lobby" class="screen hidden">
+        <div class="glass-panel">
+            <h2 id="lobby-title" class="game-title" style="font-size: 1.35rem;">CONFIGURAR PARTIDA</h2>
+            <p id="lobby-sub" class="subtitle">Ajusta la duración y los rivales de la cancha</p>
+
+            <div id="room-code-box" class="room-badge hidden" onclick="copyRoomCode()" title="Toca para copiar código">
+                <span>SALA: <strong id="room-code-text">----</strong></span>
+                <span style="font-size: 0.72rem; font-family: 'Outfit', sans-serif; color: #fff;">📋 Copiar</span>
+            </div>
+
+            <div id="host-config-panel" class="config-grid">
+                <div class="config-box" id="cfg-duration-box">
+                    <label>Duración del Partido</label>
+                    <select id="sel-duration" class="config-select" onchange="syncLobbyConfig()">
+                        <option value="60">⚡ 60 Segundos (+Bonus +10s)</option>
+                        <option value="90" selected>🏀 90 Segundos (Estándar Arcade)</option>
+                        <option value="120">🏆 120 Segundos (Maratón Triples)</option>
+                    </select>
+                </div>
+                <div class="config-box" id="cfg-bots-box">
+                    <label>Tiradores IA (Bots)</label>
+                    <select id="sel-bots" class="config-select" onchange="rebuildLobbyRoster()">
+                        <option value="0">Sin Bots</option>
+                        <option value="1">1 Rival IA</option>
+                        <option value="2" selected>2 Rivales IA</option>
+                        <option value="3">3 Rivales IA (4 en Cancha)</option>
+                    </select>
+                </div>
+                <div class="config-box" id="cfg-diff-box">
+                    <label>Nivel de Puntería IA</label>
+                    <select id="sel-diff" class="config-select" onchange="rebuildLobbyRoster()">
+                        <option value="easy">🤪 Novatos (Fáciles)</option>
+                        <option value="normal" selected>🎯 Tiradores de Liga (Equilibrado)</option>
+                        <option value="hard">👑 Francotiradores All-Star (Difícil)</option>
+                    </select>
+                </div>
+                <div class="config-box" id="cfg-sabotage-box">
+                    <label>Balones Especiales y Sabotaje</label>
+                    <select id="sel-sabotage" class="config-select" onchange="syncLobbyConfig()">
+                        <option value="on" selected>❄️ Activados (Congelar / Viento al Rival)</option>
+                        <option value="classic">🏀 Solo Balones Tricolor y Crono</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="lobby-players" class="player-list"></div>
+
+            <div class="row-group">
+                <button id="btn-start-match" class="arcade-btn" onclick="hostStartMatch()">🏀 SALTAR A LA CANCHA</button>
+                <button class="arcade-btn secondary" onclick="leaveToMenu()">⬅ Volver</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA 3: CANCHA DE JUEGO -->
+    <div id="game-shell" class="hidden">
+        <div id="top-hud">
+            <div id="hud-scores" class="hud-scores-strip"></div>
+            <div class="hud-clock-box">
+                <div id="hud-clock" class="shot-clock">90s</div>
+                <button class="small-exit-btn" onclick="leaveToMenu()">⬅ Salir</button>
+            </div>
+        </div>
+
+        <div id="court-stage">
+            <canvas id="hoop-canvas" width="600" height="860"></canvas>
+        </div>
+
+        <div id="bottom-hud">
+            <div id="hud-streak" class="streak-pill">🔥 Racha: 0</div>
+            <div id="status-tip">👆 Desliza hacia el aro para lanzar</div>
+            <div id="hud-rack" class="ball-rack-preview" title="Próximos balones en el carrito">🏀🏀🏀🏀🌈</div>
+        </div>
+    </div>
+
+    <!-- PANTALLA 4: FIN DE PARTIDA / PODIO -->
+    <div id="screen-gameover" class="screen hidden">
+        <div class="glass-panel">
+            <div id="gameover-icon" style="font-size: 3.2rem; margin-bottom: 4px;">🏆</div>
+            <h2 id="gameover-title" class="game-title" style="font-size: 1.45rem;">¡FIN DEL PARTIDO!</h2>
+            <p id="gameover-sub" class="subtitle">Estadísticas de tiro en la cancha</p>
+
+            <div id="final-scoreboard" class="player-list" style="max-height: 260px;"></div>
+
+            <div class="row-group">
+                <button id="btn-rematch" class="arcade-btn" onclick="requestRematch()">🔄 JUGAR REVANCHA</button>
+                <button class="arcade-btn secondary" onclick="leaveToMenu()">🏠 Menú Principal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
+
+        const PALETTE = [
+            { name: 'Naranja', hex: '#ff6b00' },
+            { name: 'Cian', hex: '#00f0ff' },
+            { name: 'Lima', hex: '#4ade80' },
+            { name: 'Rosa', hex: '#f43f5e' },
+            { name: 'Ámbar', hex: '#fbbf24' },
+            { name: 'Violeta', hex: '#c084fc' }
+        ];
+
+        let myNick = localStorage.getItem('basket_nick') || ('Hooper' + Math.floor(10 + Math.random() * 89));
+        let myColor = localStorage.getItem('basket_color') || PALETTE[0].hex;
+        let bestScore = parseInt(localStorage.getItem('basket_best') || '0', 10);
+
+        document.getElementById('input-nick').value = myNick;
+        updateBestBadge();
+
+        function updateBestBadge() {
+            document.getElementById('best-record-badge').innerText = `🏆 Récord Personal: ${bestScore} pts`;
+        }
+
+        function renderColorPicker() {
+            const box = document.getElementById('menu-colors');
+            box.innerHTML = '';
+            PALETTE.forEach(c => {
+                const d = document.createElement('div');
+                d.className = 'color-swatch' + (c.hex === myColor ? ' active' : '');
+                d.style.background = c.hex;
+                d.style.color = c.hex;
+                d.onclick = () => {
+                    myColor = c.hex;
+                    localStorage.setItem('basket_color', myColor);
+                    renderColorPicker();
+                };
+                box.appendChild(d);
+            });
+        }
+        renderColorPicker();
+
+        // =========================================================================
+        // ESTADO DE SALA, JUGADORES Y CONECTIVIDAD P2P UNIVERSAL
+        // =========================================================================
+        let currentMode = 'solo_arcade'; // 'solo_arcade' | 'vs_bots' | 'survival' | 'online'
+        let isHost = true;
+        let peer = null;
+        let myId = 'local_p1';
+        let clientConns = {};
+        let hostConn = null;
+
+        let matchConfig = {
+            duration: 90,
+            bots: 2,
+            diff: 'normal',
+            sabotage: 'on'
+        };
+
+        let lobbyRoster = [];
+        let gameActive = false;
+
+        function showScreen(screenId) {
+            ['screen-menu', 'screen-lobby', 'screen-gameover'].forEach(id => {
+                document.getElementById(id).classList.toggle('hidden', id !== screenId);
+            });
+            const backBtn = document.getElementById('arcade-back-btn');
+            if (backBtn) {
+                backBtn.classList.toggle('hidden', screenId !== 'screen-menu');
+            }
+        }
+
+        function openLobby(mode) {
+            myNick = document.getElementById('input-nick').value.trim() || myNick;
+            localStorage.setItem('basket_nick', myNick);
+            currentMode = mode === 'online_host' ? 'online' : mode;
+            isHost = true;
+            myId = 'local_p1';
+
+            if (currentMode === 'solo_arcade' || currentMode === 'survival') {
+                // Iniciar directamente en modos individuales para máxima agilidad
+                matchConfig.duration = 90;
+                matchConfig.bots = 0;
+                lobbyRoster = [{ id: myId, nick: myNick, color: myColor, isBot: false }];
+                hostStartMatch();
+                return;
+            }
+
+            document.getElementById('host-config-panel').style.pointerEvents = 'auto';
+            document.getElementById('host-config-panel').style.opacity = '1';
+            document.getElementById('btn-start-match').classList.remove('hidden');
+
+            if (currentMode === 'vs_bots') {
+                document.getElementById('lobby-title').innerText = '🤖 TORNEO VS BOTS IA';
+                document.getElementById('lobby-sub').innerText = 'Encesta más rápido que la IA y sabotea su aro';
+                document.getElementById('room-code-box').classList.add('hidden');
+                document.getElementById('sel-bots').value = '2';
+                rebuildLobbyRoster();
+                showScreen('screen-lobby');
+            } else if (currentMode === 'online') {
+                document.getElementById('lobby-title').innerText = '🌐 SALA MULTIJUGADOR ONLINE';
+                document.getElementById('lobby-sub').innerText = 'Comparte el código de 4 caracteres con tus amigos';
+                document.getElementById('sel-bots').value = '1';
+                initOnlineHost();
+                showScreen('screen-lobby');
+            }
+        }
+
+        function initOnlineHost() {
+            clientConns = {};
+            document.getElementById('room-code-box').classList.remove('hidden');
+            document.getElementById('room-code-text').innerText = '....';
+
+            ArcadeP2P.createHost({
+                game: 'BASQUET',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myId = code;
+                    lobbyRoster = [{ id: myId, nick: myNick, color: myColor, isBot: false }];
+                    document.getElementById('room-code-text').innerText = code;
+                    rebuildLobbyRoster();
+                },
+                onConnection: (conn) => {
+                    clientConns[conn.peer] = conn;
+                },
+                onData: (data, conn) => handleHostData(conn, data),
+                onClose: (conn) => {
+                    delete clientConns[conn.peer];
+                    lobbyRoster = lobbyRoster.filter(p => p.id !== conn.peer);
+                    renderLobbyPlayers();
+                    broadcastLobby();
+                },
+                onError: (err, msg) => alert('Error P2P: ' + msg)
+            });
+        }
+
+        function joinOnlineRoom() {
+            const code = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (code.length < 3) return alert('Ingresa un código de 4 caracteres.');
+            myNick = document.getElementById('input-nick').value.trim() || myNick;
+            localStorage.setItem('basket_nick', myNick);
+
+            currentMode = 'online';
+            isHost = false;
+
+            ArcadeP2P.joinRoom(code, {
+                game: 'BASQUET',
+                peer: peer,
+                onPeerCreated: (p, c) => {
+                    peer = p;
+                    if (c) hostConn = c;
+                },
+                onOpen: (conn, assignedId) => {
+                    myId = assignedId;
+                    hostConn = conn;
+                    showScreen('screen-lobby');
+                    document.getElementById('lobby-title').innerText = `🌐 SALA ${code}`;
+                    document.getElementById('lobby-sub').innerText = 'Esperando a que el anfitrión inicie el partido...';
+                    document.getElementById('room-code-box').classList.remove('hidden');
+                    document.getElementById('room-code-text').innerText = code;
+                    document.getElementById('host-config-panel').style.pointerEvents = 'none';
+                    document.getElementById('host-config-panel').style.opacity = '0.6';
+                    document.getElementById('btn-start-match').classList.add('hidden');
+                    hostConn.send({ type: 'JOIN', nick: myNick, color: myColor });
+                },
+                onData: (data) => handleClientData(data),
+                onClose: () => {
+                    alert('El anfitrión cerró la sala.');
+                    leaveToMenu();
+                },
+                onError: (err, msg) => alert(msg)
+            });
+        }
+
+        function copyRoomCode() {
+            const code = document.getElementById('room-code-text').innerText;
+            if (navigator.clipboard && code !== '....') {
+                navigator.clipboard.writeText(code);
+            }
+        }
+
+        function rebuildLobbyRoster() {
+            if (!isHost) return;
+            syncLobbyConfig();
+            const humans = lobbyRoster.filter(p => !p.isBot);
+            if (humans.length === 0) {
+                humans.push({ id: myId, nick: myNick, color: myColor, isBot: false });
+            }
+            lobbyRoster = [...humans];
+
+            const botCount = parseInt(document.getElementById('sel-bots').value || '0', 10);
+            const botNames = ['🤖 CurryBot', '🤖 Jordan-IA', '🤖 KobeBot', '🤖 Luka-IA'];
+            for (let i = 0; i < botCount && lobbyRoster.length < 6; i++) {
+                const used = lobbyRoster.map(p => p.color);
+                const free = PALETTE.find(c => !used.includes(c.hex)) || PALETTE[(lobbyRoster.length + i) % PALETTE.length];
+                lobbyRoster.push({
+                    id: 'bot_' + (i + 1),
+                    nick: botNames[i % botNames.length],
+                    color: free.hex,
+                    isBot: true
+                });
+            }
+            renderLobbyPlayers();
+            broadcastLobby();
+        }
+
+        function syncLobbyConfig() {
+            matchConfig.duration = parseInt(document.getElementById('sel-duration').value || '90', 10);
+            matchConfig.bots = parseInt(document.getElementById('sel-bots').value || '0', 10);
+            matchConfig.diff = document.getElementById('sel-diff').value || 'normal';
+            matchConfig.sabotage = document.getElementById('sel-sabotage').value || 'on';
+            broadcastLobby();
+        }
+
+        function renderLobbyPlayers() {
+            const box = document.getElementById('lobby-players');
+            box.innerHTML = '';
+            lobbyRoster.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'player-row';
+                row.style.borderLeft = `4px solid ${p.color}`;
+                row.innerHTML = `
+                    <span>${p.nick} ${p.id === myId ? '(Tú)' : ''}</span>
+                    <span style="color:#94a3b8;font-size:0.8rem;">${p.isBot ? 'IA' : 'Humano'}</span>
+                `;
+                box.appendChild(row);
+            });
+        }
+
+        function broadcastLobby() {
+            if (!isHost || currentMode !== 'online') return;
+            Object.values(clientConns).forEach(c => {
+                if (c.open) c.send({ type: 'LOBBY_SYNC', roster: lobbyRoster, config: matchConfig });
+            });
+        }
+
+        function handleHostData(conn, data) {
+            if (data.type === 'JOIN') {
+                clientConns[conn.peer] = conn;
+                const humans = lobbyRoster.filter(p => !p.isBot && p.id !== conn.peer);
+                const used = humans.map(p => p.color);
+                let col = data.color || '#00f0ff';
+                if (used.includes(col)) {
+                    const free = PALETTE.find(c => !used.includes(c.hex));
+                    if (free) col = free.hex;
+                }
+                humans.push({ id: conn.peer, nick: data.nick || 'Jugador', color: col, isBot: false });
+                lobbyRoster = humans;
+                rebuildLobbyRoster();
+            } else if (data.type === 'CLIENT_SHOT') {
+                // Reenviar balón fantasma y actualizar puntaje de ese cliente
+                if (playersState[conn.peer]) {
+                    playersState[conn.peer].score = data.score;
+                    playersState[conn.peer].streak = data.streak;
+                    playersState[conn.peer].makes = data.makes;
+                    playersState[conn.peer].shots = data.shots;
+                    playersState[conn.peer].swishes = data.swishes;
+                }
+                if (data.ghostBall) {
+                    spawnGhostBall(data.ghostBall);
+                    Object.values(clientConns).forEach(c => {
+                        if (c.open && c.peer !== conn.peer) {
+                            c.send({ type: 'GHOST_BALL', ghostBall: data.ghostBall });
+                        }
+                    });
+                }
+                if (data.sabotageType) {
+                    // Aplicar sabotaje a todos los demás menos a quien lo lanzó
+                    applySabotageFrom(conn.peer, data.sabotageNick, data.sabotageType);
+                    Object.values(clientConns).forEach(c => {
+                        if (c.open && c.peer !== conn.peer) {
+                            c.send({
+                                type: 'SABOTAGE',
+                                fromId: conn.peer,
+                                fromNick: data.sabotageNick,
+                                sabotageType: data.sabotageType
+                            });
+                        }
+                    });
+                }
+                updateTopScoresHUD();
+            }
+        }
+
+        function handleClientData(data) {
+            if (data.type === 'LOBBY_SYNC') {
+                lobbyRoster = data.roster;
+                matchConfig = data.config;
+                renderLobbyPlayers();
+            } else if (data.type === 'START_MATCH') {
+                lobbyRoster = data.roster;
+                matchConfig = data.config;
+                startMatchLocal();
+            } else if (data.type === 'HOST_SYNC') {
+                Object.entries(data.scores || {}).forEach(([id, st]) => {
+                    if (id !== myId && playersState[id]) {
+                        Object.assign(playersState[id], st);
+                    }
+                });
+                updateTopScoresHUD();
+            } else if (data.type === 'GHOST_BALL') {
+                spawnGhostBall(data.ghostBall);
+            } else if (data.type === 'SABOTAGE') {
+                if (data.fromId !== myId) {
+                    triggerLocalSabotageEffect(data.fromNick, data.sabotageType);
+                }
+            } else if (data.type === 'MATCH_OVER') {
+                showGameOverScreen(data.standings);
+            }
+        }
+
+        function leaveToMenu() {
+            gameActive = false;
+            if (peer) {
+                try { peer.destroy(); } catch (e) {}
+                peer = null;
+            }
+            clientConns = {};
+            hostConn = null;
+            document.getElementById('game-shell').classList.add('hidden');
+            showScreen('screen-menu');
+        }
+
+        // =========================================================================
+        // MOTOR FÍSICO PSEUDO-3D DE BÁSQUET, TIPOS DE BALONES, ARO MÓVIL Y SWISH
+        // =========================================================================
+        const CANVAS = document.getElementById('hoop-canvas');
+        const CTX = CANVAS.getContext('2d');
+        const CW = 600;
+        const CH = 860;
+
+        // Tipos de balones en el carrito (Rack)
+        // 'normal': 2 pts (3 swish)
+        // 'money' : Tricolor x2 (4 pts, 6 swish)
+        // 'chrono': +4 segundos al reloj
+        // 'magnet': 5s de Aro Magnético gigante
+        // 'ice'   : Sabotaje (Congela/Encoge el aro de los rivales por 4.5s)
+        const BALL_TYPES = {
+            normal: { icon: '🏀', name: 'Balón Oficial', mainColor: '#f97316', secColor: '#c2410c', mult: 1 },
+            money:  { icon: '🌈', name: 'Money Ball x2', mainColor: '#38bdf8', secColor: '#f43f5e', mult: 2 },
+            chrono: { icon: '⏱️', name: 'Balón Crono (+4s)', mainColor: '#22d3ee', secColor: '#0284c7', mult: 1 },
+            magnet: { icon: '⚡', name: 'Balón Imán', mainColor: '#c084fc', secColor: '#7e22ce', mult: 1 },
+            ice:    { icon: '❄️', name: 'Balón Sabotaje', mainColor: '#93c5fd', secColor: '#1d4ed8', mult: 1 }
+        };
+
+        let playersState = {};
+        let timeLeft = 90;
+        let bonusStageGranted = false;
+        let suspenseTriggered = false;
+        let survivalLives = 3;
+        let swishHealCounter = 0;
+        let matchElapsed = 0;
+
+        // Geometría Pseudo-3D de la Cancha y del Aro
+        let hoop = {
+            baseX: 300,
+            baseY: 255,
+            x: 300,
+            y: 255,
+            vx: 0,
+            rimRadius: 43,
+            bankBonusTimer: 0,      // Si > 0, el cuadro del tablero brilla y da +2 pts + 2s
+            netSway: 0,
+            netStretch: 0,
+            frozenTimer: 0,         // Sabotaje recibido: aro más pequeño / escarchado
+            magnetTimer: 0          // Powerup activo: atrae balones cercanos al centro del aro
+        };
+
+        let windSpeed = 0;          // Viento lateral en fases avanzadas
+        let windTarget = 0;
+        let windChangeTimer = 0;
+
+        // Posición de lanzamiento actual en primer plano (z = 0)
+        let shooterSpotX = 300;
+        const SHOOTER_Y = 748;
+        let ballRack = [];
+        let activeReadyBall = null; // Balón en las manos listo para deslizar
+        let flyingBalls = [];       // Balones propios en el aire
+        let ghostBalls = [];        // Balones fantasma de otros jugadores / bots
+        let particles = [];
+        let floatingTexts = [];
+
+        // Gesto de deslizamiento (Swipe / Flick)
+        let isDragging = false;
+        let dragPointerId = null;
+        let dragPoints = [];        // [{ x, y, t }]
+
+        function buildNextBallType(shotIndex) {
+            // Cada 5° balón es siempre un Money Ball Tricolor (x2) como en el concurso de triples
+            if ((shotIndex + 1) % 5 === 0) return 'money';
+            const r = Math.random();
+            if (currentMode !== 'survival' && r < 0.09) return 'chrono';
+            if (r >= 0.09 && r < 0.16) return 'magnet';
+            if ((currentMode === 'vs_bots' || currentMode === 'online') && matchConfig.sabotage === 'on' && r >= 0.16 && r < 0.25) {
+                return 'ice';
+            }
+            return 'normal';
+        }
+
+        function refillRack(startIdx = 0) {
+            while (ballRack.length < 5) {
+                ballRack.push(buildNextBallType(startIdx + ballRack.length));
+            }
+            updateRackHUD();
+        }
+
+        function popNextBallFromRack(shotCount) {
+            if (ballRack.length === 0) refillRack(shotCount);
+            const nextType = ballRack.shift();
+            ballRack.push(buildNextBallType(shotCount + 5));
+            updateRackHUD();
+            return {
+                type: nextType,
+                x: shooterSpotX,
+                y: SHOOTER_Y,
+                appearScale: 0.2
+            };
+        }
+
+        function updateRackHUD() {
+            const el = document.getElementById('hud-rack');
+            if (!el) return;
+            const currentIcon = activeReadyBall ? BALL_TYPES[activeReadyBall.type].icon : '🏀';
+            const upcoming = ballRack.slice(0, 4).map(t => BALL_TYPES[t].icon).join('');
+            el.innerText = `[${currentIcon}] ${upcoming}`;
+        }
+
+        function hostStartMatch() {
+            if (!isHost) return;
+            if (currentMode === 'online') {
+                Object.values(clientConns).forEach(c => {
+                    if (c.open) c.send({ type: 'START_MATCH', roster: lobbyRoster, config: matchConfig });
+                });
+            }
+            startMatchLocal();
+        }
+
+        function requestRematch() {
+            if (isHost) {
+                hostStartMatch();
+            }
+        }
+
+        function startMatchLocal() {
+            showScreen(null);
+            document.getElementById('game-shell').classList.remove('hidden');
+
+            timeLeft = matchConfig.duration || 90;
+            bonusStageGranted = false;
+            suspenseTriggered = false;
+            survivalLives = 3;
+            swishHealCounter = 0;
+            matchElapsed = 0;
+
+            hoop.x = 300;
+            hoop.y = 255;
+            hoop.bankBonusTimer = 4.0;
+            hoop.netSway = 0;
+            hoop.netStretch = 0;
+            hoop.frozenTimer = 0;
+            hoop.magnetTimer = 0;
+
+            windSpeed = 0;
+            windTarget = 0;
+            windChangeTimer = 8;
+
+            shooterSpotX = 300;
+            ballRack = [];
+            flyingBalls = [];
+            ghostBalls = [];
+            particles = [];
+            floatingTexts = [];
+
+            playersState = {};
+            lobbyRoster.forEach(p => {
+                playersState[p.id] = {
+                    id: p.id,
+                    nick: p.nick,
+                    color: p.color,
+                    isBot: !!p.isBot,
+                    score: 0,
+                    streak: 0,
+                    shots: 0,
+                    makes: 0,
+                    swishes: 0,
+                    botShotTimer: 1.4 + Math.random() * 1.2
+                };
+            });
+
+            refillRack(0);
+            activeReadyBall = popNextBallFromRack(0);
+            gameActive = true;
+
+            updateTopScoresHUD();
+            updateBottomStreakHUD();
+        }
+
+        // =========================================================================
+        // CAPTURA DEL GESTO DE LANZAMIENTO (SWIPE / FLICK CON DEDO O MOUSE)
+        // =========================================================================
+        function clientToCanvas(clientX, clientY) {
+            const rect = CANVAS.getBoundingClientRect();
+            return {
+                x: ((clientX - rect.left) / rect.width) * CW,
+                y: ((clientY - rect.top) / rect.height) * CH
+            };
+        }
+
+        function computeLaunchFromGesture(pts) {
+            if (pts.length < 2) return null;
+            const start = pts[0];
+            const end = pts[pts.length - 1];
+            const dy = start.y - end.y; // Debe deslizar hacia arriba (dy > 0)
+            const dx = end.x - start.x;
+
+            if (dy < 32) return null; // Gesto demasiado corto
+
+            // Calcular curvatura (Spin) comparando el punto medio con la recta start->end
+            const mid = pts[Math.floor(pts.length / 2)];
+            const expectedMidX = (start.x + end.x) * 0.5;
+            const curveSpin = Math.max(-140, Math.min(140, (mid.x - expectedMidX) * 2.2));
+
+            // La distancia vertical del swipe (dy entre 40 y 290px) y la velocidad definen el alcance (targetY / arco)
+            const elapsedMs = Math.max(25, Math.min(450, end.t - start.t));
+            const swipeSpeed = dy / (elapsedMs / 1000); // px/s
+
+            // Normalizar potencia (1.0 = altura exacta del aro)
+            // Combinamos longitud del trazo (70%) + velocidad del flick (30%) para que sea ultra consistente
+            const distFactor = Math.min(1.32, Math.max(0.65, dy / 185));
+            const speedFactor = Math.min(1.25, Math.max(0.75, swipeSpeed / 920));
+            const power = distFactor * 0.72 + speedFactor * 0.28;
+
+            // Punto de destino cuando el balón alcanza la profundidad del aro (z = 1.0)
+            const flightTime = 0.78;
+            const aimX = shooterSpotX + dx * 1.18;
+            const peakDiffY = (1.0 - power) * 185; // Si power === 1.0, llega exactamente a la altura del aro (255)
+            const targetYAtHoop = 255 + peakDiffY;
+
+            return {
+                startX: shooterSpotX,
+                startY: SHOOTER_Y,
+                aimX,
+                targetYAtHoop,
+                curveSpin,
+                power,
+                flightTime
+            };
+        }
+
+        CANVAS.addEventListener('pointerdown', (e) => {
+            if (!gameActive || !activeReadyBall) return;
+            e.preventDefault();
+            CANVAS.setPointerCapture(e.pointerId);
+            const pos = clientToCanvas(e.clientX, e.clientY);
+            isDragging = true;
+            dragPointerId = e.pointerId;
+            dragPoints = [{ x: pos.x, y: pos.y, t: performance.now() }];
+        });
+
+        CANVAS.addEventListener('pointermove', (e) => {
+            if (!isDragging || e.pointerId !== dragPointerId) return;
+            e.preventDefault();
+            const pos = clientToCanvas(e.clientX, e.clientY);
+            dragPoints.push({ x: pos.x, y: pos.y, t: performance.now() });
+            if (dragPoints.length > 24) dragPoints.shift();
+        });
+
+        function releaseSwipeShot(e) {
+            if (!isDragging || (e && e.pointerId !== dragPointerId)) return;
+            isDragging = false;
+            dragPointerId = null;
+
+            const launch = computeLaunchFromGesture(dragPoints);
+            dragPoints = [];
+            if (!launch || !activeReadyBall) return;
+
+            launchPlayerBall(launch);
+        }
+
+        CANVAS.addEventListener('pointerup', releaseSwipeShot);
+        CANVAS.addEventListener('pointercancel', () => {
+            isDragging = false;
+            dragPointerId = null;
+            dragPoints = [];
+        });
+
+        function launchPlayerBall(launch) {
+            const me = playersState[myId];
+            if (!me || !activeReadyBall) return;
+
+            me.shots++;
+            const bType = activeReadyBall.type;
+            const isOnFire = me.streak >= 3;
+
+            const ballObj = {
+                ownerId: myId,
+                type: bType,
+                isOnFire,
+                z: 0, // 0 = manos del jugador, 1.0 = plano del aro, >1.0 = detrás del aro
+                flightTime: launch.flightTime,
+                startX: launch.startX,
+                startY: launch.startY,
+                x: launch.startX,
+                y: launch.startY,
+                aimX: launch.aimX,
+                targetYAtHoop: launch.targetYAtHoop,
+                curveSpin: launch.curveSpin,
+                arcHeight: 270,
+                rotation: 0,
+                rotSpeed: 9 + (launch.curveSpin * 0.05),
+                touchedRim: false,
+                touchedBoard: false,
+                resolvedHoop: false,
+                scored: false,
+                vxAfter: 0,
+                vyAfter: 0,
+                trail: []
+            };
+
+            flyingBalls.push(ballObj);
+            if (window.ArcadeAudio) ArcadeAudio.slide();
+
+            // Enviar balón fantasma en multijugador (usando offset relativo al aro propio de cada jugador)
+            if (currentMode === 'online') {
+                const ghost = {
+                    nick: me.nick,
+                    color: me.color,
+                    startX: launch.startX,
+                    offsetX: launch.aimX - hoop.x,
+                    offsetY: launch.targetYAtHoop - hoop.y,
+                    isOnFire
+                };
+                if (isHost) {
+                    Object.values(clientConns).forEach(c => {
+                        if (c.open) c.send({ type: 'GHOST_BALL', ghostBall: ghost });
+                    });
+                } else if (hostConn && hostConn.open) {
+                    hostConn.send({
+                        type: 'CLIENT_SHOT',
+                        score: me.score,
+                        streak: me.streak,
+                        makes: me.makes,
+                        shots: me.shots,
+                        swishes: me.swishes,
+                        ghostBall: ghost
+                    });
+                }
+            }
+
+            // En Fase 4 personal (tu puntaje >= 45), tu posición de lanzamiento alterna en TU cancha tras cada 3 tiros
+            if (me.score >= 45 && me.shots % 3 === 0) {
+                const spots = [145, 300, 455];
+                shooterSpotX = spots[Math.floor(Math.random() * spots.length)];
+            } else if (me.score < 45) {
+                shooterSpotX = 300;
+            }
+
+            // Cargar inmediatamente el siguiente balón del carrito para permitir ráfagas rápidas
+            activeReadyBall = popNextBallFromRack(me.shots);
+        }
+
+        function spawnGhostBall(g) {
+            ghostBalls.push({
+                nick: g.nick || '',
+                color: g.color || '#38bdf8',
+                startX: g.startX || 300,
+                offsetX: typeof g.offsetX === 'number' ? g.offsetX : ((g.aimX || hoop.x) - hoop.x),
+                offsetY: typeof g.offsetY === 'number' ? g.offsetY : ((g.targetYAtHoop || hoop.y) - hoop.y),
+                isOnFire: !!g.isOnFire,
+                z: 0
+            });
+        }
+
+        // =========================================================================
+        // ACTUALIZACIÓN DE FÍSICA, COLISIÓN CON ARO/TABLERO, BOTS Y FASES
+        // =========================================================================
+        function updateGame(dt) {
+            matchElapsed += dt;
+
+            // 1. Reloj de partido (excepto en modo Supervivencia)
+            if (currentMode !== 'survival') {
+                timeLeft -= dt;
+
+                // Activar Modo Suspenso cuando quedan 15 segundos en partidas con rivales
+                if (!suspenseTriggered && timeLeft <= 15 && Object.keys(playersState).length > 1) {
+                    suspenseTriggered = true;
+                    floatingTexts.push({
+                        x: CW / 2,
+                        y: 155,
+                        text: '🕵️ ¡ÚLTIMOS 15s: PUNTAJES OCULTOS!',
+                        color: '#fde047',
+                        life: 2.2
+                    });
+                    if (window.ArcadeAudio) ArcadeAudio.notification();
+                    updateTopScoresHUD();
+                }
+
+                if (timeLeft <= 0) {
+                    timeLeft = 0;
+                    finishMatch();
+                    return;
+                }
+            }
+
+            // 2. Temporizadores de estado del Aro
+            if (hoop.bankBonusTimer > 0) {
+                hoop.bankBonusTimer -= dt;
+            } else if (Math.random() < dt * 0.14) {
+                hoop.bankBonusTimer = 5.5; // Iluminar recuadro del tablero periódicamente
+            }
+            if (hoop.frozenTimer > 0) hoop.frozenTimer = Math.max(0, hoop.frozenTimer - dt);
+            if (hoop.magnetTimer > 0) hoop.magnetTimer = Math.max(0, hoop.magnetTimer - dt);
+
+            hoop.netSway *= Math.pow(0.05, dt);
+            hoop.netStretch *= Math.pow(0.04, dt);
+
+            // 3. Progresión Dinámica por Fases según puntaje del jugador local
+            const me = playersState[myId];
+            const myPts = me ? me.score : 0;
+
+            // Fase 2 (12+ pts): El aro se mueve horizontalmente
+            if (myPts >= 12) {
+                const speedMult = Math.min(2.2, 0.85 + (myPts - 12) * 0.022);
+                hoop.x = 300 + Math.sin(matchElapsed * 1.35 * speedMult) * 145;
+            } else {
+                hoop.x += (300 - hoop.x) * Math.min(1, dt * 5);
+            }
+
+            // Fase 3 (26+ pts): Oscilación vertical del aro + Viento de estadio
+            if (myPts >= 26) {
+                hoop.y = 250 + Math.cos(matchElapsed * 1.7) * 32;
+                windChangeTimer -= dt;
+                if (windChangeTimer <= 0) {
+                    windChangeTimer = 6 + Math.random() * 4;
+                    windTarget = (Math.random() - 0.5) * 150;
+                }
+                windSpeed += (windTarget - windSpeed) * Math.min(1, dt * 2);
+            } else {
+                hoop.y += (255 - hoop.y) * Math.min(1, dt * 5);
+                windSpeed = 0;
+            }
+
+            // Animación de aparición del balón en las manos
+            if (activeReadyBall) {
+                activeReadyBall.x += (shooterSpotX - activeReadyBall.x) * Math.min(1, dt * 14);
+                activeReadyBall.appearScale = Math.min(1, activeReadyBall.appearScale + dt * 5);
+            }
+
+            // 4. Actualizar Balones Propios en Vuelo
+            for (let i = flyingBalls.length - 1; i >= 0; i--) {
+                const b = flyingBalls[i];
+                const prevZ = b.z;
+                b.z += dt / b.flightTime;
+                b.rotation += b.rotSpeed * dt;
+
+                if (!b.resolvedHoop) {
+                    // Interpolación parabólica en profundidad z (0..1)
+                    const zClamped = Math.min(1.15, b.z);
+                    const windDrift = windSpeed * zClamped * zClamped * 0.55;
+                    const spinDrift = b.curveSpin * Math.sin(Math.min(1, zClamped) * Math.PI);
+
+                    b.x = b.startX + (b.aimX - b.startX) * zClamped + windDrift + spinDrift;
+
+                    // Atracción magnética si el Power-Up Imán está activo
+                    if (hoop.magnetTimer > 0 && zClamped > 0.45) {
+                        const pull = (zClamped - 0.45) * 0.85;
+                        b.x += (hoop.x - b.x) * pull;
+                        b.targetYAtHoop += (hoop.y - b.targetYAtHoop) * pull;
+                    }
+
+                    const linearY = b.startY + (b.targetYAtHoop - b.startY) * zClamped;
+                    const parabola = 4 * zClamped * (1 - zClamped) * b.arcHeight;
+                    b.y = linearY - parabola;
+
+                    b.trail.push({ x: b.x, y: b.y, z: b.z });
+                    if (b.trail.length > 12) b.trail.shift();
+
+                    // Al cruzar el plano del Tablero / Aro (z >= 0.96 y prevZ < 0.96)
+                    if (b.z >= 0.98) {
+                        resolveBallAtHoop(b);
+                    }
+                } else {
+                    // Post-resolución (cayendo por la red o rebotando fuera del aro)
+                    b.x += b.vxAfter * dt;
+                    b.y += b.vyAfter * dt;
+                    b.vyAfter += 980 * dt;
+                }
+
+                if (b.z > 1.55 || b.y > CH + 90) {
+                    flyingBalls.splice(i, 1);
+                }
+            }
+
+            // 5. Actualizar Balones Fantasma (Rivales / Bots)
+            for (let i = ghostBalls.length - 1; i >= 0; i--) {
+                const g = ghostBalls[i];
+                g.z += dt / 0.78;
+                if (g.z > 1.25) ghostBalls.splice(i, 1);
+            }
+
+            // 6. Simulación de Bots IA (si somos Host en Torneo vs Bots o Sala Online)
+            if (isHost && (currentMode === 'vs_bots' || currentMode === 'online')) {
+                updateBotsAI(dt);
+            }
+
+            // 7. Sincronizar marcador desde Host a Clientes Online (~4Hz)
+            if (isHost && currentMode === 'online' && Math.floor((matchElapsed - dt) * 4) !== Math.floor(matchElapsed * 4)) {
+                const summary = {};
+                Object.values(playersState).forEach(p => {
+                    summary[p.id] = {
+                        score: p.score,
+                        streak: p.streak,
+                        makes: p.makes,
+                        shots: p.shots,
+                        swishes: p.swishes
+                    };
+                });
+                Object.values(clientConns).forEach(c => {
+                    if (c.open) c.send({ type: 'HOST_SYNC', scores: summary });
+                });
+            }
+
+            updateClockHUD();
+        }
+
+        function resolveBallAtHoop(b) {
+            b.resolvedHoop = true;
+            const me = playersState[myId];
+            if (!me) return;
+
+            const effRimR = hoop.frozenTimer > 0 ? hoop.rimRadius * 0.74 :
+                            (me.streak >= 3 ? hoop.rimRadius * 1.12 : hoop.rimRadius);
+
+            const dx = b.x - hoop.x;
+            const dy = b.y - hoop.y;
+
+            // ¿Pegó alto en el recuadro del tablero (Bank Shot) justo encima del aro?
+            const hitBackboardBox = Math.abs(dx) <= 44 && dy >= -68 && dy <= -14;
+            if (hitBackboardBox) {
+                b.touchedBoard = true;
+                // El tablero redirige el balón hacia adentro de la canasta
+                b.x = hoop.x + dx * 0.35;
+                b.y = hoop.y;
+            }
+
+            const finalDx = Math.abs(b.x - hoop.x);
+            const finalDy = Math.abs(b.y - hoop.y);
+
+            // Zona 1: SWISH LIMPIO (entra directo por el centro sin tocar el hierro ni el tablero)
+            const isCleanSwish = !b.touchedBoard && finalDx <= effRimR * 0.56 && finalDy <= 24;
+            // Zona 2: Golpea el borde del aro pero entra (Rattled In) o entra por Tablero (Bank Shot)
+            const isRimIn = !isCleanSwish && (
+                (b.touchedBoard && finalDx <= effRimR * 0.92) ||
+                (finalDx <= effRimR * 0.94 && finalDy <= 32)
+            );
+
+            if (isCleanSwish || isRimIn) {
+                b.scored = true;
+                b.vxAfter = (hoop.x - b.x) * 2.2;
+                b.vyAfter = 320;
+                hoop.netStretch = 1.0;
+                hoop.netSway = (b.x - hoop.x) * 0.4;
+
+                me.makes++;
+                me.streak++;
+                if (isCleanSwish) me.swishes++;
+
+                const bInfo = BALL_TYPES[b.type] || BALL_TYPES.normal;
+                const fireMult = me.streak >= 3 ? 2 : 1;
+                const basePts = isCleanSwish ? 3 : 2;
+                let earnedPts = basePts * bInfo.mult * fireMult;
+
+                let label = isCleanSwish ? `✨ ¡SWISH! +${earnedPts}` : `🏀 ¡CANASTA! +${earnedPts}`;
+                let color = isCleanSwish ? '#4ade80' : '#fbbf24';
+
+                // Bonus por Tiro al Tablero Iluminado
+                if (b.touchedBoard && hoop.bankBonusTimer > 0) {
+                    earnedPts += 2;
+                    if (currentMode !== 'survival') timeLeft += 2;
+                    hoop.bankBonusTimer = 0;
+                    label = `🎯 ¡TABLERO BONUS! +${earnedPts}`;
+                    color = '#00f0ff';
+                }
+
+                me.score += earnedPts;
+                if (me.score > bestScore) {
+                    bestScore = me.score;
+                    localStorage.setItem('basket_best', String(bestScore));
+                    updateBestBadge();
+                }
+
+                // Efectos de Balones Especiales al encestar
+                let sabotageToSend = null;
+                if (b.type === 'chrono' && currentMode !== 'survival') {
+                    timeLeft += 4;
+                    floatingTexts.push({ x: hoop.x, y: hoop.y - 45, text: '⏱️ +4 SEGUNDOS', color: '#22d3ee', life: 1.3 });
+                } else if (b.type === 'magnet') {
+                    hoop.magnetTimer = 5.5;
+                    floatingTexts.push({ x: hoop.x, y: hoop.y - 45, text: '⚡ ARO MAGNÉTICO (5s)', color: '#c084fc', life: 1.3 });
+                } else if (b.type === 'ice') {
+                    sabotageToSend = 'freeze';
+                    floatingTexts.push({ x: hoop.x, y: hoop.y - 45, text: '❄️ ¡ARO RIVAL CONGELADO!', color: '#93c5fd', life: 1.3 });
+                    if (isHost) {
+                        applySabotageFrom(myId, me.nick, 'freeze');
+                        Object.values(clientConns).forEach(c => {
+                            if (c.open) c.send({ type: 'SABOTAGE', fromId: myId, fromNick: me.nick, sabotageType: 'freeze' });
+                        });
+                    }
+                }
+
+                // Bonus Stage de Tiempo Extra en modo solitario al superar 40 puntos
+                if (!bonusStageGranted && currentMode === 'solo_arcade' && me.score >= 40) {
+                    bonusStageGranted = true;
+                    timeLeft += 12;
+                    floatingTexts.push({ x: CW / 2, y: 140, text: '🌟 ¡BONUS STAGE! +12 SEGUNDOS', color: '#fde047', life: 1.8 });
+                }
+
+                // En modo Supervivencia, cada 3 Swish recupera 1 corazón
+                if (currentMode === 'survival' && isCleanSwish) {
+                    swishHealCounter++;
+                    if (swishHealCounter >= 3 && survivalLives < 3) {
+                        swishHealCounter = 0;
+                        survivalLives++;
+                        floatingTexts.push({ x: hoop.x, y: hoop.y - 50, text: '❤️ ¡VIDA RECUPERADA!', color: '#4ade80', life: 1.4 });
+                    }
+                }
+
+                spawnHoopParticles(hoop.x, hoop.y + 15, color, isCleanSwish ? 28 : 16);
+                floatingTexts.push({ x: hoop.x, y: hoop.y - 18, text: label, color, life: 1.15 });
+
+                if (window.ArcadeAudio) {
+                    if (isCleanSwish || me.streak >= 3) ArcadeAudio.coin();
+                    else ArcadeAudio.correct();
+                }
+
+                // Notificar puntaje (y sabotaje si aplica) en modo Online Cliente
+                if (currentMode === 'online' && !isHost && hostConn && hostConn.open) {
+                    hostConn.send({
+                        type: 'CLIENT_SHOT',
+                        score: me.score,
+                        streak: me.streak,
+                        makes: me.makes,
+                        shots: me.shots,
+                        swishes: me.swishes,
+                        sabotageType: sabotageToSend,
+                        sabotageNick: me.nick
+                    });
+                }
+            } else {
+                // FALLO: Rebota en el hierro del aro
+                b.scored = false;
+                b.touchedRim = true;
+                b.vxAfter = (b.x >= hoop.x ? 1 : -1) * (150 + Math.random() * 140);
+                b.vyAfter = -180;
+                me.streak = 0;
+
+                if (window.ArcadeAudio) ArcadeAudio.bounce();
+                spawnHoopParticles(b.x, b.y, '#94a3b8', 8);
+
+                if (currentMode === 'survival') {
+                    survivalLives--;
+                    floatingTexts.push({ x: hoop.x, y: hoop.y - 20, text: '💔 ¡FALLO! -1 VIDA', color: '#f43f5e', life: 1.2 });
+                    if (survivalLives <= 0) {
+                        finishMatch();
+                        return;
+                    }
+                }
+            }
+
+            updateTopScoresHUD();
+            updateBottomStreakHUD();
+        }
+
+        function applySabotageFrom(senderId, senderNick, sabotageType) {
+            // Si el sabotaje viene de un rival/bot hacia mí
+            if (senderId !== myId) {
+                triggerLocalSabotageEffect(senderNick, sabotageType);
+            }
+            // También retrasa ligeramente a los bots rivales
+            Object.values(playersState).forEach(p => {
+                if (p.isBot && p.id !== senderId) {
+                    p.botShotTimer += 1.8;
+                }
+            });
+        }
+
+        function triggerLocalSabotageEffect(senderNick, sabotageType) {
+            hoop.frozenTimer = 4.5;
+            floatingTexts.push({
+                x: CW / 2,
+                y: 165,
+                text: `❄️ ¡${senderNick} CONGELÓ TU ARO (4.5s)!`,
+                color: '#38bdf8',
+                life: 1.6
+            });
+            if (window.ArcadeAudio) ArcadeAudio.alarm();
+        }
+
+        function updateBotsAI(dt) {
+            const diffCfg = {
+                easy:   { interval: [2.5, 3.6], acc: 0.52, swishChance: 0.25 },
+                normal: { interval: [1.8, 2.8], acc: 0.68, swishChance: 0.42 },
+                hard:   { interval: [1.35, 2.1], acc: 0.82, swishChance: 0.58 }
+            }[matchConfig.diff] || { interval: [1.8, 2.8], acc: 0.68, swishChance: 0.42 };
+
+            Object.values(playersState).forEach(bot => {
+                if (!bot.isBot) return;
+                bot.botShotTimer -= dt;
+                if (bot.botShotTimer <= 0) {
+                    const [minI, maxI] = diffCfg.interval;
+                    bot.botShotTimer = minI + Math.random() * (maxI - minI);
+                    bot.shots++;
+
+                    // Cada Bot tiene su propio aro independiente: si el Bot avanza de fase por su propio puntaje, su aro también es más exigente
+                    const botPhasePenalty = bot.score >= 45 ? 0.12 : (bot.score >= 26 ? 0.08 : (bot.score >= 12 ? 0.04 : 0));
+                    const hit = Math.random() < Math.max(0.28, diffCfg.acc - botPhasePenalty);
+
+                    const ghost = {
+                        nick: bot.nick,
+                        color: bot.color,
+                        startX: 160 + Math.random() * 280,
+                        offsetX: hit ? (Math.random() - 0.5) * 14 : (Math.random() > 0.5 ? 55 : -55),
+                        offsetY: hit ? 0 : -35,
+                        isOnFire: bot.streak >= 3
+                    };
+                    spawnGhostBall(ghost);
+                    if (currentMode === 'online') {
+                        Object.values(clientConns).forEach(c => {
+                            if (c.open) c.send({ type: 'GHOST_BALL', ghostBall: ghost });
+                        });
+                    }
+
+                    if (hit) {
+                        bot.makes++;
+                        bot.streak++;
+                        const isSwish = Math.random() < diffCfg.swishChance;
+                        if (isSwish) bot.swishes++;
+                        const fireMult = bot.streak >= 3 ? 2 : 1;
+                        const moneyMult = (bot.shots % 5 === 0) ? 2 : 1;
+                        bot.score += (isSwish ? 3 : 2) * fireMult * moneyMult;
+
+                        // Probabilidad de que un Bot en racha lance sabotaje si está activado
+                        if (matchConfig.sabotage === 'on' && bot.streak === 3 && Math.random() < 0.45) {
+                            applySabotageFrom(bot.id, bot.nick, 'freeze');
+                            if (currentMode === 'online') {
+                                Object.values(clientConns).forEach(c => {
+                                    if (c.open) c.send({ type: 'SABOTAGE', fromId: bot.id, fromNick: bot.nick, sabotageType: 'freeze' });
+                                });
+                            }
+                        }
+                    } else {
+                        bot.streak = 0;
+                    }
+                    updateTopScoresHUD();
+                }
+            });
+        }
+
+        function finishMatch() {
+            gameActive = false;
+            const standings = Object.values(playersState).sort((a, b) => b.score - a.score);
+            if (isHost && currentMode === 'online') {
+                Object.values(clientConns).forEach(c => {
+                    if (c.open) c.send({ type: 'MATCH_OVER', standings });
+                });
+            }
+            showGameOverScreen(standings);
+        }
+
+        function showGameOverScreen(standings) {
+            gameActive = false;
+            document.getElementById('game-shell').classList.add('hidden');
+            const winner = standings[0];
+            const didIWin = winner && winner.id === myId;
+
+            document.getElementById('gameover-icon').innerText = didIWin ? '🏆' : '🏀';
+            document.getElementById('gameover-title').innerText = standings.length > 1
+                ? `¡CAMPEÓN: ${winner.nick.toUpperCase()}!`
+                : `¡PARTIDO FINALIZADO!`;
+            document.getElementById('gameover-sub').innerText = `Puntaje Máximo: ${winner ? winner.score : 0} pts`;
+
+            const box = document.getElementById('final-scoreboard');
+            box.innerHTML = '';
+            standings.forEach((p, idx) => {
+                const acc = p.shots > 0 ? Math.round((p.makes / p.shots) * 100) : 0;
+                const row = document.createElement('div');
+                row.className = 'player-row';
+                row.style.borderLeft = `4px solid ${p.color}`;
+                row.innerHTML = `
+                    <span>#${idx + 1} ${p.nick} <small style="color:#94a3b8;">(${acc}% • ✨${p.swishes || 0} Swish)</small></span>
+                    <strong style="color:#fbbf24;font-size:1.05rem;">${p.score} pts</strong>
+                `;
+                box.appendChild(row);
+            });
+
+            document.getElementById('btn-rematch').classList.toggle('hidden', !isHost);
+            showScreen('screen-gameover');
+
+            if (window.ArcadeAudio) {
+                if (didIWin) ArcadeAudio.victory();
+                else ArcadeAudio.defeat();
+            }
+        }
+
+        // =========================================================================
+        // ACTUALIZACIÓN DE BARRAS HUD (ALTURA FIJA SIN SALTOS)
+        // =========================================================================
+        function isScoreboardBlind() {
+            return currentMode !== 'survival' && Object.keys(playersState).length > 1 && timeLeft <= 15 && timeLeft > 0;
+        }
+
+        function getMyPersonalPhaseLabel(pts) {
+            if (pts >= 45) return { num: 4, text: 'FASE 4: TRIPLES + VIENTO', color: '#f43f5e' };
+            if (pts >= 26) return { num: 3, text: 'FASE 3: ALTURA + VIENTO', color: '#c084fc' };
+            if (pts >= 12) return { num: 2, text: 'FASE 2: ARO MÓVIL', color: '#38bdf8' };
+            return { num: 1, text: 'FASE 1: ARO FIJO', color: '#4ade80' };
+        }
+
+        function updateTopScoresHUD() {
+            const box = document.getElementById('hud-scores');
+            if (!box) return;
+            box.innerHTML = '';
+
+            const blind = isScoreboardBlind();
+            const list = blind
+                ? Object.values(playersState)
+                : Object.values(playersState).sort((a, b) => b.score - a.score);
+
+            list.forEach((p, idx) => {
+                const chip = document.createElement('div');
+                chip.className = 'p-score-chip' + (!blind && p.streak >= 3 ? ' on-fire' : '');
+                const scoreText = blind ? '???' : `${p.score} pts`;
+                const rankPrefix = blind ? '🔒' : `#${idx + 1}`;
+                chip.innerHTML = `
+                    <span style="color:#94a3b8;font-size:0.7rem;">${rankPrefix}</span>
+                    <span style="width:9px;height:9px;border-radius:50%;background:${p.color};display:inline-block;"></span>
+                    <span>${p.nick}</span>
+                    <strong style="color:${blind ? '#38bdf8' : '#fbbf24'};">${scoreText}</strong>
+                    ${!blind && p.streak >= 3 ? '<span>🔥</span>' : ''}
+                `;
+                box.appendChild(chip);
+            });
+        }
+
+        function updateClockHUD() {
+            const el = document.getElementById('hud-clock');
+            if (!el) return;
+            if (currentMode === 'survival') {
+                el.innerText = '❤️'.repeat(Math.max(0, survivalLives));
+                el.classList.toggle('danger', survivalLives === 1);
+            } else {
+                const sec = Math.ceil(timeLeft);
+                el.innerText = `${sec}s`;
+                el.classList.toggle('danger', sec <= 10);
+            }
+        }
+
+        function updateBottomStreakHUD() {
+            const me = playersState[myId];
+            if (!me) return;
+            const stEl = document.getElementById('hud-streak');
+            const tipEl = document.getElementById('status-tip');
+
+            if (me.streak >= 3) {
+                stEl.innerText = `🔥 ON FIRE x${me.streak} (Puntos x2)`;
+                stEl.style.borderColor = '#fbbf24';
+                stEl.style.color = '#fde047';
+            } else {
+                stEl.innerText = `🔥 Racha: ${me.streak}`;
+                stEl.style.borderColor = 'rgba(255, 107, 0, 0.45)';
+                stEl.style.color = '#fdba74';
+            }
+
+            if (hoop.frozenTimer > 0) {
+                tipEl.innerText = '❄️ ¡Aro congelado! Apunta al centro exacto';
+                tipEl.style.color = '#38bdf8';
+            } else if (hoop.magnetTimer > 0) {
+                tipEl.innerText = '⚡ ¡Aro Magnético activo! Lanza a toda velocidad';
+                tipEl.style.color = '#c084fc';
+            } else if (activeReadyBall && activeReadyBall.type !== 'normal') {
+                const bInfo = BALL_TYPES[activeReadyBall.type];
+                tipEl.innerText = `${bInfo.icon} Listo: ${bInfo.name}`;
+                tipEl.style.color = '#fde047';
+            } else {
+                tipEl.innerText = '👆 Desliza hacia el aro para lanzar';
+                tipEl.style.color = '#cbd5e1';
+            }
+        }
+
+        // =========================================================================
+        // RENDERIZADO VISUAL DE ESTADIO NEÓN, TABLERO, MALLA FÍSICA Y BALONES 3D
+        // =========================================================================
+        function spawnHoopParticles(x, y, color, count = 18) {
+            for (let i = 0; i < count; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 50 + Math.random() * 210;
+                particles.push({
+                    x,
+                    y,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd - 60,
+                    size: 3 + Math.random() * 4.5,
+                    color,
+                    life: 0.45 + Math.random() * 0.35
+                });
+            }
+        }
+
+        function drawBasketball(x, y, radius, typeKey, rotation, isOnFire, alpha = 1) {
+            const bInfo = BALL_TYPES[typeKey] || BALL_TYPES.normal;
+            CTX.save();
+            CTX.globalAlpha = alpha;
+            CTX.translate(x, y);
+
+            // Halo de fuego si está en modo ON FIRE o balón especial
+            if (isOnFire) {
+                CTX.shadowColor = '#ff6b00';
+                CTX.shadowBlur = 22;
+            } else if (typeKey !== 'normal') {
+                CTX.shadowColor = bInfo.mainColor;
+                CTX.shadowBlur = 16;
+            }
+
+            // Gradiente esférico 3D
+            const grad = CTX.createRadialGradient(-radius * 0.28, -radius * 0.28, radius * 0.1, 0, 0, radius);
+            if (typeKey === 'money') {
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.45, '#38bdf8');
+                grad.addColorStop(1, '#f43f5e');
+            } else {
+                grad.addColorStop(0, '#fed7aa');
+                grad.addColorStop(0.35, bInfo.mainColor);
+                grad.addColorStop(1, bInfo.secColor);
+            }
+
+            CTX.fillStyle = grad;
+            CTX.beginPath();
+            CTX.arc(0, 0, radius, 0, Math.PI * 2);
+            CTX.fill();
+
+            // Costuras clásicas del balón rotando
+            CTX.save();
+            CTX.beginPath();
+            CTX.arc(0, 0, radius, 0, Math.PI * 2);
+            CTX.clip();
+
+            CTX.rotate(rotation);
+            CTX.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+            CTX.lineWidth = Math.max(1.5, radius * 0.075);
+
+            // Línea ecuatorial y meridiano
+            CTX.beginPath();
+            CTX.moveTo(-radius, 0);
+            CTX.lineTo(radius, 0);
+            CTX.moveTo(0, -radius);
+            CTX.lineTo(0, radius);
+            CTX.stroke();
+
+            // Curvas laterales de baloncesto
+            CTX.beginPath();
+            CTX.arc(-radius * 0.72, 0, radius * 0.7, -Math.PI * 0.42, Math.PI * 0.42);
+            CTX.stroke();
+            CTX.beginPath();
+            CTX.arc(radius * 0.72, 0, radius * 0.7, Math.PI * 0.58, Math.PI * 1.42);
+            CTX.stroke();
+            CTX.restore();
+
+            // Contorno exterior nítido
+            CTX.strokeStyle = isOnFire ? '#fde047' : 'rgba(255, 255, 255, 0.35)';
+            CTX.lineWidth = 2;
+            CTX.beginPath();
+            CTX.arc(0, 0, radius, 0, Math.PI * 2);
+            CTX.stroke();
+
+            // Icono distintivo si es balón especial
+            if (typeKey !== 'normal' && radius >= 26) {
+                CTX.font = `${Math.round(radius * 0.65)}px sans-serif`;
+                CTX.textAlign = 'center';
+                CTX.textBaseline = 'middle';
+                CTX.fillText(bInfo.icon, 0, 2);
+            }
+
+            CTX.restore();
+        }
+
+        function renderCourt(dt) {
+            CTX.clearRect(0, 0, CW, CH);
+
+            // 1. Fondo de Arena Neón y Parquet en Perspectiva Pseudo-3D
+            const bgGrad = CTX.createLinearGradient(0, 0, 0, CH);
+            bgGrad.addColorStop(0, '#070b16');
+            bgGrad.addColorStop(0.45, '#0e172a');
+            bgGrad.addColorStop(0.46, '#172542');
+            bgGrad.addColorStop(1, '#080e1c');
+            CTX.fillStyle = bgGrad;
+            CTX.fillRect(0, 0, CW, CH);
+
+            // Líneas de perspectiva de la cancha (suelo desde y=400 hasta y=860)
+            CTX.strokeStyle = 'rgba(56, 189, 248, 0.16)';
+            CTX.lineWidth = 2;
+            CTX.beginPath();
+            // Línea de fondo
+            CTX.moveTo(0, 400);
+            CTX.lineTo(CW, 400);
+            // Líneas de pintura (Key) en perspectiva
+            CTX.moveTo(210, 400);
+            CTX.lineTo(75, CH);
+            CTX.moveTo(390, 400);
+            CTX.lineTo(525, CH);
+            // Arco de triples
+            CTX.arc(300, 740, 255, Math.PI * 1.1, Math.PI * 1.9);
+            CTX.stroke();
+
+            // 2. JUMBOTRON LED DEL ESTADIO (Marcador en vivo + Fase de Tu Aro Individual + Modo Suspenso 15s)
+            const me = playersState[myId];
+            const myPhase = getMyPersonalPhaseLabel(me ? me.score : 0);
+            const blind = isScoreboardBlind();
+
+            CTX.save();
+            // Panel LED superior en la pared del estadio
+            CTX.fillStyle = 'rgba(6, 11, 22, 0.9)';
+            CTX.strokeStyle = blind ? '#f43f5e' : 'rgba(255, 107, 0, 0.45)';
+            CTX.lineWidth = 2;
+            CTX.beginPath();
+            CTX.roundRect(14, 10, CW - 28, 72, 14);
+            CTX.fill();
+            CTX.stroke();
+
+            // Cabecera del Jumbotron: Tu Fase Individual a la izquierda y Estado/Viento a la derecha
+            CTX.font = '900 11.5px Outfit, sans-serif';
+            CTX.textAlign = 'left';
+            CTX.fillStyle = myPhase.color;
+            CTX.fillText(`🏀 TU ARO INDIVIDUAL • ${myPhase.text}`, 26, 28);
+
+            CTX.textAlign = 'right';
+            if (blind) {
+                CTX.fillStyle = '#fde047';
+                CTX.fillText('🕵️ ¡ÚLTIMOS 15s: MARCADOR EN SUSPENSO!', CW - 26, 28);
+            } else if (Math.abs(windSpeed) > 6) {
+                const dir = windSpeed > 0 ? '💨 ►' : '◄ 💨';
+                const strength = Math.round(Math.abs(windSpeed) / 10);
+                CTX.fillStyle = '#38bdf8';
+                CTX.fillText(`VIENTO EN TU CANCHA: ${dir} ${strength} km/h`, CW - 26, 28);
+            } else {
+                CTX.fillStyle = '#94a3b8';
+                CTX.fillText('MARCADOR EN VIVO', CW - 26, 28);
+            }
+
+            // Tarjetas del Marcador en Vivo dentro del Jumbotron
+            const pList = blind
+                ? Object.values(playersState)
+                : Object.values(playersState).sort((a, b) => b.score - a.score);
+            const cardW = Math.min(175, Math.floor((CW - 52) / Math.max(1, pList.length)) - 6);
+            const totalW = pList.length * (cardW + 6) - 6;
+            let startCardX = (CW - totalW) / 2;
+
+            pList.forEach((p, idx) => {
+                const isMe = p.id === myId;
+                CTX.fillStyle = isMe ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.85)';
+                CTX.strokeStyle = isMe ? p.color : 'rgba(148, 163, 184, 0.3)';
+                CTX.lineWidth = isMe ? 2 : 1;
+                CTX.beginPath();
+                CTX.roundRect(startCardX, 36, cardW, 38, 8);
+                CTX.fill();
+                CTX.stroke();
+
+                CTX.textAlign = 'left';
+                CTX.font = '800 11px Outfit, sans-serif';
+                CTX.fillStyle = '#f8fafc';
+                const rankTag = blind ? '🔒' : `#${idx + 1}`;
+                const shortNick = p.nick.length > 10 ? p.nick.slice(0, 10) : p.nick;
+                CTX.fillText(`${rankTag} ${shortNick}`, startCardX + 8, 51);
+
+                CTX.font = '900 13px Outfit, sans-serif';
+                CTX.fillStyle = blind ? '#38bdf8' : '#fbbf24';
+                const ptsLabel = blind ? '??? PTS' : `${p.score} PTS ${p.streak >= 3 ? '🔥' : ''}`;
+                CTX.fillText(ptsLabel, startCardX + 8, 68);
+
+                startCardX += cardW + 6;
+            });
+            CTX.restore();
+
+            // 3. Soporte y Tablero de Cristal Neón (Backboard)
+            const hx = hoop.x;
+            const hy = hoop.y;
+            const bw = 184;
+            const bh = 118;
+            const bx = hx - bw / 2;
+            const by = hy - 102;
+
+            // Poste trasero
+            CTX.fillStyle = '#1e293b';
+            CTX.fillRect(hx - 10, by + bh, 20, 400 - (by + bh));
+
+            // Cristal del tablero
+            CTX.save();
+            CTX.fillStyle = 'rgba(15, 28, 52, 0.82)';
+            CTX.strokeStyle = hoop.frozenTimer > 0 ? '#38bdf8' : '#f8fafc';
+            CTX.lineWidth = 4;
+            CTX.shadowColor = hoop.frozenTimer > 0 ? '#38bdf8' : '#ff6b00';
+            CTX.shadowBlur = 16;
+            CTX.beginPath();
+            CTX.roundRect(bx, by, bw, bh, 12);
+            CTX.fill();
+            CTX.stroke();
+
+            // Recuadro interior de tiro al tablero (Bank Shot Target)
+            const bankActive = hoop.bankBonusTimer > 0;
+            CTX.strokeStyle = bankActive ? '#00f0ff' : 'rgba(255, 255, 255, 0.55)';
+            CTX.lineWidth = bankActive ? 3.5 : 2.5;
+            if (bankActive) {
+                CTX.shadowColor = '#00f0ff';
+                CTX.shadowBlur = 15;
+            }
+            CTX.strokeRect(hx - 36, hy - 54, 72, 46);
+
+            if (bankActive) {
+                CTX.font = '900 11px Outfit, sans-serif';
+                CTX.fillStyle = '#00f0ff';
+                CTX.textAlign = 'center';
+                CTX.fillText('TABLERO +2', hx, hy - 60);
+            }
+            CTX.restore();
+
+            // 4. Balones que ya pasaron detrás del plano del aro (z >= 1.0)
+            flyingBalls.forEach(b => {
+                if (b.z >= 1.0) {
+                    const r = Math.max(17, 46 - 24 * Math.min(1.2, b.z));
+                    drawBasketball(b.x, b.y, r, b.type, b.rotation, b.isOnFire);
+                }
+            });
+
+            // 5. Balones Fantasma de Rivales / Bots (proyectados con transparencia mientras tu aro mantiene su propio ritmo)
+            ghostBalls.forEach(g => {
+                const zc = Math.min(1.15, g.z);
+                const targetX = hoop.x + (g.offsetX || 0);
+                const targetY = hoop.y + (g.offsetY || 0);
+                const gx = g.startX + (targetX - g.startX) * zc;
+                const gy = SHOOTER_Y + (targetY - SHOOTER_Y) * zc - (4 * zc * (1 - zc) * 260);
+                const gr = Math.max(16, 42 - 21 * zc);
+
+                CTX.save();
+                CTX.globalAlpha = 0.36;
+                if (g.isOnFire) {
+                    CTX.shadowColor = '#ff6b00';
+                    CTX.shadowBlur = 14;
+                }
+                CTX.fillStyle = g.color;
+                CTX.beginPath();
+                CTX.arc(gx, gy, gr, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.strokeStyle = g.isOnFire ? '#fde047' : '#ffffff';
+                CTX.lineWidth = 1.5;
+                CTX.stroke();
+
+                if (g.nick && zc < 0.92) {
+                    CTX.font = '800 10px Outfit, sans-serif';
+                    CTX.fillStyle = '#ffffff';
+                    CTX.textAlign = 'center';
+                    CTX.fillText(g.nick, gx, gy - gr - 4);
+                }
+                CTX.restore();
+            });
+
+            // 6. Malla Física Animada (Net) y Aro Frontal (Rim)
+            const effRimR = hoop.frozenTimer > 0 ? hoop.rimRadius * 0.74 :
+                            (me && me.streak >= 3 ? hoop.rimRadius * 1.12 : hoop.rimRadius);
+            const netDepth = 54 + hoop.netStretch * 18;
+            const bottomR = effRimR * 0.56;
+            const sway = hoop.netSway;
+
+            // Dibujar hilos entrelazados de la red
+            CTX.save();
+            CTX.strokeStyle = hoop.frozenTimer > 0 ? 'rgba(147, 197, 253, 0.85)' : 'rgba(248, 250, 252, 0.82)';
+            CTX.lineWidth = 1.8;
+            const strands = 8;
+            for (let i = 0; i <= strands; i++) {
+                const t = i / strands;
+                const topX = hx - effRimR + t * (effRimR * 2);
+                const botX = hx - bottomR + t * (bottomR * 2) + sway;
+                CTX.beginPath();
+                CTX.moveTo(topX, hy);
+                CTX.quadraticCurveTo((topX + botX) * 0.5 + sway * 0.4, hy + netDepth * 0.55, botX, hy + netDepth);
+                CTX.stroke();
+
+                if (i < strands) {
+                    const nextT = (i + 1) / strands;
+                    const nextBotX = hx - bottomR + nextT * (bottomR * 2) + sway;
+                    CTX.beginPath();
+                    CTX.moveTo(topX, hy);
+                    CTX.lineTo(nextBotX, hy + netDepth);
+                    CTX.stroke();
+                }
+            }
+
+            // Hierro del Aro (Elipse frontal)
+            CTX.strokeStyle = hoop.frozenTimer > 0 ? '#38bdf8' : (hoop.magnetTimer > 0 ? '#c084fc' : '#ff5500');
+            CTX.lineWidth = 6;
+            CTX.shadowColor = CTX.strokeStyle;
+            CTX.shadowBlur = 12;
+            CTX.beginPath();
+            CTX.ellipse(hx, hy, effRimR, 11, 0, 0, Math.PI * 2);
+            CTX.stroke();
+            CTX.restore();
+
+            // 7. Balones en Vuelo en primer plano (z < 1.0) + Estela de Fuego
+            flyingBalls.forEach(b => {
+                if (b.z < 1.0) {
+                    if (b.trail.length > 1) {
+                        for (let k = 0; k < b.trail.length; k++) {
+                            const pt = b.trail[k];
+                            const tr = Math.max(8, (46 - 24 * pt.z) * (k / b.trail.length) * 0.65);
+                            CTX.save();
+                            CTX.globalAlpha = (k / b.trail.length) * 0.35;
+                            CTX.fillStyle = b.isOnFire ? '#ff6b00' : '#fbbf24';
+                            CTX.beginPath();
+                            CTX.arc(pt.x, pt.y, tr, 0, Math.PI * 2);
+                            CTX.fill();
+                            CTX.restore();
+                        }
+                    }
+                    const r = Math.max(18, 46 - 24 * b.z);
+                    drawBasketball(b.x, b.y, r, b.type, b.rotation, b.isOnFire);
+                }
+            });
+
+            // 8. Guía Visual de Trayectoria mientras el jugador desliza el dedo/mouse
+            if (isDragging && dragPoints.length >= 2 && activeReadyBall) {
+                const preview = computeLaunchFromGesture(dragPoints);
+                if (preview) {
+                    CTX.save();
+                    for (let step = 1; step <= 10; step++) {
+                        const zt = step / 12;
+                        const px = preview.startX + (preview.aimX - preview.startX) * zt + preview.curveSpin * Math.sin(zt * Math.PI);
+                        const linY = preview.startY + (preview.targetYAtHoop - preview.startY) * zt;
+                        const py = linY - 4 * zt * (1 - zt) * 270;
+                        const dotR = Math.max(3, 8 * (1 - zt * 0.5));
+                        CTX.fillStyle = Math.abs(preview.power - 1.0) < 0.12 ? '#4ade80' : '#fbbf24';
+                        CTX.globalAlpha = 1 - zt * 0.6;
+                        CTX.beginPath();
+                        CTX.arc(px, py, dotR, 0, Math.PI * 2);
+                        CTX.fill();
+                    }
+                    CTX.restore();
+                }
+            }
+
+            // 9. Balón listo en las manos del jugador (z = 0)
+            if (activeReadyBall) {
+                const meOnFire = me && me.streak >= 3;
+                const r = 46 * activeReadyBall.appearScale;
+
+                // Sombra en el parquet
+                CTX.save();
+                CTX.fillStyle = 'rgba(0, 0, 0, 0.55)';
+                CTX.beginPath();
+                CTX.ellipse(activeReadyBall.x, SHOOTER_Y + 46, r * 0.85, 11, 0, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.restore();
+
+                drawBasketball(activeReadyBall.x, activeReadyBall.y, r, activeReadyBall.type, matchElapsed * 0.7, meOnFire);
+            }
+
+            // 10. Partículas y Textos Flotantes
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx * dt;
+                pt.y += pt.vy * dt;
+                pt.vy += 460 * dt;
+                pt.life -= dt;
+                if (pt.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                CTX.save();
+                CTX.globalAlpha = Math.max(0, pt.life * 1.6);
+                CTX.fillStyle = pt.color;
+                CTX.beginPath();
+                CTX.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+                CTX.fill();
+                CTX.restore();
+            }
+
+            CTX.save();
+            CTX.font = '900 20px Outfit, sans-serif';
+            CTX.textAlign = 'center';
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y -= 38 * dt;
+                ft.life -= dt;
+                if (ft.life <= 0) {
+                    floatingTexts.splice(i, 1);
+                    continue;
+                }
+                CTX.globalAlpha = Math.min(1, ft.life * 1.4);
+                CTX.fillStyle = ft.color;
+                CTX.shadowColor = 'rgba(0,0,0,0.95)';
+                CTX.shadowBlur = 6;
+                CTX.fillText(ft.text, ft.x, ft.y);
+            }
+            CTX.restore();
+        }
+
+        // =========================================================================
+        // BUCLE PRINCIPAL A 60 FPS
+        // =========================================================================
+        let lastFrameMs = performance.now();
+        function mainLoop(nowMs) {
+            const dt = Math.min(0.05, (nowMs - lastFrameMs) / 1000);
+            lastFrameMs = nowMs;
+
+            if (gameActive) {
+                updateGame(dt);
+                renderCourt(dt);
+            }
+
+            requestAnimationFrame(mainLoop);
+        }
+        requestAnimationFrame(mainLoop);
+    </script>
+</body>
+</html>
+
