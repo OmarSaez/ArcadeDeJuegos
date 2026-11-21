@@ -2902,17 +2902,25 @@
             }, 60);
         }
 
+        function hostAdvanceFromResult() {
+            if (!isHost || !gameActive) return;
+            prepareNextTurnOrSpin();
+            if (isOnlineRoom && gameActive && matchConfig.wheelMode !== 'fast') {
+                hostBroadcast({ type: 'NEXT_WHEEL' });
+            }
+        }
+
         function scheduleNextAfterResult(ms) {
             clearTimeout(nextStepTimer);
             nextStepTimer = setTimeout(() => {
-                if (isHost && gameActive) prepareNextTurnOrSpin();
+                hostAdvanceFromResult();
             }, ms);
         }
 
         function continueAfterResult() {
             if (!isHost || !gameActive) return;
             clearTimeout(nextStepTimer);
-            prepareNextTurnOrSpin();
+            hostAdvanceFromResult();
         }
 
         // =========================================================================
@@ -2958,6 +2966,8 @@
             } else if (data.type === 'CLOCK_SYNC') {
                 matchState.globalTimeLeft = data.globalTimeLeft;
                 updateProgressHUD();
+            } else if (data.type === 'NEXT_WHEEL') {
+                prepareNextTurnOrSpin();
             } else if (data.type === 'WHEEL_SPIN') {
                 animateWheelSpin(data);
             } else if (data.type === 'CROWN_PICK_OPEN') {
