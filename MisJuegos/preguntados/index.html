@@ -1,0 +1,2975 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Preguntados Arcade - Trivia Multijugador</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="../../p2p.js"></script>
+    <script src="../../sounds.js"></script>
+    <script src="banco_offline.js"></script>
+    <style>
+        :root {
+            --bg-dark: #070b18;
+            --panel-bg: rgba(13, 21, 40, 0.95);
+            --card-bg: rgba(17, 27, 50, 0.92);
+            --accent-gold: #fbbf24;
+            --accent-cyan: #38bdf8;
+            --accent-pink: #ec4899;
+            --accent-green: #4ade80;
+            --accent-red: #f43f5e;
+            --text: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            background: radial-gradient(circle at 50% 15%, #172347 0%, #060914 100%);
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            touch-action: manipulation;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 10px;
+            left: 12px;
+            z-index: 250;
+            background: rgba(13, 21, 40, 0.94);
+            border: 1.5px solid rgba(56, 189, 248, 0.5);
+            color: #bae6fd;
+            padding: 7px 13px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+            transition: all 0.2s;
+        }
+        .back-btn:hover {
+            border-color: #fff;
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* PANTALLAS MENÚ / LOBBY / PODIO */
+        .screen {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 52px 14px 26px 14px;
+            background: radial-gradient(circle at 50% 20%, rgba(25, 36, 74, 0.96) 0%, rgba(6, 9, 20, 0.99) 100%);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 2px solid rgba(251, 191, 36, 0.35);
+            border-radius: 24px;
+            padding: 22px 20px;
+            width: 100%;
+            max-width: 760px;
+            margin: auto 0;
+            flex-shrink: 0;
+            box-shadow: 0 22px 55px rgba(0, 0, 0, 0.8), 0 0 32px rgba(56, 189, 248, 0.12);
+            text-align: center;
+            backdrop-filter: blur(12px);
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(1.15rem, 3.4vw, 1.95rem);
+            line-height: 1.38;
+            background: linear-gradient(90deg, #fbbf24, #ec4899, #38bdf8, #4ade80);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 14px;
+        }
+
+        .db-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(74, 222, 128, 0.12);
+            border: 1px solid rgba(74, 222, 128, 0.4);
+            color: #86efac;
+            font-size: 0.76rem;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 999px;
+            margin-bottom: 12px;
+        }
+
+        .profile-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            background: rgba(7, 12, 24, 0.85);
+            border: 1px solid #24365a;
+            padding: 10px 14px;
+            border-radius: 16px;
+            margin-bottom: 14px;
+        }
+
+        .nick-input {
+            background: #070d1b;
+            border: 1.5px solid #334155;
+            color: #fff;
+            padding: 9px 13px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 0.95rem;
+            width: 170px;
+            text-align: center;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        .nick-input:focus { border-color: var(--accent-gold); }
+
+        .color-picker {
+            display: flex;
+            gap: 7px;
+            align-items: center;
+        }
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.15s;
+        }
+        .color-swatch.active {
+            border-color: #fff;
+            transform: scale(1.18);
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 11px;
+            margin: 10px 0 14px 0;
+        }
+
+        .mode-card {
+            background: var(--card-bg);
+            border: 2px solid #2a3e66;
+            border-radius: 16px;
+            padding: 14px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .mode-card:hover {
+            border-color: var(--accent-gold);
+            background: rgba(29, 45, 79, 0.96);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55), 0 0 18px rgba(251, 191, 36, 0.22);
+        }
+        .mode-card .m-icon { font-size: 1.95rem; }
+        .mode-card .m-title { font-weight: 900; font-size: 1rem; color: #fff; }
+        .mode-card .m-desc { font-size: 0.78rem; color: #94a3b8; line-height: 1.32; }
+
+        .join-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .code-input {
+            background: #060b16;
+            border: 2px solid #2b426b;
+            color: var(--accent-gold);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            text-align: center;
+            width: 170px;
+            text-transform: uppercase;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        .arcade-btn {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #0b0f19;
+            border: none;
+            padding: 11px 20px;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+        .arcade-btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+        .arcade-btn.cyan {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.35);
+        }
+        .arcade-btn.green {
+            background: linear-gradient(135deg, #22c55e, #15803d);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.35);
+        }
+        .arcade-btn.secondary {
+            background: #1e293b;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            box-shadow: none;
+        }
+
+        .cat-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+        .cat-pill {
+            font-size: 0.74rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1.5px solid currentColor;
+        }
+
+        /* LOBBY DE CONFIGURACIÓN */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+            gap: 10px;
+            margin: 14px 0;
+            text-align: left;
+        }
+        .config-box {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #263b60;
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+        .config-box label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 5px;
+            font-weight: 800;
+        }
+        .config-select {
+            width: 100%;
+            background: #060b16;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            padding: 8px;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.86rem;
+            outline: none;
+        }
+
+        .room-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(251, 191, 36, 0.12);
+            border: 2px dashed var(--accent-gold);
+            padding: 8px 18px;
+            border-radius: 14px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            color: var(--accent-gold);
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin: 12px 0;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .player-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.88);
+            border: 1px solid #24385c;
+            border-radius: 11px;
+            padding: 8px 14px;
+            font-weight: 800;
+        }
+
+        .row-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+
+        /* =========================================================================
+           ESTRUCTURA DE JUEGO EN PARTIDA (100% RESPONSIVO EN MÓVIL Y PC)
+           ========================================================================= */
+        #game-shell {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at 50% 0%, #162244 0%, #060913 100%);
+            overflow: hidden;
+        }
+
+        #top-bar {
+            width: 100%;
+            min-height: 48px;
+            background: rgba(8, 13, 26, 0.96);
+            border-bottom: 1.5px solid rgba(56, 189, 248, 0.28);
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-shrink: 0;
+            z-index: 20;
+        }
+
+        .top-left-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .meta-pill {
+            background: rgba(15, 23, 42, 0.94);
+            border: 1.5px solid #334155;
+            border-radius: 10px;
+            padding: 4px 10px;
+            font-weight: 900;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            white-space: nowrap;
+        }
+        .meta-pill.gold {
+            border-color: rgba(251, 191, 36, 0.5);
+            color: #fde047;
+        }
+        .meta-pill.danger {
+            border-color: #f43f5e;
+            color: #fda4af;
+            animation: pulseSoft 0.55s infinite alternate;
+        }
+        @keyframes pulseSoft {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        .crowns-strip {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(10, 17, 34, 0.85);
+            border: 1px solid #24365a;
+            padding: 3px 8px;
+            border-radius: 999px;
+        }
+        .crown-badge {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.82rem;
+            background: rgba(255, 255, 255, 0.06);
+            opacity: 0.28;
+            filter: grayscale(1);
+            border: 1.5px solid transparent;
+            transition: all 0.25s;
+        }
+        .crown-badge.earned {
+            opacity: 1;
+            filter: none;
+            box-shadow: 0 0 10px currentColor;
+            transform: scale(1.06);
+        }
+
+        .exit-mini-btn {
+            background: rgba(30, 41, 59, 0.92);
+            border: 1px solid rgba(248, 113, 113, 0.45);
+            color: #fca5a5;
+            padding: 5px 10px;
+            border-radius: 9px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.74rem;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* TIRA DE MARCADORES EN VIVO (SOLO/COOP/COMPETITIVO) */
+        #scoreboard-strip {
+            width: 100%;
+            background: rgba(11, 18, 36, 0.9);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            overflow-x: auto;
+            flex-shrink: 0;
+            scrollbar-width: none;
+        }
+        #scoreboard-strip::-webkit-scrollbar { display: none; }
+
+        .p-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(19, 30, 56, 0.95);
+            border: 1.5px solid #334155;
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .p-chip.is-me { border-color: var(--accent-cyan); }
+        .p-chip.locked-out { opacity: 0.48; border-color: #f43f5e; }
+        .p-chip.winner-q { border-color: #4ade80; box-shadow: 0 0 10px rgba(74, 222, 128, 0.45); }
+
+        /* ÁREA CENTRAL DE RULETA / PREGUNTA */
+        #stage-area {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 12px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+
+        /* VISTA RULETA */
+        #wheel-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            max-width: 460px;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: min(86vw, 360px);
+            height: min(86vw, 360px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #wheel-canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 42px rgba(0, 0, 0, 0.85), 0 0 28px rgba(56, 189, 248, 0.25);
+        }
+
+        .wheel-pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 16px solid transparent;
+            border-right: 16px solid transparent;
+            border-top: 30px solid #fbbf24;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.9));
+            z-index: 5;
+        }
+
+        .wheel-center-btn {
+            position: absolute;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fff, #e2e8f0);
+            border: 4px solid #0f172a;
+            color: #0f172a;
+            font-weight: 900;
+            font-size: 0.86rem;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.75);
+            z-index: 6;
+            transition: transform 0.15s;
+        }
+        .wheel-center-btn:active { transform: scale(0.93); }
+
+        #wheel-status {
+            font-weight: 900;
+            font-size: 1.08rem;
+            color: #fde047;
+            text-align: center;
+            min-height: 26px;
+        }
+
+        /* SELECTOR DE CORONA */
+        #crown-picker {
+            width: 100%;
+            max-width: 520px;
+            background: var(--panel-bg);
+            border: 2px solid #fbbf24;
+            border-radius: 20px;
+            padding: 18px;
+            text-align: center;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
+        }
+        .crown-cat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 9px;
+            margin-top: 12px;
+        }
+        .crown-cat-btn {
+            background: rgba(15, 23, 42, 0.92);
+            border: 2px solid currentColor;
+            border-radius: 14px;
+            padding: 12px 10px;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: transform 0.15s;
+        }
+        .crown-cat-btn:hover { transform: scale(1.03); }
+
+        /* TARJETA DE PREGUNTA ESTILO PREGUNTADOS */
+        #question-view {
+            width: 100%;
+            max-width: 680px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: auto 0;
+        }
+
+        .q-header-card {
+            border-radius: 18px;
+            padding: 14px 16px 16px 16px;
+            background: var(--panel-bg);
+            border: 2.5px solid var(--accent-cyan);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65);
+            position: relative;
+        }
+
+        .q-cat-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .q-cat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 900;
+            font-size: 0.84rem;
+            padding: 4px 12px;
+            border-radius: 999px;
+            color: #0b0f19;
+        }
+
+        .q-timer-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.78rem;
+            color: #fbbf24;
+        }
+
+        .q-timer-bar-bg {
+            width: 100%;
+            height: 7px;
+            background: #091020;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .q-timer-bar-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #4ade80, #fbbf24, #f43f5e);
+            transition: width 0.1s linear;
+        }
+
+        .q-text {
+            font-size: clamp(1rem, 2.5vw, 1.24rem);
+            font-weight: 800;
+            line-height: 1.38;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        @media (min-width: 640px) {
+            .options-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .opt-btn {
+            background: rgba(19, 30, 56, 0.96);
+            border: 2px solid #2d426b;
+            border-radius: 14px;
+            padding: 12px 14px;
+            color: #f8fafc;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+            transition: all 0.16s ease;
+        }
+        .opt-btn:hover:not(:disabled) {
+            border-color: var(--accent-cyan);
+            background: rgba(30, 48, 86, 0.98);
+            transform: translateY(-1px);
+        }
+        .opt-btn:disabled { cursor: default; }
+
+        .opt-letter {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 0.84rem;
+            flex-shrink: 0;
+        }
+
+        .opt-btn.eliminated {
+            opacity: 0.22;
+            text-decoration: line-through;
+            pointer-events: none;
+        }
+        .opt-btn.correct {
+            background: rgba(22, 163, 74, 0.35);
+            border-color: #4ade80;
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(74, 222, 128, 0.45);
+        }
+        .opt-btn.wrong {
+            background: rgba(225, 29, 72, 0.35);
+            border-color: #f43f5e;
+            color: #fecdd3;
+        }
+
+        /* COMODINES Y BANNER DE RESULTADO / DATO CURIOSO */
+        .lifelines-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .life-btn {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1.5px solid rgba(251, 191, 36, 0.45);
+            color: #fde047;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.16s;
+        }
+        .life-btn:hover:not(:disabled) {
+            background: rgba(251, 191, 36, 0.18);
+            border-color: #fff;
+        }
+        .life-btn:disabled {
+            opacity: 0.32;
+            cursor: not-allowed;
+        }
+        .life-btn.armed {
+            background: rgba(74, 222, 128, 0.25);
+            border-color: #4ade80;
+            color: #bbf7d0;
+        }
+
+        /* AVISO INLINE PARA FALLO INDIVIDUAL MIENTRAS OTROS ROBAN */
+        .inline-wait-banner {
+            border-radius: 14px;
+            padding: 10px 14px;
+            background: rgba(9, 15, 30, 0.96);
+            border: 1.5px solid #38bdf8;
+            text-align: center;
+            font-size: 0.92rem;
+            line-height: 1.35;
+        }
+        .inline-wait-banner strong { display: block; font-size: 1rem; margin-bottom: 2px; }
+        .inline-wait-banner small { color: #cbd5e1; font-weight: 600; }
+
+        /* MODAL SUPERPUESTO CON BLUR PARA DATO CURIOSO, PUNTOS Y PROTAGONISTA */
+        #result-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 85;
+            background: rgba(5, 9, 20, 0.74);
+            backdrop-filter: blur(11px);
+            -webkit-backdrop-filter: blur(11px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            animation: fadeInOverlay 0.2s ease-out;
+        }
+        @keyframes fadeInOverlay {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .result-modal-card {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(13, 21, 40, 0.98);
+            border: 2.5px solid #38bdf8;
+            border-radius: 26px;
+            padding: 24px 22px;
+            text-align: center;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 36px rgba(56, 189, 248, 0.22);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .result-big-icon {
+            font-size: 3rem;
+            line-height: 1;
+        }
+        .result-headline {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(1rem, 2.5vw, 1.45rem);
+            line-height: 1.35;
+        }
+        .result-who {
+            font-size: clamp(1.02rem, 2vw, 1.24rem);
+            font-weight: 900;
+            color: #ffffff;
+        }
+        .result-choice-info {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #cbd5e1;
+        }
+        .result-pts-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 18px;
+            border-radius: 999px;
+            font-weight: 900;
+            font-size: 1.08rem;
+            background: rgba(74, 222, 128, 0.16);
+            border: 2px solid #4ade80;
+            color: #86efac;
+        }
+        .result-pts-pill.bad {
+            background: rgba(244, 63, 94, 0.18);
+            border-color: #f43f5e;
+            color: #fda4af;
+        }
+        .result-early-fails {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #fca5a5;
+            background: rgba(244, 63, 94, 0.12);
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            padding: 5px 12px;
+            border-radius: 10px;
+        }
+        .result-fact-box {
+            width: 100%;
+            background: rgba(7, 13, 27, 0.92);
+            border: 1.5px solid rgba(251, 191, 36, 0.45);
+            border-radius: 16px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .result-fact-label {
+            display: block;
+            font-size: 0.76rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: #fde047;
+            margin-bottom: 5px;
+        }
+        .result-fact-text {
+            font-size: clamp(1.04rem, 1.9vw, 1.22rem);
+            font-weight: 700;
+            line-height: 1.42;
+            color: #f8fafc;
+        }
+        .result-read-bar-bg {
+            width: 100%;
+            height: 7px;
+            background: #091020;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .result-read-bar-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #38bdf8, #4ade80);
+            transition: width 0.08s linear;
+        }
+
+        /* ESCALADO AMPLIO PARA PC / PANTALLAS GRANDES */
+        @media (min-width: 900px) {
+            #top-bar { min-height: 62px; padding: 10px 22px; }
+            .meta-pill { font-size: 1rem; padding: 6px 14px; border-radius: 12px; }
+            .crowns-strip { padding: 5px 12px; gap: 6px; }
+            .crown-badge { width: 34px; height: 34px; font-size: 1.1rem; }
+            .exit-mini-btn { font-size: 0.92rem; padding: 7px 14px; }
+            #scoreboard-strip { padding: 8px 22px; gap: 10px; }
+            .p-chip { font-size: 0.95rem; padding: 6px 16px; }
+            .wheel-container { width: min(56vh, 480px); height: min(56vh, 480px); }
+            .wheel-center-btn { width: 88px; height: 88px; font-size: 1rem; border-width: 5px; }
+            .wheel-pointer { top: -18px; border-left-width: 20px; border-right-width: 20px; border-top-width: 36px; }
+            #wheel-status { font-size: 1.28rem; }
+            #question-view { max-width: 940px; gap: 18px; }
+            .q-header-card { padding: 24px 30px; border-radius: 24px; }
+            .q-cat-badge { font-size: 1.05rem; padding: 6px 18px; }
+            .q-timer-wrap { font-size: 1.05rem; }
+            .q-timer-bar-bg { height: 11px; margin-bottom: 16px; }
+            .q-text { font-size: clamp(1.35rem, 2.1vw, 1.75rem); line-height: 1.42; }
+            .options-grid { gap: 14px; }
+            .opt-btn { padding: 18px 22px; font-size: 1.18rem; border-radius: 18px; gap: 14px; }
+            .opt-letter { width: 38px; height: 38px; font-size: 1.05rem; border-radius: 10px; }
+            .life-btn { font-size: 0.98rem; padding: 9px 20px; }
+            .inline-wait-banner { font-size: 1.05rem; padding: 12px 18px; }
+        }
+
+        /* ESCALADO MEJORADO PARA MÓVIL VERTICAL */
+        @media (max-width: 600px) {
+            #top-bar { padding: 6px 8px; min-height: 50px; }
+            .meta-pill { font-size: 0.78rem; padding: 4px 9px; }
+            .crown-badge { width: 25px; height: 25px; font-size: 0.85rem; }
+            .p-chip { font-size: 0.82rem; padding: 4px 11px; }
+            #stage-area { padding: 8px 10px; }
+            .q-header-card { padding: 14px 14px 16px 14px; border-radius: 16px; }
+            .q-text { font-size: 1.12rem; }
+            .opt-btn { padding: 13px 14px; font-size: 0.98rem; }
+            .life-btn { font-size: 0.82rem; padding: 7px 13px; }
+            .result-modal-card { padding: 18px 15px; border-radius: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <a id="arcade-back-btn" href="../../index.html" class="back-btn">⬅ Volver al Arcade</a>
+
+    <!-- PANTALLA 1: MENÚ PRINCIPAL -->
+    <div id="screen-menu" class="screen">
+        <div class="glass-panel">
+            <h1 class="game-title">🎡 PREGUNTADOS ARCADE</h1>
+            <p class="subtitle">Ruleta de 6 géneros, duelos de velocidad al instante y partidas cooperativas desde el móvil</p>
+
+            <div class="db-badge" id="db-status-badge">📚 Cargando banco de 720 preguntas...</div>
+
+            <div class="profile-bar">
+                <input type="text" id="input-nick" class="nick-input" maxlength="12" placeholder="Tu Nombre">
+                <div id="menu-colors" class="color-picker"></div>
+            </div>
+
+            <div class="mode-grid">
+                <div class="mode-card" onclick="openLobby('solo')">
+                    <div class="m-icon">🎯</div>
+                    <div class="m-title">Modo Solitario</div>
+                    <div class="m-desc">Desafíos de 10, 15, 20 o preguntas aleatorias (10–20). Consigue las 6 coronas</div>
+                </div>
+                <div class="mode-card" onclick="openLobby('coop')">
+                    <div class="m-icon">🤝</div>
+                    <div class="m-title">Cooperativo (Equipo)</div>
+                    <div class="m-desc">Cada amigo ve la misma pregunta en su móvil; el primero que responde responde por todos</div>
+                </div>
+                <div class="mode-card" onclick="openLobby('competitive')">
+                    <div class="m-icon">⚡</div>
+                    <div class="m-title">Competitivo Velocidad</div>
+                    <div class="m-desc">Misma pregunta para todos: ¡el primero que acierte se la lleva! (vs Amigos o Bots IA)</div>
+                </div>
+            </div>
+
+            <div class="join-bar">
+                <input type="text" id="input-room-code" class="code-input" maxlength="4" placeholder="CÓDIGO">
+                <button class="arcade-btn cyan" onclick="joinOnlineRoom()">🚀 UNIRSE A SALA</button>
+            </div>
+
+            <div class="cat-pills">
+                <span class="cat-pill" style="color:#eab308;">🏛️ Historia</span>
+                <span class="cat-pill" style="color:#3b82f6;">🌍 Geografía</span>
+                <span class="cat-pill" style="color:#22c55e;">🔬 Ciencia</span>
+                <span class="cat-pill" style="color:#ef4444;">🎨 Arte y Lit.</span>
+                <span class="cat-pill" style="color:#ec4899;">🎬 Entretenimiento</span>
+                <span class="cat-pill" style="color:#f97316;">⚽ Deportes</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA 2: LOBBY DE CONFIGURACIÓN -->
+    <div id="screen-lobby" class="screen hidden">
+        <div class="glass-panel">
+            <h2 id="lobby-title" class="game-title" style="font-size: 1.35rem;">CONFIGURAR PARTIDA</h2>
+            <p id="lobby-sub" class="subtitle">Personaliza la duración, ruleta y jugadores</p>
+
+            <div id="room-code-box" class="room-badge hidden" onclick="copyRoomCode()" title="Toca para copiar código">
+                <span>SALA: <strong id="room-code-text">----</strong></span>
+                <span style="font-size: 0.72rem; font-family: 'Outfit', sans-serif; color: #fff;">📋 Copiar</span>
+            </div>
+
+            <div id="host-config-panel" class="config-grid">
+                <div class="config-box" id="cfg-format-box">
+                    <label>Formato de Partida</label>
+                    <select id="sel-format" class="config-select" onchange="onFormatChange()">
+                        <option value="q_10">🎯 10 Preguntas</option>
+                        <option value="q_15" selected>🎯 15 Preguntas</option>
+                        <option value="q_20">🎯 20 Preguntas</option>
+                        <option value="q_rand">🎲 Aleatorio (Entre 10 y 20)</option>
+                        <option value="t_300">⏱️ Por Tiempo: 5 Minutos</option>
+                        <option value="t_600">⏱️ Por Tiempo: 10 Minutos</option>
+                        <option value="t_900">⏱️ Por Tiempo: 15 Minutos</option>
+                    </select>
+                </div>
+
+                <div class="config-box" id="cfg-wheel-box">
+                    <label>Dinámica de Categoría</label>
+                    <select id="sel-wheel" class="config-select" onchange="syncLobbyConfig()">
+                        <option value="wheel" selected>🎡 Ruleta Clásica Preguntados</option>
+                        <option value="fast">⚡ Directo al Grano (Sin Ruleta)</option>
+                    </select>
+                </div>
+
+                <div class="config-box" id="cfg-bots-box">
+                    <label>Rivales IA (Bots)</label>
+                    <select id="sel-bots" class="config-select" onchange="rebuildRoster()">
+                        <option value="0">Sin Bots (Solo Humanos)</option>
+                        <option value="1">1 Bot IA</option>
+                        <option value="2" selected>2 Bots IA</option>
+                        <option value="3">3 Bots IA</option>
+                    </select>
+                </div>
+
+                <div class="config-box" id="cfg-diff-box">
+                    <label>Velocidad / Nivel IA</label>
+                    <select id="sel-diff" class="config-select" onchange="syncLobbyConfig()">
+                        <option value="easy">🤪 Casual (Lenta)</option>
+                        <option value="normal" selected>🎯 Equilibrada</option>
+                        <option value="hard">⚡ Relámpago (Experto)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="lobby-players" class="player-list"></div>
+
+            <div class="row-group">
+                <button id="btn-start-match" class="arcade-btn green" onclick="hostStartMatch()">🎡 ¡EMPEZAR TRIVIA!</button>
+                <button class="arcade-btn secondary" onclick="leaveToMenu()">⬅ Volver</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA 3: PARTIDA EN VIVO -->
+    <div id="game-shell" class="hidden">
+        <div id="top-bar">
+            <div class="top-left-meta">
+                <span id="hud-progress" class="meta-pill gold">P 1/15</span>
+                <span id="hud-mode-tag" class="meta-pill">🎯 Solo</span>
+                <div id="hud-crowns" class="crowns-strip" title="Coronas conseguidas"></div>
+            </div>
+            <button class="exit-mini-btn" onclick="leaveToMenu()">⬅ Salir</button>
+        </div>
+
+        <div id="scoreboard-strip"></div>
+
+        <div id="stage-area">
+            <!-- VISTA RULETA -->
+            <div id="wheel-view" class="hidden">
+                <div class="wheel-container">
+                    <div class="wheel-pointer"></div>
+                    <canvas id="wheel-canvas" width="540" height="540"></canvas>
+                    <button id="btn-spin-wheel" class="wheel-center-btn" onclick="requestWheelSpin()">GIRAR</button>
+                </div>
+                <div id="wheel-status">¡Toca GIRAR para sortear la categoría!</div>
+            </div>
+
+            <!-- SELECTOR DE CORONA -->
+            <div id="crown-picker" class="hidden">
+                <div style="font-size:2.1rem;">👑</div>
+                <h3 style="color:#fde047; font-size:1.15rem; margin:4px 0;">¡CAÍSTE EN CORONA!</h3>
+                <p id="crown-picker-sub" style="color:#cbd5e1; font-size:0.86rem;">Elige la categoría para ganar su medalla (¡Puntos x2!)</p>
+                <div id="crown-cat-grid" class="crown-cat-grid"></div>
+            </div>
+
+            <!-- VISTA PREGUNTA ACTIVA -->
+            <div id="question-view" class="hidden">
+                <div id="q-header-card" class="q-header-card">
+                    <div class="q-cat-row">
+                        <span id="q-cat-badge" class="q-cat-badge">🏛️ HISTORIA</span>
+                        <div class="q-timer-wrap">
+                            <span>⏱️</span>
+                            <span id="q-timer-text">20s</span>
+                        </div>
+                    </div>
+                    <div class="q-timer-bar-bg">
+                        <div id="q-timer-bar" class="q-timer-bar-fill"></div>
+                    </div>
+                    <div id="q-text" class="q-text">Cargando pregunta...</div>
+                </div>
+
+                <div id="options-grid" class="options-grid"></div>
+
+                <div id="lifelines-row" class="lifelines-row">
+                    <button id="life-5050" class="life-btn" onclick="useLifeline('5050')">💣 50/50 (x2)</button>
+                    <button id="life-time" class="life-btn" onclick="useLifeline('time')">❄️ +10s (x2)</button>
+                    <button id="life-special" class="life-btn" onclick="useLifeline('special')">🔄 Doble (x2)</button>
+                </div>
+
+                <div id="inline-wait-banner" class="inline-wait-banner hidden">
+                    <strong id="inline-wait-title">Aviso</strong>
+                    <small id="inline-wait-sub"></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL SUPERPUESTO CON BLUR PARA RESULTADO, PROTAGONISTA Y DATO CURIOSO -->
+        <div id="result-overlay" class="hidden">
+            <div id="result-modal-card" class="result-modal-card">
+                <div id="result-big-icon" class="result-big-icon">🎉</div>
+                <div id="result-headline" class="result-headline">¡RESPUESTA CORRECTA!</div>
+                <div id="result-who" class="result-who"></div>
+                <div id="result-choice-info" class="result-choice-info"></div>
+                <div id="result-pts-pill" class="result-pts-pill">+140 PTS</div>
+                <div id="result-early-fails" class="result-early-fails hidden"></div>
+                <div class="result-fact-box">
+                    <span class="result-fact-label">💡 ¿SABÍAS QUE...?</span>
+                    <div id="result-fact-text" class="result-fact-text"></div>
+                </div>
+                <div class="result-read-bar-bg">
+                    <div id="result-read-bar" class="result-read-bar-fill"></div>
+                </div>
+                <button id="btn-continue-next" class="arcade-btn green hidden" onclick="continueAfterResult()">➡ Continuar Ahora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA 4: FIN DE PARTIDA / PODIO -->
+    <div id="screen-gameover" class="screen hidden">
+        <div class="glass-panel">
+            <div id="gameover-icon" style="font-size: 3.3rem; margin-bottom: 4px;">🏆</div>
+            <h2 id="gameover-title" class="game-title" style="font-size: 1.4rem;">¡TRIVIA FINALIZADA!</h2>
+            <p id="gameover-sub" class="subtitle">Resumen de conocimientos y velocidad</p>
+
+            <div id="final-scoreboard" class="player-list" style="max-height: 270px;"></div>
+
+            <div class="row-group">
+                <button id="btn-rematch" class="arcade-btn green" onclick="requestRematch()">🔄 JUGAR DE NUEVO</button>
+                <button class="arcade-btn secondary" onclick="leaveToMenu()">🏠 Menú Principal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (window.ArcadeAudio) ArcadeAudio.bindUI();
+
+        // =========================================================================
+        // SINTETIZADOR DE AUDIO INMERSIVO: CLAVIJAS DE RULETA Y RELOJ TIC-TAC ACELERADO
+        // =========================================================================
+        const TriviaSFX = (function () {
+            let ctx = null;
+            function ensureCtx() {
+                if (!ctx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (AC) ctx = new AC();
+                }
+                if (ctx && ctx.state === 'suspended') {
+                    ctx.resume().catch(() => {});
+                }
+                return ctx;
+            }
+            return {
+                wheelTick(speedRatio = 0.5) {
+                    try {
+                        const c = ensureCtx();
+                        if (!c) return;
+                        const now = c.currentTime;
+                        const osc = c.createOscillator();
+                        const gain = c.createGain();
+                        osc.type = 'triangle';
+                        const f = 520 + Math.max(0, Math.min(1, speedRatio)) * 280;
+                        osc.frequency.setValueAtTime(f, now);
+                        osc.frequency.exponentialRampToValueAtTime(190, now + 0.032);
+                        gain.gain.setValueAtTime(0.16, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+                        osc.connect(gain);
+                        gain.connect(c.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.038);
+                    } catch (e) {}
+                },
+                clockTick(isTac = false, urgency = 0) {
+                    try {
+                        const c = ensureCtx();
+                        if (!c) return;
+                        const now = c.currentTime;
+                        const osc = c.createOscillator();
+                        const gain = c.createGain();
+                        osc.type = 'sine';
+                        const baseFreq = (isTac ? 760 : 980) + urgency * 220;
+                        osc.frequency.setValueAtTime(baseFreq, now);
+                        osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.65, now + 0.035);
+                        const vol = 0.08 + urgency * 0.08;
+                        gain.gain.setValueAtTime(vol, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+                        osc.connect(gain);
+                        gain.connect(c.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.05);
+                    } catch (e) {}
+                }
+            };
+        })();
+
+        // =========================================================================
+        // METADATOS DE CATEGORÍAS Y RULETA PREGUNTADOS
+        // =========================================================================
+        const CATEGORIES = {
+            historia:        { key: 'historia',        name: 'Historia',        icon: '🏛️', color: '#eab308', textDark: true },
+            geografia:       { key: 'geografia',       name: 'Geografía',       icon: '🌍', color: '#3b82f6', textDark: false },
+            ciencia:         { key: 'ciencia',         name: 'Ciencia',         icon: '🔬', color: '#22c55e', textDark: true },
+            arte:            { key: 'arte',            name: 'Arte y Lit.',     icon: '🎨', color: '#ef4444', textDark: false },
+            entretenimiento: { key: 'entretenimiento', name: 'Entretenimiento', icon: '🎬', color: '#ec4899', textDark: false },
+            deportes:        { key: 'deportes',        name: 'Deportes',        icon: '⚽', color: '#f97316', textDark: true }
+        };
+        const CAT_KEYS = Object.keys(CATEGORIES);
+
+        const WHEEL_SECTORS = [
+            { key: 'historia',        label: 'HISTORIA', color: '#eab308', icon: '🏛️' },
+            { key: 'geografia',       label: 'GEOGRAFÍA', color: '#3b82f6', icon: '🌍' },
+            { key: 'ciencia',         label: 'CIENCIA', color: '#22c55e', icon: '🔬' },
+            { key: 'corona',          label: 'CORONA', color: '#a855f7', icon: '👑' },
+            { key: 'arte',            label: 'ARTE', color: '#ef4444', icon: '🎨' },
+            { key: 'entretenimiento', label: 'OCIO', color: '#ec4899', icon: '🎬' },
+            { key: 'deportes',        label: 'DEPORTES', color: '#f97316', icon: '⚽' }
+        ];
+
+        const PALETTE = [
+            '#38bdf8', '#fbbf24', '#4ade80', '#f43f5e', '#c084fc', '#fb923c'
+        ];
+
+        // =========================================================================
+        // CARGA DE LOS 6 ARCHIVOS JSON SEPARADOS + RESPALDO OFFLINE + HISTORIAL SIN REPETICIÓN
+        // =========================================================================
+        let QUESTIONS_DB = { historia: [], geografia: [], ciencia: [], arte: [], entretenimiento: [], deportes: [] };
+        if (window.PREGUNTADOS_OFFLINE_DB) {
+            CAT_KEYS.forEach(cat => {
+                if (Array.isArray(window.PREGUNTADOS_OFFLINE_DB[cat])) {
+                    QUESTIONS_DB[cat] = window.PREGUNTADOS_OFFLINE_DB[cat];
+                }
+            });
+        }
+        let seenIds = new Set(JSON.parse(localStorage.getItem('preguntados_seen_v1') || '[]'));
+
+        async function loadAllQuestionBanks() {
+            const badge = document.getElementById('db-status-badge');
+            let loadedFromJson = 0;
+
+            await Promise.all(CAT_KEYS.map(async (cat) => {
+                try {
+                    const resp = await fetch(`./json_pregunta_${cat}.json`);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    const data = await resp.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        QUESTIONS_DB[cat] = data;
+                        loadedFromJson++;
+                    }
+                } catch (e) {
+                    // Fallback transparente desde window.PREGUNTADOS_OFFLINE_DB ya precargado
+                }
+            }));
+
+            const totalQ = CAT_KEYS.reduce((acc, k) => acc + QUESTIONS_DB[k].length, 0);
+            if (badge) {
+                badge.innerText = loadedFromJson === 6
+                    ? `📚 Banco cargado: ${totalQ} preguntas en 6 archivos JSON`
+                    : `📚 Banco listo: ${totalQ} preguntas en 6 categorías (Modo Local)`;
+            }
+        }
+        loadAllQuestionBanks();
+
+        function saveSeenIds() {
+            try {
+                localStorage.setItem('preguntados_seen_v1', JSON.stringify(Array.from(seenIds)));
+            } catch (e) { }
+        }
+
+        // =========================================================================
+        // ESTADO GLOBAL, SALA Y CONECTIVIDAD P2P UNIVERSAL (p2p.js)
+        // =========================================================================
+        let myNick = localStorage.getItem('preg_nick') || ('Trivia' + Math.floor(10 + Math.random() * 89));
+        let myColor = localStorage.getItem('preg_color') || PALETTE[0];
+        document.getElementById('input-nick').value = myNick;
+
+        function renderColorPicker() {
+            const box = document.getElementById('menu-colors');
+            box.innerHTML = '';
+            PALETTE.forEach(hex => {
+                const d = document.createElement('div');
+                d.className = 'color-swatch' + (hex === myColor ? ' active' : '');
+                d.style.background = hex;
+                d.style.color = hex;
+                d.onclick = () => {
+                    myColor = hex;
+                    localStorage.setItem('preg_color', hex);
+                    renderColorPicker();
+                };
+                box.appendChild(d);
+            });
+        }
+        renderColorPicker();
+
+        let currentMode = 'solo'; // 'solo' | 'coop' | 'competitive'
+        let isOnlineRoom = false;
+        let isHost = true;
+        let peer = null;
+        let myId = 'local_p1';
+        let clientConns = {};
+        let hostConn = null;
+
+        let matchConfig = {
+            format: 'q_15',
+            wheelMode: 'wheel',
+            bots: 2,
+            diff: 'normal'
+        };
+
+        let lobbyRoster = [];
+        let gameActive = false;
+
+        function showScreen(screenId) {
+            ['screen-menu', 'screen-lobby', 'screen-gameover'].forEach(id => {
+                document.getElementById(id).classList.toggle('hidden', id !== screenId);
+            });
+            const backBtn = document.getElementById('arcade-back-btn');
+            if (backBtn) backBtn.classList.toggle('hidden', screenId !== 'screen-menu');
+        }
+
+        function configureFormatDropdownForMode(mode) {
+            const sel = document.getElementById('sel-format');
+            const timeOpts = ['t_300', 't_600', 't_900'];
+            Array.from(sel.options).forEach(opt => {
+                const isTimeOpt = timeOpts.includes(opt.value);
+                // Solo Competitivo permite modalidad por 5, 10 o 15 minutos además de 10-20 preguntas
+                opt.hidden = isTimeOpt && mode !== 'competitive';
+                opt.disabled = isTimeOpt && mode !== 'competitive';
+            });
+            if (mode !== 'competitive' && timeOpts.includes(sel.value)) {
+                sel.value = 'q_15';
+            }
+        }
+
+        function onFormatChange() {
+            syncLobbyConfig();
+        }
+
+        function openLobby(mode) {
+            myNick = document.getElementById('input-nick').value.trim() || myNick;
+            localStorage.setItem('preg_nick', myNick);
+            currentMode = mode;
+            isHost = true;
+            myId = 'local_p1';
+            configureFormatDropdownForMode(mode);
+
+            document.getElementById('host-config-panel').style.pointerEvents = 'auto';
+            document.getElementById('host-config-panel').style.opacity = '1';
+            document.getElementById('btn-start-match').classList.remove('hidden');
+
+            const botsBox = document.getElementById('cfg-bots-box');
+            const diffBox = document.getElementById('cfg-diff-box');
+
+            if (mode === 'solo') {
+                isOnlineRoom = false;
+                document.getElementById('lobby-title').innerText = '🎯 MODO SOLITARIO';
+                document.getElementById('lobby-sub').innerText = 'Elige cuántas preguntas jugar (10, 15, 20 o aleatorio entre 10 y 20)';
+                document.getElementById('room-code-box').classList.add('hidden');
+                botsBox.classList.add('hidden');
+                diffBox.classList.add('hidden');
+                document.getElementById('sel-bots').value = '0';
+                lobbyRoster = [{ id: myId, nick: myNick, color: myColor, isBot: false }];
+                renderLobbyPlayers();
+                showScreen('screen-lobby');
+            } else if (mode === 'coop') {
+                isOnlineRoom = true;
+                document.getElementById('lobby-title').innerText = '🤝 MODO COOPERATIVO (EQUIPO)';
+                document.getElementById('lobby-sub').innerText = 'Todos ven la misma pregunta desde su móvil; cuando responde uno, responde todo el equipo';
+                botsBox.classList.add('hidden');
+                diffBox.classList.add('hidden');
+                document.getElementById('sel-bots').value = '0';
+                initOnlineHost();
+                showScreen('screen-lobby');
+            } else if (mode === 'competitive') {
+                isOnlineRoom = true;
+                document.getElementById('lobby-title').innerText = '⚡ COMPETITIVO DE VELOCIDAD';
+                document.getElementById('lobby-sub').innerText = 'Misma pregunta para todos: ¡el que responda antes se la lleva! (Amigos + Bots opcionales)';
+                botsBox.classList.remove('hidden');
+                diffBox.classList.remove('hidden');
+                document.getElementById('sel-bots').value = '2';
+                initOnlineHost();
+                showScreen('screen-lobby');
+            }
+        }
+
+        function initOnlineHost() {
+            clientConns = {};
+            document.getElementById('room-code-box').classList.remove('hidden');
+            document.getElementById('room-code-text').innerText = '....';
+
+            ArcadeP2P.createHost({
+                game: 'PREGUNTADOS',
+                peer: peer,
+                onPeerCreated: (p) => { peer = p; },
+                onOpen: (code) => {
+                    myId = code;
+                    lobbyRoster = [{ id: myId, nick: myNick, color: myColor, isBot: false }];
+                    document.getElementById('room-code-text').innerText = code;
+                    rebuildRoster();
+                },
+                onConnection: (conn) => {
+                    clientConns[conn.peer] = conn;
+                },
+                onData: (data, conn) => handleHostData(conn, data),
+                onClose: (conn) => {
+                    delete clientConns[conn.peer];
+                    lobbyRoster = lobbyRoster.filter(p => p.id !== conn.peer);
+                    renderLobbyPlayers();
+                    broadcastLobby();
+                },
+                onError: (err, msg) => alert('Error P2P: ' + msg)
+            });
+        }
+
+        function joinOnlineRoom() {
+            const code = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (code.length < 3) return alert('Ingresa un código de 4 caracteres.');
+            myNick = document.getElementById('input-nick').value.trim() || myNick;
+            localStorage.setItem('preg_nick', myNick);
+
+            isOnlineRoom = true;
+            isHost = false;
+
+            ArcadeP2P.joinRoom(code, {
+                game: 'PREGUNTADOS',
+                peer: peer,
+                onPeerCreated: (p, c) => {
+                    peer = p;
+                    if (c) hostConn = c;
+                },
+                onOpen: (conn, assignedId) => {
+                    myId = assignedId;
+                    hostConn = conn;
+                    showScreen('screen-lobby');
+                    document.getElementById('lobby-title').innerText = `🌐 SALA ${code}`;
+                    document.getElementById('lobby-sub').innerText = 'Esperando a que el anfitrión inicie la trivia...';
+                    document.getElementById('room-code-box').classList.remove('hidden');
+                    document.getElementById('room-code-text').innerText = code;
+                    document.getElementById('host-config-panel').style.pointerEvents = 'none';
+                    document.getElementById('host-config-panel').style.opacity = '0.6';
+                    document.getElementById('btn-start-match').classList.add('hidden');
+                    hostConn.send({ type: 'JOIN', nick: myNick, color: myColor });
+                },
+                onData: (data) => handleClientData(data),
+                onClose: () => {
+                    alert('El anfitrión cerró la sala.');
+                    leaveToMenu();
+                },
+                onError: (err, msg) => alert(msg)
+            });
+        }
+
+        function copyRoomCode() {
+            const code = document.getElementById('room-code-text').innerText;
+            if (navigator.clipboard && code !== '....') {
+                navigator.clipboard.writeText(code);
+            }
+        }
+
+        function syncLobbyConfig() {
+            matchConfig.format = document.getElementById('sel-format').value;
+            matchConfig.wheelMode = document.getElementById('sel-wheel').value;
+            matchConfig.bots = parseInt(document.getElementById('sel-bots').value || '0', 10);
+            matchConfig.diff = document.getElementById('sel-diff').value || 'normal';
+            broadcastLobby();
+        }
+
+        function rebuildRoster() {
+            if (!isHost) return;
+            syncLobbyConfig();
+            const humans = lobbyRoster.filter(p => !p.isBot);
+            if (humans.length === 0) {
+                humans.push({ id: myId, nick: myNick, color: myColor, isBot: false });
+            }
+            lobbyRoster = [...humans];
+
+            if (currentMode === 'competitive') {
+                const botCount = parseInt(document.getElementById('sel-bots').value || '0', 10);
+                const botNames = ['🤖 Einstein-IA', '🤖 AteneaBot', '🤖 Turing-IA'];
+                for (let i = 0; i < botCount && lobbyRoster.length < 8; i++) {
+                    const used = lobbyRoster.map(p => p.color);
+                    const free = PALETTE.find(c => !used.includes(c)) || PALETTE[(lobbyRoster.length + i) % PALETTE.length];
+                    lobbyRoster.push({
+                        id: 'bot_' + (i + 1),
+                        nick: botNames[i % botNames.length],
+                        color: free,
+                        isBot: true
+                    });
+                }
+            }
+            renderLobbyPlayers();
+            broadcastLobby();
+        }
+
+        function renderLobbyPlayers() {
+            const box = document.getElementById('lobby-players');
+            box.innerHTML = '';
+            lobbyRoster.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'player-row';
+                row.style.borderLeft = `4px solid ${p.color}`;
+                row.innerHTML = `
+                    <span>${p.nick} ${p.id === myId ? '(Tú)' : ''}</span>
+                    <span style="color:#94a3b8;font-size:0.8rem;">${p.isBot ? 'Bot IA' : 'Jugador'}</span>
+                `;
+                box.appendChild(row);
+            });
+        }
+
+        function broadcastLobby() {
+            if (!isHost || !isOnlineRoom) return;
+            Object.values(clientConns).forEach(c => {
+                if (c.open) c.send({ type: 'LOBBY_SYNC', mode: currentMode, roster: lobbyRoster, config: matchConfig });
+            });
+        }
+
+        function hostBroadcast(msg) {
+            if (!isHost || !isOnlineRoom) return;
+            Object.values(clientConns).forEach(c => {
+                if (c.open) c.send(msg);
+            });
+        }
+
+        function leaveToMenu() {
+            gameActive = false;
+            clearTimers();
+            if (peer) {
+                try { peer.destroy(); } catch (e) {}
+                peer = null;
+            }
+            clientConns = {};
+            hostConn = null;
+            document.getElementById('game-shell').classList.add('hidden');
+            showScreen('screen-menu');
+        }
+
+        // =========================================================================
+        // MOTOR PRINCIPAL DE LA PARTIDA (SOLO, COOPERATIVO EQUIPO, COMPETITIVO)
+        // =========================================================================
+        let matchState = {
+            durationType: 'questions', // 'questions' | 'time'
+            targetQuestions: 15,
+            totalSeconds: 0,
+            globalTimeLeft: 0,
+            questionIndex: 0,
+            matchUsedIds: new Set(),
+            sectorCounts: { historia: 0, geografia: 0, ciencia: 0, arte: 0, entretenimiento: 0, deportes: 0, corona: 0 },
+            lastSectorKey: null,
+            players: {},
+            coop: { score: 0, streak: 0, correct: 0, wrong: 0, crowns: [] },
+            currentQ: null,
+            currentCat: 'historia',
+            isCrownQ: false,
+            qResolved: false,
+            qTimeLeft: 20,
+            qStartMs: 0,
+            wrongAttemptsThisQ: [],
+            eliminatedOpts: [],
+            doubleArmedLocal: false,
+            shieldArmedLocal: false,
+            lifelines: { '5050': 2, 'time': 2, 'special': 2 }
+        };
+
+        let wheelAngle = 0;
+        let wheelSpinning = false;
+        let questionInterval = null;
+        let globalClockInterval = null;
+        let botTimers = [];
+        let crownAutoTimer = null;
+        let nextStepTimer = null;
+        let resultReadInterval = null;
+
+        function clearTimers() {
+            clearInterval(questionInterval);
+            clearInterval(globalClockInterval);
+            clearInterval(resultReadInterval);
+            clearTimeout(crownAutoTimer);
+            clearTimeout(nextStepTimer);
+            botTimers.forEach(t => clearTimeout(t));
+            botTimers = [];
+        }
+
+        function drawWheel(angleRad) {
+            const canvas = document.getElementById('wheel-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            const r = w / 2 - 10;
+            const slice = (Math.PI * 2) / WHEEL_SECTORS.length;
+
+            ctx.clearRect(0, 0, w, h);
+
+            WHEEL_SECTORS.forEach((sec, idx) => {
+                const startA = angleRad + idx * slice - Math.PI / 2;
+                const endA = startA + slice;
+                const midA = startA + slice / 2;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, startA, endA);
+                ctx.closePath();
+                ctx.fillStyle = sec.color;
+                ctx.fill();
+                ctx.strokeStyle = '#070b18';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                // Icono y texto nítido con borde oscuro y orientación siempre legible (sin quedar de cabeza)
+                ctx.save();
+                ctx.translate(cx, cy);
+                const flipLeft = Math.cos(midA) < 0;
+                ctx.rotate(flipLeft ? midA + Math.PI : midA);
+                const sign = flipLeft ? -1 : 1;
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                ctx.font = '38px sans-serif';
+                ctx.fillText(sec.icon, sign * r * 0.72, 0);
+
+                ctx.font = '900 17px Outfit, sans-serif';
+                ctx.lineJoin = 'round';
+                ctx.strokeStyle = 'rgba(7, 11, 24, 0.92)';
+                ctx.lineWidth = 4.5;
+                ctx.strokeText(sec.label, sign * r * 0.44, 0);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(sec.label, sign * r * 0.44, 0);
+                ctx.restore();
+            });
+
+            // Clavijas metálicas alrededor de la ruleta entre cada sector
+            WHEEL_SECTORS.forEach((_, idx) => {
+                const pegA = angleRad + idx * slice - Math.PI / 2;
+                const px = cx + Math.cos(pegA) * (r - 6);
+                const py = cy + Math.sin(pegA) * (r - 6);
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.arc(px, py, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#070b18';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+
+            // Anillo exterior neón
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Ruleta inteligente con ponderación dinámica para evitar repeticiones seguidas de una misma categoría
+        function pickSmartWeightedWheelSector(includeCorona = true) {
+            const pool = includeCorona ? WHEEL_SECTORS : WHEEL_SECTORS.filter(s => s.key !== 'corona');
+            const catCounts = CAT_KEYS.map(k => matchState.sectorCounts[k] || 0);
+            const minCount = Math.min(...catCounts);
+
+            let totalWeight = 0;
+            const weighted = pool.map(sec => {
+                const count = matchState.sectorCounts[sec.key] || 0;
+                const baseWeight = sec.key === 'corona' ? 0.75 : 1.0;
+                const deviationFactor = Math.exp(-1.7 * Math.max(0, count - minCount));
+                const antiRepeat = (sec.key === matchState.lastSectorKey) ? 0.06 : 1.0;
+                const w = baseWeight * deviationFactor * antiRepeat;
+                totalWeight += w;
+                return { sec, w };
+            });
+
+            let roll = Math.random() * totalWeight;
+            let chosen = weighted[0].sec;
+            for (const entry of weighted) {
+                roll -= entry.w;
+                if (roll <= 0) {
+                    chosen = entry.sec;
+                    break;
+                }
+            }
+
+            matchState.sectorCounts[chosen.key] = (matchState.sectorCounts[chosen.key] || 0) + 1;
+            matchState.lastSectorKey = chosen.key;
+            return chosen;
+        }
+
+        function pickUniqueQuestion(catKey) {
+            const list = QUESTIONS_DB[catKey] || [];
+            if (list.length === 0) return null;
+
+            let candidates = list.filter(q => !matchState.matchUsedIds.has(q.id) && !seenIds.has(q.id));
+            if (candidates.length === 0) {
+                // Reiniciar historial visto de esta categoría una vez completadas las 120
+                list.forEach(q => seenIds.delete(q.id));
+                saveSeenIds();
+                candidates = list.filter(q => !matchState.matchUsedIds.has(q.id));
+            }
+            if (candidates.length === 0) {
+                list.forEach(q => matchState.matchUsedIds.delete(q.id));
+                candidates = list;
+            }
+
+            const picked = candidates[Math.floor(Math.random() * candidates.length)];
+            matchState.matchUsedIds.add(picked.id);
+            seenIds.add(picked.id);
+            saveSeenIds();
+            return picked;
+        }
+
+        function hostStartMatch() {
+            if (!isHost) return;
+            syncLobbyConfig();
+
+            let durationType = 'questions';
+            let targetQuestions = 15;
+            let totalSeconds = 0;
+
+            if (matchConfig.format === 'q_10') targetQuestions = 10;
+            else if (matchConfig.format === 'q_15') targetQuestions = 15;
+            else if (matchConfig.format === 'q_20') targetQuestions = 20;
+            else if (matchConfig.format === 'q_rand') {
+                // Número aleatorio entero entre 10 y 20
+                targetQuestions = 10 + Math.floor(Math.random() * 11);
+            } else if (matchConfig.format.startsWith('t_')) {
+                durationType = 'time';
+                totalSeconds = parseInt(matchConfig.format.split('_')[1], 10);
+                targetQuestions = 9999;
+            }
+
+            const initPayload = {
+                type: 'START_MATCH',
+                mode: currentMode,
+                config: matchConfig,
+                roster: lobbyRoster,
+                durationType,
+                targetQuestions,
+                totalSeconds
+            };
+
+            if (isOnlineRoom) hostBroadcast(initPayload);
+            startMatchLocal(initPayload);
+        }
+
+        function requestRematch() {
+            if (isHost) hostStartMatch();
+        }
+
+        function startMatchLocal(payload) {
+            clearTimers();
+            currentMode = payload.mode;
+            matchConfig = payload.config;
+            lobbyRoster = payload.roster;
+
+            matchState.durationType = payload.durationType;
+            matchState.targetQuestions = payload.targetQuestions;
+            matchState.totalSeconds = payload.totalSeconds;
+            matchState.globalTimeLeft = payload.totalSeconds;
+            matchState.questionIndex = 0;
+            matchState.matchUsedIds = new Set();
+            matchState.sectorCounts = { historia: 0, geografia: 0, ciencia: 0, arte: 0, entretenimiento: 0, deportes: 0, corona: 0 };
+            matchState.lastSectorKey = null;
+            matchState.coop = { score: 0, streak: 0, correct: 0, wrong: 0, crowns: [] };
+            matchState.lifelines = { '5050': 2, 'time': 2, 'special': 2 };
+
+            matchState.players = {};
+            lobbyRoster.forEach(p => {
+                matchState.players[p.id] = {
+                    id: p.id,
+                    nick: p.nick,
+                    color: p.color,
+                    isBot: !!p.isBot,
+                    score: 0,
+                    streak: 0,
+                    correct: 0,
+                    wrong: 0,
+                    crowns: [],
+                    attemptedThisQ: false
+                };
+            });
+
+            showScreen(null);
+            document.getElementById('game-shell').classList.remove('hidden');
+            gameActive = true;
+
+            if (matchState.durationType === 'time' && isHost) {
+                globalClockInterval = setInterval(() => {
+                    if (!gameActive) return;
+                    matchState.globalTimeLeft--;
+                    updateProgressHUD();
+                    if (isOnlineRoom && matchState.globalTimeLeft % 5 === 0) {
+                        hostBroadcast({ type: 'CLOCK_SYNC', globalTimeLeft: matchState.globalTimeLeft });
+                    }
+                    if (matchState.globalTimeLeft <= 0) {
+                        clearInterval(globalClockInterval);
+                        hostEndMatch();
+                    }
+                }, 1000);
+            } else if (matchState.durationType === 'time' && !isHost) {
+                globalClockInterval = setInterval(() => {
+                    if (!gameActive) return;
+                    if (matchState.globalTimeLeft > 0) matchState.globalTimeLeft--;
+                    updateProgressHUD();
+                }, 1000);
+            }
+
+            updateModeTagHUD();
+            updateCrownsHUD();
+            updateScoreboardStrip();
+            updateProgressHUD();
+            updateLifelineButtons();
+
+            prepareNextTurnOrSpin();
+        }
+
+        function updateModeTagHUD() {
+            const tag = document.getElementById('hud-mode-tag');
+            if (currentMode === 'solo') tag.innerText = '🎯 Solitario';
+            else if (currentMode === 'coop') tag.innerText = '🤝 Cooperativo';
+            else tag.innerText = '⚡ Velocidad';
+        }
+
+        function updateProgressHUD() {
+            const el = document.getElementById('hud-progress');
+            if (!el) return;
+            if (matchState.durationType === 'time') {
+                const s = Math.max(0, matchState.globalTimeLeft);
+                const m = String(Math.floor(s / 60)).padStart(2, '0');
+                const sec = String(s % 60).padStart(2, '0');
+                el.innerText = `⏱️ ${m}:${sec} • P${matchState.questionIndex}`;
+                el.classList.toggle('danger', s <= 30);
+            } else {
+                const shownIdx = Math.min(matchState.targetQuestions, Math.max(1, matchState.questionIndex));
+                el.innerText = `P ${shownIdx}/${matchState.targetQuestions}`;
+                el.classList.remove('danger');
+            }
+        }
+
+        function updateCrownsHUD() {
+            const box = document.getElementById('hud-crowns');
+            if (!box) return;
+            let earned = [];
+            if (currentMode === 'coop') {
+                earned = matchState.coop.crowns;
+            } else if (matchState.players[myId]) {
+                earned = matchState.players[myId].crowns;
+            }
+            box.innerHTML = '';
+            CAT_KEYS.forEach(k => {
+                const cat = CATEGORIES[k];
+                const has = earned.includes(k);
+                const span = document.createElement('span');
+                span.className = 'crown-badge' + (has ? ' earned' : '');
+                span.style.color = cat.color;
+                span.style.borderColor = has ? cat.color : 'rgba(255,255,255,0.12)';
+                span.title = cat.name;
+                span.innerText = cat.icon;
+                box.appendChild(span);
+            });
+        }
+
+        function updateScoreboardStrip() {
+            const strip = document.getElementById('scoreboard-strip');
+            if (!strip) return;
+            strip.innerHTML = '';
+
+            if (currentMode === 'coop') {
+                const teamPill = document.createElement('div');
+                teamPill.className = 'p-chip is-me';
+                teamPill.innerHTML = `🤝 <span>Equipo:</span> <strong style="color:#fbbf24;">${matchState.coop.score} pts</strong> <span>🔥${matchState.coop.streak}</span>`;
+                strip.appendChild(teamPill);
+
+                lobbyRoster.forEach(p => {
+                    const m = document.createElement('div');
+                    m.className = 'p-chip';
+                    m.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block;"></span><span>${p.nick}</span>`;
+                    strip.appendChild(m);
+                });
+                return;
+            }
+
+            const sorted = Object.values(matchState.players).sort((a, b) => b.score - a.score);
+            sorted.forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = 'p-chip'
+                    + (p.id === myId ? ' is-me' : '')
+                    + (p.attemptedThisQ && !matchState.qResolved ? ' locked-out' : '')
+                    + (p.wonLastQ ? ' winner-q' : '');
+                div.innerHTML = `
+                    <span style="color:#94a3b8;font-size:0.7rem;">#${idx + 1}</span>
+                    <span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block;"></span>
+                    <span>${p.nick}</span>
+                    <strong style="color:#fbbf24;">${p.score}</strong>
+                    ${p.streak >= 2 ? '<span>🔥</span>' : ''}
+                `;
+                strip.appendChild(div);
+            });
+        }
+
+        function setStageView(viewName) {
+            hideResultOverlay();
+            ['wheel-view', 'crown-picker', 'question-view'].forEach(id => {
+                document.getElementById(id).classList.toggle('hidden', id !== viewName);
+            });
+        }
+
+        function prepareNextTurnOrSpin() {
+            if (!gameActive) return;
+            hideResultOverlay();
+
+            if (matchState.durationType === 'questions' && matchState.questionIndex >= matchState.targetQuestions) {
+                if (isHost) hostEndMatch();
+                return;
+            }
+            if (matchState.durationType === 'time' && matchState.globalTimeLeft <= 0) {
+                if (isHost) hostEndMatch();
+                return;
+            }
+
+            if (matchConfig.wheelMode === 'fast') {
+                // Sin ruleta: usa ponderación inteligente para variar categorías siempre
+                if (!isHost) return;
+                const isCrown = (matchState.questionIndex > 0 && (matchState.questionIndex + 1) % 5 === 0);
+                const chosenSec = pickSmartWeightedWheelSector(false);
+                hostLaunchQuestion(chosenSec.key, isCrown);
+                return;
+            }
+
+            setStageView('wheel-view');
+            drawWheel(wheelAngle);
+
+            const spinBtn = document.getElementById('btn-spin-wheel');
+            const status = document.getElementById('wheel-status');
+
+            if (isHost) {
+                spinBtn.disabled = false;
+                spinBtn.style.opacity = '1';
+                status.innerText = '¡Toca GIRAR para sortear la categoría!';
+                // En Competitivo o si prefieren ritmo ágil, auto-gira suavemente tras 1.2s si no presionan antes
+                if (currentMode === 'competitive') {
+                    status.innerText = '🎡 Girando ruleta para todos...';
+                    nextStepTimer = setTimeout(() => {
+                        if (gameActive && !wheelSpinning) requestWheelSpin();
+                    }, 900);
+                }
+            } else {
+                spinBtn.disabled = true;
+                spinBtn.style.opacity = '0.5';
+                status.innerText = '⏳ Esperando giro de ruleta...';
+            }
+        }
+
+        function requestWheelSpin() {
+            if (!isHost || wheelSpinning || !gameActive) return;
+            clearTimeout(nextStepTimer);
+
+            const chosenSec = pickSmartWeightedWheelSector(true);
+            const sectorIdx = WHEEL_SECTORS.findIndex(s => s.key === chosenSec.key);
+            const sliceDeg = 360 / WHEEL_SECTORS.length;
+            const extraSpins = 4 * 360;
+            const targetAngleDeg = extraSpins - (sectorIdx * sliceDeg) - (sliceDeg / 2) + ((Math.random() - 0.5) * sliceDeg * 0.42);
+            const targetRad = (targetAngleDeg * Math.PI) / 180;
+
+            const spinPayload = {
+                type: 'WHEEL_SPIN',
+                sectorIdx,
+                sectorKey: chosenSec.key,
+                targetRad
+            };
+            if (isOnlineRoom) hostBroadcast(spinPayload);
+            animateWheelSpin(spinPayload);
+        }
+
+        function animateWheelSpin(payload) {
+            wheelSpinning = true;
+            setStageView('wheel-view');
+            document.getElementById('btn-spin-wheel').disabled = true;
+            document.getElementById('wheel-status').innerText = '🎡 Girando la ruleta...';
+
+            const sliceRad = (Math.PI * 2) / WHEEL_SECTORS.length;
+            const startA = wheelAngle % (Math.PI * 2);
+            const endA = payload.targetRad + Math.PI * 6;
+            const startTime = performance.now();
+            const dur = 1950;
+            let lastPeg = Math.floor(startA / sliceRad);
+
+            function tick(now) {
+                const t = Math.min(1, (now - startTime) / dur);
+                const ease = 1 - Math.pow(1 - t, 3);
+                wheelAngle = startA + (endA - startA) * ease;
+                drawWheel(wheelAngle);
+
+                // Sonido realista de clavija pasando por la aguja superior mientras desacelera
+                const currentPeg = Math.floor(wheelAngle / sliceRad);
+                if (currentPeg !== lastPeg) {
+                    lastPeg = currentPeg;
+                    TriviaSFX.wheelTick(1 - t);
+                }
+
+                if (t < 1 && gameActive) {
+                    requestAnimationFrame(tick);
+                } else {
+                    wheelSpinning = false;
+                    const sec = WHEEL_SECTORS[payload.sectorIdx] || WHEEL_SECTORS[0];
+                    document.getElementById('wheel-status').innerText = `${sec.icon} ¡Salió ${sec.label}!`;
+                    if (window.ArcadeAudio) ArcadeAudio.notification();
+
+                    if (isHost) {
+                        nextStepTimer = setTimeout(() => {
+                            if (!gameActive) return;
+                            if (sec.key === 'corona') {
+                                hostOpenCrownPicker();
+                            } else {
+                                hostLaunchQuestion(sec.key, false);
+                            }
+                        }, 650);
+                    }
+                }
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function hostOpenCrownPicker() {
+            if (!isHost) return;
+            // En Competitivo rápido, si cae en Corona, auto-elige o abre 5s al jugador/host para no frenar el ritmo
+            const payload = { type: 'CROWN_PICK_OPEN' };
+            if (isOnlineRoom) hostBroadcast(payload);
+            showCrownPickerUI();
+
+            clearTimeout(crownAutoTimer);
+            crownAutoTimer = setTimeout(() => {
+                if (gameActive) {
+                    const randCat = CAT_KEYS[Math.floor(Math.random() * CAT_KEYS.length)];
+                    hostLaunchQuestion(randCat, true);
+                }
+            }, currentMode === 'competitive' ? 5000 : 12000);
+        }
+
+        function showCrownPickerUI() {
+            setStageView('crown-picker');
+            const grid = document.getElementById('crown-cat-grid');
+            grid.innerHTML = '';
+
+            let myCrowns = currentMode === 'coop' ? matchState.coop.crowns : (matchState.players[myId]?.crowns || []);
+            const canPick = (currentMode === 'solo' || currentMode === 'coop' || isHost);
+
+            document.getElementById('crown-picker-sub').innerText = canPick
+                ? 'Elige una categoría para disputar una Pregunta Corona (Puntos x2)'
+                : '👑 ¡Pregunta Corona x2! El anfitrión está eligiendo categoría...';
+
+            CAT_KEYS.forEach(k => {
+                const cat = CATEGORIES[k];
+                const hasIt = myCrowns.includes(k);
+                const btn = document.createElement('button');
+                btn.className = 'crown-cat-btn';
+                btn.style.color = cat.color;
+                btn.disabled = !canPick;
+                btn.innerHTML = `<span>${cat.icon}</span><span>${cat.name}</span>${hasIt ? '<small>👑</small>' : ''}`;
+                btn.onclick = () => {
+                    clearTimeout(crownAutoTimer);
+                    if (isHost) {
+                        hostLaunchQuestion(k, true);
+                    } else if (currentMode === 'coop' && hostConn && hostConn.open) {
+                        hostConn.send({ type: 'COOP_CROWN_PICK', catKey: k });
+                    }
+                };
+                grid.appendChild(btn);
+            });
+        }
+
+        function hostLaunchQuestion(catKey, isCrown) {
+            if (!isHost || !gameActive) return;
+            clearTimersOnQuestion();
+
+            const qObj = pickUniqueQuestion(catKey);
+            if (!qObj) return hostEndMatch();
+
+            matchState.questionIndex++;
+            const payload = {
+                type: 'SHOW_QUESTION',
+                questionIndex: matchState.questionIndex,
+                globalTimeLeft: matchState.globalTimeLeft,
+                catKey,
+                isCrown,
+                qData: qObj,
+                qDuration: 20
+            };
+
+            if (isOnlineRoom) hostBroadcast(payload);
+            displayQuestionLocal(payload);
+        }
+
+        function clearTimersOnQuestion() {
+            clearInterval(questionInterval);
+            clearInterval(resultReadInterval);
+            clearTimeout(crownAutoTimer);
+            clearTimeout(nextStepTimer);
+            botTimers.forEach(t => clearTimeout(t));
+            botTimers = [];
+        }
+
+        function displayQuestionLocal(payload) {
+            clearTimersOnQuestion();
+            setStageView('question-view');
+
+            matchState.questionIndex = payload.questionIndex;
+            matchState.currentCat = payload.catKey;
+            matchState.isCrownQ = !!payload.isCrown;
+            matchState.currentQ = payload.qData;
+            matchState.qResolved = false;
+            matchState.qTimeLeft = payload.qDuration || 20;
+            matchState.qStartMs = performance.now();
+            matchState.wrongAttemptsThisQ = [];
+            matchState.eliminatedOpts = [];
+            matchState.doubleArmedLocal = false;
+            matchState.shieldArmedLocal = false;
+
+            Object.values(matchState.players).forEach(p => {
+                p.attemptedThisQ = false;
+                p.wonLastQ = false;
+            });
+
+            updateProgressHUD();
+            updateScoreboardStrip();
+            updateLifelineButtons();
+
+            const cat = CATEGORIES[payload.catKey] || CATEGORIES.historia;
+            const headerCard = document.getElementById('q-header-card');
+            headerCard.style.borderColor = payload.isCrown ? '#fbbf24' : cat.color;
+
+            const catBadge = document.getElementById('q-cat-badge');
+            catBadge.style.background = payload.isCrown ? 'linear-gradient(90deg, #fbbf24, #f59e0b)' : cat.color;
+            catBadge.style.color = (cat.textDark || payload.isCrown) ? '#0b0f19' : '#ffffff';
+            catBadge.innerText = payload.isCrown
+                ? `👑 CORONA • ${cat.icon} ${cat.name.toUpperCase()} (x2)`
+                : `${cat.icon} ${cat.name.toUpperCase()}`;
+
+            document.getElementById('q-text').innerText = payload.qData.q;
+            document.getElementById('inline-wait-banner').classList.add('hidden');
+
+            const optGrid = document.getElementById('options-grid');
+            optGrid.innerHTML = '';
+            const letters = ['A', 'B', 'C', 'D'];
+            payload.qData.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'opt-btn';
+                btn.id = `opt-btn-${idx}`;
+                btn.innerHTML = `<span class="opt-letter">${letters[idx]}</span><span>${optText}</span>`;
+                btn.onclick = () => onOptionClick(idx);
+                optGrid.appendChild(btn);
+            });
+
+            // Cronómetro de pregunta (20s) + Reloj TIC-TAC dinámico que acelera según la presión del tiempo
+            const totalDur = payload.qDuration || 20;
+            let tickSoundAccum = 0.85;
+            let isTac = false;
+            updateQuestionTimerUI(totalDur);
+
+            questionInterval = setInterval(() => {
+                if (!gameActive || matchState.qResolved) {
+                    clearInterval(questionInterval);
+                    return;
+                }
+                matchState.qTimeLeft = Math.max(0, matchState.qTimeLeft - 0.1);
+                updateQuestionTimerUI(totalDur);
+
+                // Frecuencia del Tic-Tac según urgencia restante
+                let tickRateSec = 1.0;
+                let urgency = 0.1;
+                if (matchState.qTimeLeft <= 3.5) {
+                    tickRateSec = 0.2;
+                    urgency = 1.0;
+                } else if (matchState.qTimeLeft <= 7) {
+                    tickRateSec = 0.35;
+                    urgency = 0.65;
+                } else if (matchState.qTimeLeft <= 12) {
+                    tickRateSec = 0.6;
+                    urgency = 0.35;
+                }
+
+                tickSoundAccum += 0.1;
+                if (tickSoundAccum >= tickRateSec && matchState.qTimeLeft > 0) {
+                    tickSoundAccum = 0;
+                    isTac = !isTac;
+                    TriviaSFX.clockTick(isTac, urgency);
+                }
+
+                if (matchState.qTimeLeft <= 0) {
+                    clearInterval(questionInterval);
+                    if (isHost) hostHandleQuestionTimeout();
+                }
+            }, 100);
+
+            // Programar Bots IA si estamos en Competitivo y somos Host
+            if (isHost && currentMode === 'competitive') {
+                scheduleBotsForCurrentQuestion();
+            }
+        }
+
+        function updateQuestionTimerUI(totalDur) {
+            const txt = document.getElementById('q-timer-text');
+            const bar = document.getElementById('q-timer-bar');
+            if (txt) txt.innerText = `${Math.ceil(matchState.qTimeLeft)}s`;
+            if (bar) bar.style.width = `${Math.max(0, Math.min(100, (matchState.qTimeLeft / totalDur) * 100))}%`;
+        }
+
+        // =========================================================================
+        // COMODINES (50/50, +10s, DOBLE OPORTUNIDAD / ESCUDO)
+        // =========================================================================
+        function updateLifelineButtons() {
+            const b50 = document.getElementById('life-5050');
+            const bTime = document.getElementById('life-time');
+            const bSpec = document.getElementById('life-special');
+
+            b50.innerText = `💣 50/50 (${matchState.lifelines['5050']})`;
+            b50.disabled = matchState.lifelines['5050'] <= 0 || matchState.qResolved;
+
+            bTime.innerText = `❄️ +10s (${matchState.lifelines['time']})`;
+            bTime.disabled = matchState.lifelines['time'] <= 0 || matchState.qResolved;
+
+            if (currentMode === 'competitive') {
+                bSpec.innerText = matchState.shieldArmedLocal
+                    ? `🛡️ Escudo ACTIVO`
+                    : `🛡️ Escudo (${matchState.lifelines['special']})`;
+                bSpec.classList.toggle('armed', matchState.shieldArmedLocal);
+            } else {
+                bSpec.innerText = matchState.doubleArmedLocal
+                    ? `🔄 Doble ACTIVO`
+                    : `🔄 Doble (${matchState.lifelines['special']})`;
+                bSpec.classList.toggle('armed', matchState.doubleArmedLocal);
+            }
+            bSpec.disabled = matchState.lifelines['special'] <= 0 || matchState.qResolved || matchState.doubleArmedLocal || matchState.shieldArmedLocal;
+        }
+
+        function useLifeline(kind) {
+            if (!gameActive || matchState.qResolved || matchState.lifelines[kind] <= 0) return;
+            if (matchState.players[myId]?.attemptedThisQ) return;
+
+            matchState.lifelines[kind]--;
+            if (window.ArcadeAudio) ArcadeAudio.click();
+
+            if (kind === '5050') {
+                const wrongIndices = [0, 1, 2, 3].filter(i => i !== matchState.currentQ.a && !matchState.eliminatedOpts.includes(i));
+                // Eliminar 2 incorrectas al azar
+                for (let k = 0; k < 2 && wrongIndices.length > 0; k++) {
+                    const pick = wrongIndices.splice(Math.floor(Math.random() * wrongIndices.length), 1)[0];
+                    matchState.eliminatedOpts.push(pick);
+                    const btn = document.getElementById(`opt-btn-${pick}`);
+                    if (btn) btn.classList.add('eliminated');
+                }
+                if (currentMode === 'coop' && isOnlineRoom) {
+                    const msg = { type: 'COOP_LIFELINE_5050', eliminated: matchState.eliminatedOpts };
+                    if (isHost) hostBroadcast(msg);
+                    else if (hostConn && hostConn.open) hostConn.send(msg);
+                }
+            } else if (kind === 'time') {
+                matchState.qTimeLeft += 10;
+                if (currentMode === 'coop' && isOnlineRoom) {
+                    const msg = { type: 'COOP_LIFELINE_TIME', add: 10 };
+                    if (isHost) hostBroadcast(msg);
+                    else if (hostConn && hostConn.open) hostConn.send(msg);
+                }
+            } else if (kind === 'special') {
+                if (currentMode === 'competitive') matchState.shieldArmedLocal = true;
+                else matchState.doubleArmedLocal = true;
+            }
+            updateLifelineButtons();
+        }
+
+        // =========================================================================
+        // RESPUESTAS EN SOLO, COOPERATIVO (RESPUESTA COMPARTIDA) Y COMPETITIVO (VELOCIDAD)
+        // =========================================================================
+        function onOptionClick(optionIdx) {
+            if (!gameActive || matchState.qResolved) return;
+            if (matchState.eliminatedOpts.includes(optionIdx)) return;
+
+            const me = matchState.players[myId];
+            if (me && me.attemptedThisQ) return;
+
+            if (currentMode === 'solo') {
+                evaluateSoloAnswer(optionIdx);
+            } else if (currentMode === 'coop') {
+                if (isHost) {
+                    hostEvaluateCoopPick(myId, myNick, optionIdx, matchState.doubleArmedLocal);
+                } else if (hostConn && hostConn.open) {
+                    lockAllOptionButtons();
+                    hostConn.send({
+                        type: 'COOP_PICK',
+                        optionIdx,
+                        pickerNick: myNick,
+                        useDouble: matchState.doubleArmedLocal
+                    });
+                }
+            } else if (currentMode === 'competitive') {
+                const reactionSec = Math.max(0.2, (performance.now() - matchState.qStartMs) / 1000);
+                if (isHost) {
+                    hostEvaluateCompetitivePick(myId, myNick, optionIdx, reactionSec, matchState.shieldArmedLocal);
+                } else if (hostConn && hostConn.open) {
+                    lockAllOptionButtons();
+                    hostConn.send({
+                        type: 'COMP_PICK',
+                        optionIdx,
+                        pickerNick: myNick,
+                        reactionSec,
+                        shieldActive: matchState.shieldArmedLocal
+                    });
+                }
+            }
+        }
+
+        function evaluateSoloAnswer(optionIdx) {
+            const me = matchState.players[myId];
+            const q = matchState.currentQ;
+            const isCorrect = (optionIdx === q.a);
+
+            if (!isCorrect && matchState.doubleArmedLocal) {
+                matchState.doubleArmedLocal = false;
+                matchState.eliminatedOpts.push(optionIdx);
+                const btn = document.getElementById(`opt-btn-${optionIdx}`);
+                if (btn) {
+                    btn.classList.add('wrong', 'eliminated');
+                }
+                updateLifelineButtons();
+                if (window.ArcadeAudio) ArcadeAudio.bounce();
+                showToastMessage('🔄 ¡Doble Oportunidad salvó tu fallo!', 'Elige otra respuesta rápidamente', '#fbbf24');
+                return;
+            }
+
+            matchState.qResolved = true;
+            clearInterval(questionInterval);
+            lockAllOptionButtons();
+
+            const chosenBtn = document.getElementById(`opt-btn-${optionIdx}`);
+            const rightBtn = document.getElementById(`opt-btn-${q.a}`);
+            if (rightBtn) rightBtn.classList.add('correct');
+
+            if (isCorrect) {
+                const speedBonus = Math.round((matchState.qTimeLeft / 20) * 50);
+                const mult = matchState.isCrownQ ? 2 : 1;
+                const pts = (100 + speedBonus + Math.min(50, me.streak * 15)) * mult;
+                me.score += pts;
+                me.streak++;
+                me.correct++;
+                if ((matchState.isCrownQ || me.streak % 3 === 0) && !me.crowns.includes(matchState.currentCat)) {
+                    me.crowns.push(matchState.currentCat);
+                }
+                if (window.ArcadeAudio) ArcadeAudio.coin();
+                showResultModal({
+                    isWin: true,
+                    icon: '✅',
+                    headline: '¡RESPUESTA CORRECTA!',
+                    who: `🎯 ${me.nick} acertó`,
+                    choiceInfo: `Elegiste: "${q.options[optionIdx]}"`,
+                    ptsText: `+${pts} PTS • 🔥 Racha x${me.streak}`,
+                    ptsPositive: true,
+                    fact: q.fact,
+                    borderColor: '#4ade80'
+                });
+            } else {
+                if (chosenBtn) chosenBtn.classList.add('wrong');
+                me.streak = 0;
+                me.wrong++;
+                if (window.ArcadeAudio) ArcadeAudio.hit();
+                showResultModal({
+                    isWin: false,
+                    icon: '❌',
+                    headline: 'RESPUESTA INCORRECTA',
+                    who: `😅 ${me.nick} falló`,
+                    choiceInfo: `Marcaste: "${q.options[optionIdx]}" • Correcta: "${q.options[q.a]}"`,
+                    ptsText: `0 PTS • Racha reiniciada`,
+                    ptsPositive: false,
+                    fact: q.fact,
+                    borderColor: '#f43f5e'
+                });
+            }
+
+            updateCrownsHUD();
+            updateScoreboardStrip();
+            updateLifelineButtons();
+            scheduleNextAfterResult(4800);
+        }
+
+        function hostEvaluateCoopPick(pickerId, pickerNick, optionIdx, useDouble) {
+            if (!isHost || matchState.qResolved) return;
+            const q = matchState.currentQ;
+            const isCorrect = (optionIdx === q.a);
+
+            if (!isCorrect && useDouble) {
+                // Avisar a todos los móviles que el equipo usó Doble Oportunidad y eliminó esa opción
+                const retryPayload = { type: 'COOP_RETRY', optionIdx, pickerNick };
+                if (isOnlineRoom) hostBroadcast(retryPayload);
+                applyCoopRetryLocal(retryPayload);
+                return;
+            }
+
+            matchState.qResolved = true;
+            clearInterval(questionInterval);
+
+            let pts = 0;
+            let earnedCrown = false;
+            if (isCorrect) {
+                const speedBonus = Math.round((matchState.qTimeLeft / 20) * 50);
+                const mult = matchState.isCrownQ ? 2 : 1;
+                pts = (100 + speedBonus + Math.min(50, matchState.coop.streak * 15)) * mult;
+                matchState.coop.score += pts;
+                matchState.coop.streak++;
+                matchState.coop.correct++;
+                if ((matchState.isCrownQ || matchState.coop.streak % 3 === 0) && !matchState.coop.crowns.includes(matchState.currentCat)) {
+                    matchState.coop.crowns.push(matchState.currentCat);
+                    earnedCrown = true;
+                }
+            } else {
+                matchState.coop.streak = 0;
+                matchState.coop.wrong++;
+            }
+
+            const resultPayload = {
+                type: 'COOP_RESULT',
+                optionIdx,
+                correctIdx: q.a,
+                pickerId,
+                pickerNick,
+                isCorrect,
+                pts,
+                earnedCrown,
+                coopState: matchState.coop,
+                fact: q.fact
+            };
+            if (isOnlineRoom) hostBroadcast(resultPayload);
+            applyCoopResultLocal(resultPayload);
+
+            scheduleNextAfterResult(4800);
+        }
+
+        function applyCoopRetryLocal(payload) {
+            matchState.doubleArmedLocal = false;
+            matchState.eliminatedOpts.push(payload.optionIdx);
+            for (let i = 0; i < 4; i++) {
+                const b = document.getElementById(`opt-btn-${i}`);
+                if (b && !matchState.eliminatedOpts.includes(i)) b.disabled = false;
+            }
+            const btn = document.getElementById(`opt-btn-${payload.optionIdx}`);
+            if (btn) btn.classList.add('wrong', 'eliminated');
+            updateLifelineButtons();
+            if (window.ArcadeAudio) ArcadeAudio.bounce();
+            showToastMessage(`🔄 ¡${payload.pickerNick} activó Doble Oportunidad!`, 'El equipo aún puede elegir otra opción', '#fbbf24');
+        }
+
+        function applyCoopResultLocal(payload) {
+            matchState.qResolved = true;
+            clearInterval(questionInterval);
+            lockAllOptionButtons();
+            matchState.coop = payload.coopState;
+
+            const chosenBtn = document.getElementById(`opt-btn-${payload.optionIdx}`);
+            const rightBtn = document.getElementById(`opt-btn-${payload.correctIdx}`);
+            if (rightBtn) rightBtn.classList.add('correct');
+
+            const chosenTxt = matchState.currentQ ? matchState.currentQ.options[payload.optionIdx] : '';
+            const rightTxt = matchState.currentQ ? matchState.currentQ.options[payload.correctIdx] : '';
+
+            if (payload.isCorrect) {
+                if (window.ArcadeAudio) ArcadeAudio.coin();
+                showResultModal({
+                    isWin: true,
+                    icon: '🦸',
+                    headline: '¡EQUIPO ACERTÓ!',
+                    who: `🤝 ¡${payload.pickerNick} respondió por todo el equipo!`,
+                    choiceInfo: `Eligió: "${chosenTxt}"`,
+                    ptsText: `+${payload.pts} PTS EQUIPO • 🔥 Racha x${matchState.coop.streak}`,
+                    ptsPositive: true,
+                    fact: payload.fact,
+                    borderColor: '#4ade80'
+                });
+            } else {
+                if (chosenBtn) chosenBtn.classList.add('wrong');
+                if (window.ArcadeAudio) ArcadeAudio.hit();
+                showResultModal({
+                    isWin: false,
+                    icon: '🤡',
+                    headline: '¡RESPUESTA DEL EQUIPO FALLIDA!',
+                    who: `🤝 ¡${payload.pickerNick} respondió por todos y falló!`,
+                    choiceInfo: `Marcó: "${chosenTxt}" • Correcta: "${rightTxt}"`,
+                    ptsText: `0 PTS • Racha del equipo perdida`,
+                    ptsPositive: false,
+                    fact: payload.fact,
+                    borderColor: '#f43f5e'
+                });
+            }
+
+            updateCrownsHUD();
+            updateScoreboardStrip();
+            updateLifelineButtons();
+        }
+
+        function hostEvaluateCompetitivePick(pickerId, pickerNick, optionIdx, reactionSec, shieldActive) {
+            if (!isHost || matchState.qResolved) return;
+            const player = matchState.players[pickerId];
+            if (!player || player.attemptedThisQ) return;
+
+            const q = matchState.currentQ;
+            const isCorrect = (optionIdx === q.a);
+
+            if (isCorrect) {
+                matchState.qResolved = true;
+                clearTimersOnQuestion();
+
+                const clampedReact = Math.max(0.2, Math.min(20, reactionSec || 3));
+                const speedBonus = Math.round(50 * (1 - clampedReact / 20));
+                const mult = matchState.isCrownQ ? 2 : 1;
+                const pts = (100 + speedBonus + Math.min(50, player.streak * 15)) * mult;
+
+                player.score += pts;
+                player.streak++;
+                player.correct++;
+                player.wonLastQ = true;
+                if ((matchState.isCrownQ || player.streak % 3 === 0) && !player.crowns.includes(matchState.currentCat)) {
+                    player.crowns.push(matchState.currentCat);
+                }
+
+                const claimPayload = {
+                    type: 'COMP_CLAIMED',
+                    winnerId: pickerId,
+                    winnerNick: pickerNick || player.nick,
+                    optionIdx,
+                    correctIdx: q.a,
+                    reactionSec: clampedReact.toFixed(1),
+                    pts,
+                    earlyFails: matchState.wrongAttemptsThisQ,
+                    playersSnapshot: matchState.players,
+                    fact: q.fact
+                };
+                if (isOnlineRoom) hostBroadcast(claimPayload);
+                applyCompClaimedLocal(claimPayload);
+
+                scheduleNextAfterResult(4800);
+            } else {
+                // Respuesta errónea por precipitación: bloqueado solo en esta pregunta; otros aún pueden robarla
+                player.attemptedThisQ = true;
+                player.streak = 0;
+                player.wrong++;
+                const penalty = shieldActive ? 0 : 25;
+                player.score = Math.max(0, player.score - penalty);
+                matchState.wrongAttemptsThisQ.push({
+                    id: pickerId,
+                    nick: pickerNick || player.nick,
+                    penalty,
+                    shieldActive
+                });
+
+                const wrongPayload = {
+                    type: 'COMP_WRONG',
+                    wrongId: pickerId,
+                    wrongNick: pickerNick || player.nick,
+                    optionIdx,
+                    penalty,
+                    shieldActive,
+                    earlyFails: matchState.wrongAttemptsThisQ,
+                    playersSnapshot: matchState.players
+                };
+                if (isOnlineRoom) hostBroadcast(wrongPayload);
+                applyCompWrongLocal(wrongPayload);
+
+                // Si todos los jugadores activos ya fallaron esta pregunta, revelarla y avanzar
+                const anyLeft = Object.values(matchState.players).some(p => !p.attemptedThisQ);
+                if (!anyLeft) {
+                    hostHandleQuestionTimeout();
+                }
+            }
+        }
+
+        function applyCompClaimedLocal(payload) {
+            matchState.qResolved = true;
+            clearTimersOnQuestion();
+            lockAllOptionButtons();
+            matchState.players = payload.playersSnapshot;
+
+            const rightBtn = document.getElementById(`opt-btn-${payload.correctIdx}`);
+            if (rightBtn) rightBtn.classList.add('correct');
+
+            if (window.ArcadeAudio) {
+                if (payload.winnerId === myId) ArcadeAudio.coin();
+                else ArcadeAudio.notification();
+            }
+
+            const rightTxt = matchState.currentQ ? matchState.currentQ.options[payload.correctIdx] : '';
+            const failsList = (payload.earlyFails || []).map(f => `${f.nick} (-${f.penalty})`).join(', ');
+
+            showResultModal({
+                isWin: payload.winnerId === myId,
+                icon: payload.winnerId === myId ? '⚡' : '🏎️',
+                headline: payload.winnerId === myId ? '¡TE LA LLEVASTE TÚ!' : `¡${payload.winnerNick.toUpperCase()} SE LA LLEVÓ!`,
+                who: `🏆 Respondió primero: ${payload.winnerNick} en ${payload.reactionSec}s`,
+                choiceInfo: `Respuesta correcta: "${rightTxt}"`,
+                ptsText: `+${payload.pts} PTS para ${payload.winnerNick}`,
+                ptsPositive: true,
+                earlyFailsText: failsList ? `💥 Se precipitaron y fallaron: ${failsList}` : '',
+                fact: payload.fact,
+                borderColor: payload.winnerId === myId ? '#4ade80' : '#fbbf24'
+            });
+
+            updateCrownsHUD();
+            updateScoreboardStrip();
+            updateLifelineButtons();
+        }
+
+        function applyCompWrongLocal(payload) {
+            matchState.players = payload.playersSnapshot;
+            if (payload.earlyFails) matchState.wrongAttemptsThisQ = payload.earlyFails;
+            updateScoreboardStrip();
+
+            if (payload.wrongId === myId) {
+                const btn = document.getElementById(`opt-btn-${payload.optionIdx}`);
+                if (btn) btn.classList.add('wrong');
+                lockAllOptionButtons();
+                updateLifelineButtons();
+                if (window.ArcadeAudio) ArcadeAudio.hit();
+                const penText = payload.shieldActive ? '¡Escudo protegió tus puntos!' : `-${payload.penalty} pts`;
+                showToastMessage(
+                    `❌ Fallaste (${penText})`,
+                    'Esperando si otro jugador logra robar la pregunta...',
+                    '#f43f5e'
+                );
+            } else {
+                if (window.ArcadeAudio) ArcadeAudio.bounce();
+                showToastMessage(
+                    `⚠️ ¡${payload.wrongNick} se precipitó y falló!`,
+                    '¡La pregunta sigue abierta: respóndela antes que los demás!',
+                    '#38bdf8'
+                );
+            }
+        }
+
+        function hostHandleQuestionTimeout() {
+            if (!isHost || matchState.qResolved) return;
+            matchState.qResolved = true;
+            clearTimersOnQuestion();
+
+            const q = matchState.currentQ;
+            const timeoutPayload = {
+                type: 'QUESTION_TIMEOUT',
+                correctIdx: q ? q.a : 0,
+                fact: q ? q.fact : '',
+                earlyFails: matchState.wrongAttemptsThisQ,
+                playersSnapshot: matchState.players,
+                coopState: matchState.coop
+            };
+            if (isOnlineRoom) hostBroadcast(timeoutPayload);
+            applyTimeoutLocal(timeoutPayload);
+
+            scheduleNextAfterResult(4800);
+        }
+
+        function applyTimeoutLocal(payload) {
+            matchState.qResolved = true;
+            clearTimersOnQuestion();
+            lockAllOptionButtons();
+
+            if (currentMode === 'coop') {
+                matchState.coop.streak = 0;
+            } else if (payload.playersSnapshot) {
+                matchState.players = payload.playersSnapshot;
+                if (matchState.players[myId]) matchState.players[myId].streak = 0;
+            }
+
+            const rightBtn = document.getElementById(`opt-btn-${payload.correctIdx}`);
+            if (rightBtn) rightBtn.classList.add('correct');
+
+            if (window.ArcadeAudio) ArcadeAudio.back();
+            const ansText = matchState.currentQ ? matchState.currentQ.options[payload.correctIdx] : '';
+            const failsList = (payload.earlyFails || []).map(f => `${f.nick} (-${f.penalty})`).join(', ');
+
+            showResultModal({
+                isWin: false,
+                icon: '⌛',
+                headline: failsList ? '¡TODOS FALLARON!' : '¡TIEMPO AGOTADO!',
+                who: 'Nadie consiguió sumar puntos en esta ronda',
+                choiceInfo: `Respuesta correcta: "${ansText}"`,
+                ptsText: '0 PTS',
+                ptsPositive: false,
+                earlyFailsText: failsList ? `💥 Fallaron: ${failsList}` : '',
+                fact: payload.fact,
+                borderColor: '#94a3b8'
+            });
+
+            updateScoreboardStrip();
+            updateLifelineButtons();
+        }
+
+        function scheduleBotsForCurrentQuestion() {
+            const cfg = {
+                easy:   { minMs: 4200, maxMs: 9200, acc: 0.52 },
+                normal: { minMs: 2400, maxMs: 6200, acc: 0.74 },
+                hard:   { minMs: 1400, maxMs: 3900, acc: 0.89 }
+            }[matchConfig.diff] || { minMs: 2400, maxMs: 6200, acc: 0.74 };
+
+            Object.values(matchState.players).forEach(bot => {
+                if (!bot.isBot) return;
+                const delay = cfg.minMs + Math.random() * (cfg.maxMs - cfg.minMs);
+                const t = setTimeout(() => {
+                    if (!gameActive || matchState.qResolved || bot.attemptedThisQ) return;
+                    const q = matchState.currentQ;
+                    if (!q) return;
+                    const correct = Math.random() < cfg.acc;
+                    let pickedIdx = q.a;
+                    if (!correct) {
+                        const wrongs = [0, 1, 2, 3].filter(i => i !== q.a);
+                        pickedIdx = wrongs[Math.floor(Math.random() * wrongs.length)];
+                    }
+                    hostEvaluateCompetitivePick(bot.id, bot.nick, pickedIdx, delay / 1000, false);
+                }, delay);
+                botTimers.push(t);
+            });
+        }
+
+        function lockAllOptionButtons() {
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`opt-btn-${i}`);
+                if (btn) btn.disabled = true;
+            }
+        }
+
+        function showToastMessage(title, fact, color) {
+            const box = document.getElementById('inline-wait-banner');
+            const tEl = document.getElementById('inline-wait-title');
+            const fEl = document.getElementById('inline-wait-sub');
+            if (!box) return;
+            box.style.borderColor = color || '#38bdf8';
+            tEl.style.color = color || '#ffffff';
+            tEl.innerText = title;
+            fEl.innerText = fact || '';
+            box.classList.remove('hidden');
+        }
+
+        function hideResultOverlay() {
+            clearInterval(resultReadInterval);
+            const ov = document.getElementById('result-overlay');
+            if (ov) ov.classList.add('hidden');
+        }
+
+        function showResultModal(cfg) {
+            const waitBanner = document.getElementById('inline-wait-banner');
+            if (waitBanner) waitBanner.classList.add('hidden');
+            const ov = document.getElementById('result-overlay');
+            const card = document.getElementById('result-modal-card');
+            document.getElementById('result-big-icon').innerText = cfg.icon || '💡';
+            const hl = document.getElementById('result-headline');
+            hl.innerText = cfg.headline || '';
+            hl.style.color = cfg.borderColor || '#38bdf8';
+            card.style.borderColor = cfg.borderColor || '#38bdf8';
+
+            document.getElementById('result-who').innerText = cfg.who || '';
+            document.getElementById('result-choice-info').innerText = cfg.choiceInfo || '';
+
+            const ptsEl = document.getElementById('result-pts-pill');
+            ptsEl.innerText = cfg.ptsText || '0 PTS';
+            ptsEl.classList.toggle('bad', !cfg.ptsPositive);
+
+            const failsEl = document.getElementById('result-early-fails');
+            if (cfg.earlyFailsText) {
+                failsEl.innerText = cfg.earlyFailsText;
+                failsEl.classList.remove('hidden');
+            } else {
+                failsEl.classList.add('hidden');
+            }
+
+            document.getElementById('result-fact-text').innerText = cfg.fact || '';
+            document.getElementById('btn-continue-next').classList.toggle('hidden', !isHost);
+            ov.classList.remove('hidden');
+
+            // Barra de lectura de 4.8s
+            clearInterval(resultReadInterval);
+            const totalMs = 4800;
+            const startTs = performance.now();
+            const barEl = document.getElementById('result-read-bar');
+            barEl.style.width = '100%';
+            resultReadInterval = setInterval(() => {
+                const elapsed = performance.now() - startTs;
+                const pct = Math.max(0, 100 - (elapsed / totalMs) * 100);
+                barEl.style.width = `${pct}%`;
+                if (elapsed >= totalMs) clearInterval(resultReadInterval);
+            }, 60);
+        }
+
+        function scheduleNextAfterResult(ms) {
+            clearTimeout(nextStepTimer);
+            nextStepTimer = setTimeout(() => {
+                if (isHost && gameActive) prepareNextTurnOrSpin();
+            }, ms);
+        }
+
+        function continueAfterResult() {
+            if (!isHost || !gameActive) return;
+            clearTimeout(nextStepTimer);
+            prepareNextTurnOrSpin();
+        }
+
+        // =========================================================================
+        // RECEPTORES DE RED EN HOST Y CLIENTE
+        // =========================================================================
+        function handleHostData(conn, data) {
+            if (data.type === 'JOIN') {
+                clientConns[conn.peer] = conn;
+                const humans = lobbyRoster.filter(p => !p.isBot && p.id !== conn.peer);
+                const used = humans.map(p => p.color);
+                let col = data.color || PALETTE[1];
+                if (used.includes(col)) {
+                    const free = PALETTE.find(c => !used.includes(c));
+                    if (free) col = free;
+                }
+                humans.push({ id: conn.peer, nick: data.nick || 'Jugador', color: col, isBot: false });
+                lobbyRoster = humans;
+                rebuildRoster();
+            } else if (data.type === 'COOP_CROWN_PICK' && currentMode === 'coop') {
+                clearTimeout(crownAutoTimer);
+                hostLaunchQuestion(data.catKey, true);
+            } else if (data.type === 'COOP_PICK' && currentMode === 'coop') {
+                hostEvaluateCoopPick(conn.peer, data.pickerNick, data.optionIdx, data.useDouble);
+            } else if (data.type === 'COMP_PICK' && currentMode === 'competitive') {
+                hostEvaluateCompetitivePick(conn.peer, data.pickerNick, data.optionIdx, data.reactionSec, data.shieldActive);
+            } else if (data.type === 'COOP_LIFELINE_5050' && currentMode === 'coop') {
+                hostBroadcast(data);
+                applyCoop5050Local(data.eliminated);
+            } else if (data.type === 'COOP_LIFELINE_TIME' && currentMode === 'coop') {
+                hostBroadcast(data);
+                matchState.qTimeLeft += (data.add || 10);
+            }
+        }
+
+        function handleClientData(data) {
+            if (data.type === 'LOBBY_SYNC') {
+                currentMode = data.mode;
+                lobbyRoster = data.roster;
+                matchConfig = data.config;
+                renderLobbyPlayers();
+            } else if (data.type === 'START_MATCH') {
+                startMatchLocal(data);
+            } else if (data.type === 'CLOCK_SYNC') {
+                matchState.globalTimeLeft = data.globalTimeLeft;
+                updateProgressHUD();
+            } else if (data.type === 'WHEEL_SPIN') {
+                animateWheelSpin(data);
+            } else if (data.type === 'CROWN_PICK_OPEN') {
+                showCrownPickerUI();
+            } else if (data.type === 'SHOW_QUESTION') {
+                displayQuestionLocal(data);
+            } else if (data.type === 'COOP_RETRY') {
+                applyCoopRetryLocal(data);
+            } else if (data.type === 'COOP_RESULT') {
+                applyCoopResultLocal(data);
+            } else if (data.type === 'COMP_CLAIMED') {
+                applyCompClaimedLocal(data);
+            } else if (data.type === 'COMP_WRONG') {
+                applyCompWrongLocal(data);
+            } else if (data.type === 'QUESTION_TIMEOUT') {
+                applyTimeoutLocal(data);
+            } else if (data.type === 'COOP_LIFELINE_5050') {
+                applyCoop5050Local(data.eliminated);
+            } else if (data.type === 'COOP_LIFELINE_TIME') {
+                matchState.qTimeLeft += (data.add || 10);
+            } else if (data.type === 'MATCH_OVER') {
+                showGameOverScreen(data);
+            }
+        }
+
+        function applyCoop5050Local(eliminatedArr) {
+            (eliminatedArr || []).forEach(idx => {
+                if (!matchState.eliminatedOpts.includes(idx)) matchState.eliminatedOpts.push(idx);
+                const btn = document.getElementById(`opt-btn-${idx}`);
+                if (btn) btn.classList.add('eliminated');
+            });
+        }
+
+        // =========================================================================
+        // FIN DE PARTIDA Y PODIO
+        // =========================================================================
+        function hostEndMatch() {
+            if (!isHost || !gameActive) return;
+            gameActive = false;
+            clearTimers();
+
+            const endPayload = {
+                type: 'MATCH_OVER',
+                mode: currentMode,
+                questionIndex: matchState.questionIndex,
+                coop: matchState.coop,
+                standings: Object.values(matchState.players).sort((a, b) => b.score - a.score)
+            };
+            if (isOnlineRoom) hostBroadcast(endPayload);
+            showGameOverScreen(endPayload);
+        }
+
+        function showGameOverScreen(payload) {
+            gameActive = false;
+            clearTimers();
+            hideResultOverlay();
+            document.getElementById('game-shell').classList.add('hidden');
+
+            const box = document.getElementById('final-scoreboard');
+            box.innerHTML = '';
+            let didIWin = true;
+
+            if (payload.mode === 'coop') {
+                const c = payload.coop;
+                const total = c.correct + c.wrong;
+                const acc = total > 0 ? Math.round((c.correct / total) * 100) : 0;
+                document.getElementById('gameover-icon').innerText = '🤝';
+                document.getElementById('gameover-title').innerText = `¡EQUIPO: ${c.score} PTS!`;
+                document.getElementById('gameover-sub').innerText = `${c.correct}/${total} correctas (${acc}%) • ${c.crowns.length}/6 Coronas`;
+                didIWin = acc >= 50;
+
+                const row = document.createElement('div');
+                row.className = 'player-row';
+                row.style.borderLeft = '4px solid #38bdf8';
+                row.innerHTML = `<span>🤝 Equipo (${lobbyRoster.map(p => p.nick).join(', ')})</span><strong style="color:#fbbf24;">${c.score} pts</strong>`;
+                box.appendChild(row);
+            } else {
+                const list = payload.standings || [];
+                const winner = list[0];
+                didIWin = winner && winner.id === myId;
+                document.getElementById('gameover-icon').innerText = didIWin ? '🏆' : '🎡';
+                document.getElementById('gameover-title').innerText = list.length > 1
+                    ? `¡GANADOR: ${winner.nick.toUpperCase()}!`
+                    : `¡TRIVIA COMPLETADA!`;
+                document.getElementById('gameover-sub').innerText = `${payload.questionIndex} preguntas jugadas • Máximo: ${winner ? winner.score : 0} pts`;
+
+                list.forEach((p, idx) => {
+                    const row = document.createElement('div');
+                    row.className = 'player-row';
+                    row.style.borderLeft = `4px solid ${p.color}`;
+                    const crownsIcons = (p.crowns || []).map(k => CATEGORIES[k]?.icon || '').join('');
+                    row.innerHTML = `
+                        <span>#${idx + 1} ${p.nick} <small style="color:#94a3b8;">(✅${p.correct} ❌${p.wrong} ${crownsIcons})</small></span>
+                        <strong style="color:#fbbf24;font-size:1.05rem;">${p.score} pts</strong>
+                    `;
+                    box.appendChild(row);
+                });
+            }
+
+            document.getElementById('btn-rematch').classList.toggle('hidden', !isHost);
+            showScreen('screen-gameover');
+
+            if (window.ArcadeAudio) {
+                if (didIWin) ArcadeAudio.victory();
+                else ArcadeAudio.defeat();
+            }
+        }
+    </script>
+</body>
+</html>
