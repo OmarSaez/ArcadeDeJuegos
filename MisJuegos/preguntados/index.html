@@ -2836,10 +2836,10 @@
 
         function scheduleBotsForCurrentQuestion() {
             const cfg = {
-                easy:   { minMs: 4200, maxMs: 9200, acc: 0.52 },
-                normal: { minMs: 2400, maxMs: 6200, acc: 0.74 },
-                hard:   { minMs: 1400, maxMs: 3900, acc: 0.89 }
-            }[matchConfig.diff] || { minMs: 2400, maxMs: 6200, acc: 0.74 };
+                easy:   { minMs: 12500, maxMs: 18000, acc: 0.52 },
+                normal: { minMs: 10000, maxMs: 15500, acc: 0.74 },
+                hard:   { minMs: 7000,  maxMs: 15000, acc: 0.89 }
+            }[matchConfig.diff] || { minMs: 10000, maxMs: 15500, acc: 0.74 };
 
             Object.values(matchState.players).forEach(bot => {
                 if (!bot.isBot) return;
