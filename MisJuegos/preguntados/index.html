@@ -421,6 +421,11 @@
             to { transform: scale(1.05); }
         }
 
+        .crowns-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
         .crowns-strip {
             display: flex;
             align-items: center;
@@ -429,7 +434,58 @@
             border: 1px solid #24365a;
             padding: 3px 8px;
             border-radius: 999px;
+            cursor: pointer;
+            user-select: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
+        .crowns-strip:hover, .crowns-strip.active {
+            border-color: #fbbf24;
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.22);
+        }
+        .crowns-info-popover {
+            position: fixed;
+            top: 56px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(360px, calc(100vw - 24px));
+            background: rgba(13, 21, 40, 0.98);
+            border: 1.5px solid #fbbf24;
+            border-radius: 16px;
+            padding: 14px 16px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.85), 0 0 24px rgba(251, 191, 36, 0.18);
+            backdrop-filter: blur(10px);
+            z-index: 1200;
+            text-align: left;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            color: #e2e8f0;
+        }
+        .crowns-info-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 900;
+            font-size: 0.96rem;
+            color: #fbbf24;
+            margin-bottom: 8px;
+        }
+        .crowns-info-status {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.12);
+            border: 1px solid rgba(74, 222, 128, 0.35);
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+        .crowns-info-list {
+            margin: 0;
+            padding-left: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .crowns-info-list strong { color: #ffffff; }
         .crown-badge {
             width: 24px;
             height: 24px;
@@ -1055,7 +1111,20 @@
             <div class="top-left-meta">
                 <span id="hud-progress" class="meta-pill gold">P 1/15</span>
                 <span id="hud-mode-tag" class="meta-pill">🎯 Solo</span>
-                <div id="hud-crowns" class="crowns-strip" title="Coronas conseguidas"></div>
+                <div id="crowns-wrap" class="crowns-wrap">
+                    <div id="hud-crowns" class="crowns-strip" aria-label="Información de coronas"></div>
+                    <div id="crowns-info-popover" class="crowns-info-popover hidden">
+                        <div class="crowns-info-title">
+                            <span>👑 Coronas de Categoría</span>
+                            <span id="crowns-info-status" class="crowns-info-status">0/6 • +0% pts</span>
+                        </div>
+                        <ul class="crowns-info-list">
+                            <li><strong>Cómo ganarlas:</strong> Acertando una casilla <strong>👑 Corona (x2)</strong> o logrando una <strong>racha de 3 aciertos seguidos</strong>.</li>
+                            <li><strong>Bonus activo:</strong> Cada corona te da <strong>+10% de puntos</strong> en tus aciertos (hasta <strong>+60%</strong>).</li>
+                            <li><strong>Colección completa:</strong> Conseguir las <strong>6/6</strong> otorga <strong>+300 pts</strong> extra al final.</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             <button class="exit-mini-btn" onclick="leaveToMenu()">⬅ Salir</button>
         </div>
@@ -1868,11 +1937,49 @@
                 span.className = 'crown-badge' + (has ? ' earned' : '');
                 span.style.color = cat.color;
                 span.style.borderColor = has ? cat.color : 'rgba(255,255,255,0.12)';
-                span.title = cat.name;
                 span.innerText = cat.icon;
                 box.appendChild(span);
             });
+            const statusEl = document.getElementById('crowns-info-status');
+            if (statusEl) {
+                const count = earned.length;
+                statusEl.innerText = `${count}/6 • +${count * 10}% pts`;
+            }
         }
+
+        let crownsPopoverPinned = false;
+        (function setupCrownsInfoPopover() {
+            const wrap = document.getElementById('crowns-wrap');
+            const strip = document.getElementById('hud-crowns');
+            const pop = document.getElementById('crowns-info-popover');
+            if (!wrap || !strip || !pop) return;
+
+            const setOpen = (open) => {
+                pop.classList.toggle('hidden', !open);
+                strip.classList.toggle('active', open);
+            };
+
+            wrap.addEventListener('mouseenter', () => {
+                if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
+                    setOpen(true);
+                }
+            });
+            wrap.addEventListener('mouseleave', () => {
+                if (!crownsPopoverPinned) setOpen(false);
+            });
+            strip.addEventListener('click', (e) => {
+                e.stopPropagation();
+                crownsPopoverPinned = !crownsPopoverPinned || pop.classList.contains('hidden');
+                setOpen(crownsPopoverPinned);
+            });
+            pop.addEventListener('click', (e) => e.stopPropagation());
+            document.addEventListener('click', () => {
+                if (crownsPopoverPinned || !pop.classList.contains('hidden')) {
+                    crownsPopoverPinned = false;
+                    setOpen(false);
+                }
+            });
+        })();
 
         function updateScoreboardStrip() {
             const strip = document.getElementById('scoreboard-strip');
@@ -2352,8 +2459,7 @@
             const letters = ['A', 'B', 'C', 'D'];
             if (isCorrect) {
                 const speedBonus = Math.round((matchState.qTimeLeft / 20) * 50);
-                const mult = matchState.isCrownQ ? 2 : 1;
-                const pts = (100 + speedBonus + Math.min(50, me.streak * 15)) * mult;
+                const pts = calcTriviaPoints(speedBonus, me.streak, me.crowns.length, matchState.isCrownQ);
                 me.score += pts;
                 me.streak++;
                 me.correct++;
@@ -2412,8 +2518,7 @@
             let earnedCrown = false;
             if (isCorrect) {
                 const speedBonus = Math.round((matchState.qTimeLeft / 20) * 50);
-                const mult = matchState.isCrownQ ? 2 : 1;
-                pts = (100 + speedBonus + Math.min(50, matchState.coop.streak * 15)) * mult;
+                pts = calcTriviaPoints(speedBonus, matchState.coop.streak, matchState.coop.crowns.length, matchState.isCrownQ);
                 matchState.coop.score += pts;
                 matchState.coop.streak++;
                 matchState.coop.correct++;
@@ -2516,8 +2621,7 @@
 
                 const clampedReact = Math.max(0.2, Math.min(20, reactionSec || 3));
                 const speedBonus = Math.round(50 * (1 - clampedReact / 20));
-                const mult = matchState.isCrownQ ? 2 : 1;
-                const pts = (100 + speedBonus + Math.min(50, player.streak * 15)) * mult;
+                const pts = calcTriviaPoints(speedBonus, player.streak, (player.crowns || []).length, matchState.isCrownQ);
 
                 player.score += pts;
                 player.streak++;
@@ -2890,10 +2994,31 @@
         // =========================================================================
         // FIN DE PARTIDA Y PODIO
         // =========================================================================
+        function calcTriviaPoints(speedBonus, streak, crownCount, isCrownQ) {
+            const base = 100 + speedBonus + Math.min(50, streak * 15);
+            const crownMult = 1 + (crownCount || 0) * 0.10;
+            const mult = isCrownQ ? 2 : 1;
+            return Math.round(base * crownMult * mult);
+        }
+
         function hostEndMatch() {
             if (!isHost || !gameActive) return;
             gameActive = false;
             clearTimers();
+
+            if (currentMode === 'coop') {
+                if (matchState.coop.crowns.length >= 6) {
+                    matchState.coop.score += 300;
+                    matchState.coop.fullCrownBonus = true;
+                }
+            } else {
+                Object.values(matchState.players).forEach(p => {
+                    if ((p.crowns || []).length >= 6) {
+                        p.score += 300;
+                        p.fullCrownBonus = true;
+                    }
+                });
+            }
 
             const endPayload = {
                 type: 'MATCH_OVER',
@@ -2922,7 +3047,7 @@
                 const acc = total > 0 ? Math.round((c.correct / total) * 100) : 0;
                 document.getElementById('gameover-icon').innerText = '🤝';
                 document.getElementById('gameover-title').innerText = `¡EQUIPO: ${c.score} PTS!`;
-                document.getElementById('gameover-sub').innerText = `${c.correct}/${total} correctas (${acc}%) • ${c.crowns.length}/6 Coronas`;
+                document.getElementById('gameover-sub').innerText = `${c.correct}/${total} correctas (${acc}%) • ${c.crowns.length}/6 Coronas${c.fullCrownBonus ? ' (+300 pts bonus)' : ''}`;
                 didIWin = acc >= 50;
 
                 const row = document.createElement('div');
@@ -2945,8 +3070,9 @@
                     row.className = 'player-row';
                     row.style.borderLeft = `4px solid ${p.color}`;
                     const crownsIcons = (p.crowns || []).map(k => CATEGORIES[k]?.icon || '').join('');
+                    const bonusTag = p.fullCrownBonus ? ' 👑+300' : '';
                     row.innerHTML = `
-                        <span>#${idx + 1} ${p.nick} <small style="color:#94a3b8;">(✅${p.correct} ❌${p.wrong} ${crownsIcons})</small></span>
+                        <span>#${idx + 1} ${p.nick} <small style="color:#94a3b8;">(✅${p.correct} ❌${p.wrong} ${crownsIcons}${bonusTag})</small></span>
                         <strong style="color:#fbbf24;font-size:1.05rem;">${p.score} pts</strong>
                     `;
                     box.appendChild(row);
