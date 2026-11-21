@@ -824,40 +824,31 @@
             gap: 12px;
         }
         .result-big-icon {
-            font-size: 3rem;
+            font-size: 3.4rem;
             line-height: 1;
         }
-        .result-headline {
-            font-family: 'Press Start 2P', cursive;
-            font-size: clamp(1rem, 2.5vw, 1.45rem);
-            line-height: 1.35;
-        }
         .result-who {
-            font-size: clamp(1.02rem, 2vw, 1.24rem);
+            font-size: clamp(1.12rem, 2.3vw, 1.38rem);
             font-weight: 900;
-            color: #ffffff;
+            color: #7dd3fc;
+            letter-spacing: 0.3px;
         }
         .result-choice-info {
-            font-size: 0.92rem;
-            font-weight: 700;
-            color: #cbd5e1;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: baseline;
+            gap: 6px 18px;
+            font-size: clamp(0.95rem, 1.9vw, 1.08rem);
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.4;
         }
         .result-pts-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 18px;
-            border-radius: 999px;
-            font-weight: 900;
-            font-size: 1.08rem;
-            background: rgba(74, 222, 128, 0.16);
-            border: 2px solid #4ade80;
-            color: #86efac;
-        }
-        .result-pts-pill.bad {
-            background: rgba(244, 63, 94, 0.18);
-            border-color: #f43f5e;
-            color: #fda4af;
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: #e2e8f0;
+            letter-spacing: 0.3px;
         }
         .result-early-fails {
             font-size: 0.84rem;
@@ -1124,16 +1115,15 @@
         <!-- MODAL SUPERPUESTO CON BLUR PARA RESULTADO, PROTAGONISTA Y DATO CURIOSO -->
         <div id="result-overlay" class="hidden">
             <div id="result-modal-card" class="result-modal-card">
-                <div id="result-big-icon" class="result-big-icon">🎉</div>
-                <div id="result-headline" class="result-headline">¡RESPUESTA CORRECTA!</div>
+                <div id="result-big-icon" class="result-big-icon">✅</div>
                 <div id="result-who" class="result-who"></div>
                 <div id="result-choice-info" class="result-choice-info"></div>
-                <div id="result-pts-pill" class="result-pts-pill">+140 PTS</div>
-                <div id="result-early-fails" class="result-early-fails hidden"></div>
                 <div class="result-fact-box">
                     <span class="result-fact-label">💡 ¿SABÍAS QUE...?</span>
                     <div id="result-fact-text" class="result-fact-text"></div>
                 </div>
+                <div id="result-pts-pill" class="result-pts-pill">+140 pts</div>
+                <div id="result-early-fails" class="result-early-fails hidden"></div>
                 <div class="result-read-bar-bg">
                     <div id="result-read-bar" class="result-read-bar-fill"></div>
                 </div>
@@ -2359,6 +2349,7 @@
             const rightBtn = document.getElementById(`opt-btn-${q.a}`);
             if (rightBtn) rightBtn.classList.add('correct');
 
+            const letters = ['A', 'B', 'C', 'D'];
             if (isCorrect) {
                 const speedBonus = Math.round((matchState.qTimeLeft / 20) * 50);
                 const mult = matchState.isCrownQ ? 2 : 1;
@@ -2371,13 +2362,11 @@
                 }
                 if (window.ArcadeAudio) ArcadeAudio.coin();
                 showResultModal({
-                    isWin: true,
                     icon: '✅',
-                    headline: '¡RESPUESTA CORRECTA!',
-                    who: `🎯 ${me.nick} acertó`,
-                    choiceInfo: `Elegiste: "${q.options[optionIdx]}"`,
-                    ptsText: `+${pts} PTS • 🔥 Racha x${me.streak}`,
-                    ptsPositive: true,
+                    who: me.nick,
+                    chosenLabel: `${letters[optionIdx]} - ${q.options[optionIdx]}`,
+                    correctLabel: '',
+                    ptsText: `+${pts} pts`,
                     fact: q.fact,
                     borderColor: '#4ade80'
                 });
@@ -2387,13 +2376,11 @@
                 me.wrong++;
                 if (window.ArcadeAudio) ArcadeAudio.hit();
                 showResultModal({
-                    isWin: false,
                     icon: '❌',
-                    headline: 'RESPUESTA INCORRECTA',
-                    who: `😅 ${me.nick} falló`,
-                    choiceInfo: `Marcaste: "${q.options[optionIdx]}" • Correcta: "${q.options[q.a]}"`,
-                    ptsText: `0 PTS • Racha reiniciada`,
-                    ptsPositive: false,
+                    who: me.nick,
+                    chosenLabel: `${letters[optionIdx]} - ${q.options[optionIdx]}`,
+                    correctLabel: `${letters[q.a]} - ${q.options[q.a]}`,
+                    ptsText: `0 pts`,
                     fact: q.fact,
                     borderColor: '#f43f5e'
                 });
@@ -2402,7 +2389,7 @@
             updateCrownsHUD();
             updateScoreboardStrip();
             updateLifelineButtons();
-            scheduleNextAfterResult(4800);
+            scheduleNextAfterResult(6500);
         }
 
         function hostEvaluateCoopPick(pickerId, pickerNick, optionIdx, useDouble) {
@@ -2454,7 +2441,7 @@
             if (isOnlineRoom) hostBroadcast(resultPayload);
             applyCoopResultLocal(resultPayload);
 
-            scheduleNextAfterResult(4800);
+            scheduleNextAfterResult(6500);
         }
 
         function applyCoopRetryLocal(payload) {
@@ -2481,19 +2468,18 @@
             const rightBtn = document.getElementById(`opt-btn-${payload.correctIdx}`);
             if (rightBtn) rightBtn.classList.add('correct');
 
+            const letters = ['A', 'B', 'C', 'D'];
             const chosenTxt = matchState.currentQ ? matchState.currentQ.options[payload.optionIdx] : '';
             const rightTxt = matchState.currentQ ? matchState.currentQ.options[payload.correctIdx] : '';
 
             if (payload.isCorrect) {
                 if (window.ArcadeAudio) ArcadeAudio.coin();
                 showResultModal({
-                    isWin: true,
-                    icon: '🦸',
-                    headline: '¡EQUIPO ACERTÓ!',
-                    who: `🤝 ¡${payload.pickerNick} respondió por todo el equipo!`,
-                    choiceInfo: `Eligió: "${chosenTxt}"`,
-                    ptsText: `+${payload.pts} PTS EQUIPO • 🔥 Racha x${matchState.coop.streak}`,
-                    ptsPositive: true,
+                    icon: '✅',
+                    who: payload.pickerNick,
+                    chosenLabel: `${letters[payload.optionIdx]} - ${chosenTxt}`,
+                    correctLabel: '',
+                    ptsText: `+${payload.pts} pts`,
                     fact: payload.fact,
                     borderColor: '#4ade80'
                 });
@@ -2501,13 +2487,11 @@
                 if (chosenBtn) chosenBtn.classList.add('wrong');
                 if (window.ArcadeAudio) ArcadeAudio.hit();
                 showResultModal({
-                    isWin: false,
-                    icon: '🤡',
-                    headline: '¡RESPUESTA DEL EQUIPO FALLIDA!',
-                    who: `🤝 ¡${payload.pickerNick} respondió por todos y falló!`,
-                    choiceInfo: `Marcó: "${chosenTxt}" • Correcta: "${rightTxt}"`,
-                    ptsText: `0 PTS • Racha del equipo perdida`,
-                    ptsPositive: false,
+                    icon: '❌',
+                    who: payload.pickerNick,
+                    chosenLabel: `${letters[payload.optionIdx]} - ${chosenTxt}`,
+                    correctLabel: `${letters[payload.correctIdx]} - ${rightTxt}`,
+                    ptsText: `0 pts`,
                     fact: payload.fact,
                     borderColor: '#f43f5e'
                 });
@@ -2558,7 +2542,7 @@
                 if (isOnlineRoom) hostBroadcast(claimPayload);
                 applyCompClaimedLocal(claimPayload);
 
-                scheduleNextAfterResult(4800);
+                scheduleNextAfterResult(6500);
             } else {
                 // Respuesta errónea por precipitación: bloqueado solo en esta pregunta; otros aún pueden robarla
                 player.attemptedThisQ = true;
@@ -2608,20 +2592,19 @@
                 else ArcadeAudio.notification();
             }
 
+            const letters = ['A', 'B', 'C', 'D'];
             const rightTxt = matchState.currentQ ? matchState.currentQ.options[payload.correctIdx] : '';
             const failsList = (payload.earlyFails || []).map(f => `${f.nick} (-${f.penalty})`).join(', ');
 
             showResultModal({
-                isWin: payload.winnerId === myId,
-                icon: payload.winnerId === myId ? '⚡' : '🏎️',
-                headline: payload.winnerId === myId ? '¡TE LA LLEVASTE TÚ!' : `¡${payload.winnerNick.toUpperCase()} SE LA LLEVÓ!`,
-                who: `🏆 Respondió primero: ${payload.winnerNick} en ${payload.reactionSec}s`,
-                choiceInfo: `Respuesta correcta: "${rightTxt}"`,
-                ptsText: `+${payload.pts} PTS para ${payload.winnerNick}`,
-                ptsPositive: true,
-                earlyFailsText: failsList ? `💥 Se precipitaron y fallaron: ${failsList}` : '',
+                icon: '✅',
+                who: payload.winnerNick,
+                chosenLabel: `${letters[payload.correctIdx]} - ${rightTxt}`,
+                correctLabel: '',
+                ptsText: `+${payload.pts} pts`,
+                earlyFailsText: failsList ? `💥 Fallaron: ${failsList}` : '',
                 fact: payload.fact,
-                borderColor: payload.winnerId === myId ? '#4ade80' : '#fbbf24'
+                borderColor: '#4ade80'
             });
 
             updateCrownsHUD();
@@ -2673,7 +2656,7 @@
             if (isOnlineRoom) hostBroadcast(timeoutPayload);
             applyTimeoutLocal(timeoutPayload);
 
-            scheduleNextAfterResult(4800);
+            scheduleNextAfterResult(6500);
         }
 
         function applyTimeoutLocal(payload) {
@@ -2692,20 +2675,19 @@
             if (rightBtn) rightBtn.classList.add('correct');
 
             if (window.ArcadeAudio) ArcadeAudio.back();
+            const letters = ['A', 'B', 'C', 'D'];
             const ansText = matchState.currentQ ? matchState.currentQ.options[payload.correctIdx] : '';
             const failsList = (payload.earlyFails || []).map(f => `${f.nick} (-${f.penalty})`).join(', ');
 
             showResultModal({
-                isWin: false,
-                icon: '⌛',
-                headline: failsList ? '¡TODOS FALLARON!' : '¡TIEMPO AGOTADO!',
-                who: 'Nadie consiguió sumar puntos en esta ronda',
-                choiceInfo: `Respuesta correcta: "${ansText}"`,
-                ptsText: '0 PTS',
-                ptsPositive: false,
+                icon: '❌',
+                who: failsList ? 'Todos fallaron' : 'Tiempo agotado',
+                chosenLabel: '',
+                correctLabel: `${letters[payload.correctIdx]} - ${ansText}`,
+                ptsText: '0 pts',
                 earlyFailsText: failsList ? `💥 Fallaron: ${failsList}` : '',
                 fact: payload.fact,
-                borderColor: '#94a3b8'
+                borderColor: '#f43f5e'
             });
 
             updateScoreboardStrip();
@@ -2768,18 +2750,27 @@
             if (waitBanner) waitBanner.classList.add('hidden');
             const ov = document.getElementById('result-overlay');
             const card = document.getElementById('result-modal-card');
-            document.getElementById('result-big-icon').innerText = cfg.icon || '💡';
-            const hl = document.getElementById('result-headline');
-            hl.innerText = cfg.headline || '';
-            hl.style.color = cfg.borderColor || '#38bdf8';
+            document.getElementById('result-big-icon').innerText = cfg.icon || '✅';
             card.style.borderColor = cfg.borderColor || '#38bdf8';
 
             document.getElementById('result-who').innerText = cfg.who || '';
-            document.getElementById('result-choice-info').innerText = cfg.choiceInfo || '';
 
-            const ptsEl = document.getElementById('result-pts-pill');
-            ptsEl.innerText = cfg.ptsText || '0 PTS';
-            ptsEl.classList.toggle('bad', !cfg.ptsPositive);
+            const choiceEl = document.getElementById('result-choice-info');
+            choiceEl.innerHTML = '';
+            if (cfg.chosenLabel) {
+                const chosenSpan = document.createElement('span');
+                chosenSpan.style.color = '#ffffff';
+                chosenSpan.textContent = cfg.chosenLabel;
+                choiceEl.appendChild(chosenSpan);
+            }
+            if (cfg.correctLabel) {
+                const rightSpan = document.createElement('span');
+                rightSpan.style.color = '#4ade80';
+                rightSpan.textContent = cfg.correctLabel;
+                choiceEl.appendChild(rightSpan);
+            }
+
+            document.getElementById('result-pts-pill').innerText = cfg.ptsText || '0 pts';
 
             const failsEl = document.getElementById('result-early-fails');
             if (cfg.earlyFailsText) {
@@ -2793,9 +2784,9 @@
             document.getElementById('btn-continue-next').classList.toggle('hidden', !isHost);
             ov.classList.remove('hidden');
 
-            // Barra de lectura de 4.8s
+            // Barra de lectura de 6.5s
             clearInterval(resultReadInterval);
-            const totalMs = 4800;
+            const totalMs = 6500;
             const startTs = performance.now();
             const barEl = document.getElementById('result-read-bar');
             barEl.style.width = '100%';
