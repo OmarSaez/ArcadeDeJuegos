@@ -35,10 +35,13 @@
             padding: 0;
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             color: #1f2937;
             touch-action: none;
             user-select: none;
+            display: flex;
+            flex-direction: column;
         }
 
         h1 {
@@ -53,24 +56,29 @@
         .controls {
             position: relative;
             z-index: 100;
+            flex-shrink: 0;
             background: var(--glass);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            padding: 10px 20px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            padding: 8px 14px;
             border-bottom: var(--border);
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
             justify-content: center;
             align-items: center;
         }
 
         .input-group {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 5px;
-            font-size: 0.9rem;
+            gap: 4px;
+            font-size: 0.85rem;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 3px 8px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
         }
 
         input[type="file"] {
@@ -79,40 +87,54 @@
 
         .custom-file-upload {
             border: 1px solid #d1d5db;
-            display: inline-block;
-            padding: 6px 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 7px 12px;
             cursor: pointer;
             border-radius: 8px;
             background: white;
             transition: all 0.2s;
             font-size: 0.85rem;
-            font-weight: 500;
+            font-weight: 600;
+            color: #1f2937;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            white-space: nowrap;
+            box-sizing: border-box;
         }
 
         .custom-file-upload:hover {
             background: #f9fafb;
+            border-color: var(--primary);
             transform: translateY(-1px);
         }
 
         input[type="number"] {
             width: 40px;
-            padding: 5px;
+            padding: 4px;
             border-radius: 6px;
             border: 1px solid #d1d5db;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            text-align: center;
         }
 
         button {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 8px 14px;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
             font-size: 0.85rem;
             transition: all 0.2s ease;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            white-space: nowrap;
         }
 
         button:hover {
@@ -126,23 +148,65 @@
             border: 1px solid var(--primary);
         }
 
+        button.secondary:hover {
+            background: #eef2ff;
+        }
+
+        button.btn-ref-active {
+            background: #eef2ff;
+            color: var(--primary-dark);
+            border-color: var(--primary-dark);
+            box-shadow: inset 0 0 0 1px var(--primary-dark);
+        }
+
+        .room-badge {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #6d28d9;
+            background: #ede9fe;
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid #c4b5fd;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .room-badge:hover {
+            background: #ddd6fe;
+        }
+
+        .timer-pill {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #374151;
+            background: rgba(255, 255, 255, 0.75);
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            white-space: nowrap;
+        }
+
         .tip {
             font-size: 0.8rem;
             color: #6b7280;
-            margin-left: 10px;
             display: none;
         }
 
-        @media(min-width: 600px) {
+        @media(min-width: 768px) {
             .tip {
-                display: block;
+                display: inline-block;
             }
         }
 
         #game-surface {
             position: relative;
             width: 100%;
-            height: calc(100vh - 80px);
+            flex: 1;
+            min-height: 0;
             overflow: hidden;
             touch-action: none;
             cursor: grab;
@@ -393,19 +457,206 @@
         }
 
         .toggle-toolbar-btn {
-            background: none;
-            border: 1px solid #ccc;
-            padding: 2px 8px;
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            padding: 6px 10px;
             cursor: pointer;
-            border-radius: 4px;
-            margin-left: auto;
-            /* Push to right */
-            font-size: 1.2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
             line-height: 1;
+            box-shadow: none;
         }
 
         .toggle-toolbar-btn:hover {
-            background: #eee;
+            background: #e2e8f0;
+            transform: none;
+        }
+
+        @media (max-width: 640px) {
+            .controls {
+                padding: 6px 8px;
+                gap: 6px;
+            }
+
+            .controls h1 {
+                font-size: 1rem !important;
+                margin-right: 4px !important;
+            }
+
+            .controls button,
+            .custom-file-upload {
+                padding: 6px 10px;
+                font-size: 0.78rem;
+            }
+
+            .input-group {
+                font-size: 0.78rem;
+                padding: 2px 6px;
+            }
+
+            .input-group input[type="number"] {
+                width: 34px;
+                padding: 3px;
+                font-size: 0.78rem;
+            }
+
+            .room-badge,
+            .timer-pill {
+                font-size: 0.78rem;
+                padding: 4px 8px;
+            }
+
+            #reference-container {
+                max-width: 72vw;
+                top: 120px;
+                left: 10px;
+            }
+
+            .start-card {
+                padding: 28px 20px;
+            }
+
+            .start-title {
+                font-size: 1.85rem;
+            }
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-gradient);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 4000;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .start-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: var(--border);
+            padding: 36px 28px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            max-width: 380px;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .start-title {
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: #111827;
+            margin: 0 0 6px 0;
+            pointer-events: auto;
+        }
+
+        .start-subtitle {
+            font-size: 0.95rem;
+            color: #6b7280;
+            margin: 0 0 28px 0;
+        }
+
+        .start-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .start-btn-create {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 1.05rem;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+        }
+
+        .start-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #9ca3af;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 4px 0;
+        }
+
+        .start-divider::before,
+        .start-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #d1d5db;
+        }
+
+        .start-join-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .start-btn-join {
+            width: 100%;
+            padding: 13px 18px;
+            font-size: 1.05rem;
+            border-radius: 12px;
+            background: #8b5cf6;
+            box-shadow: 0 6px 16px rgba(139, 92, 246, 0.25);
+        }
+
+        .start-btn-join:hover {
+            background: #7c3aed;
+        }
+
+        #room-code-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            font-size: 1.25rem;
+            font-family: monospace;
+            font-weight: 600;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-align: center;
+            border: 2px solid #d1d5db;
+            border-radius: 12px;
+            background: white;
+            color: #111827;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        #room-code-input:focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+        }
+
+        #start-error {
+            color: #dc2626;
+            font-size: 0.88rem;
+            font-weight: 500;
+            margin: 14px 0 0 0;
+            min-height: 1.2em;
+        }
+
+        .start-back-btn {
+            margin-top: 18px;
+            width: 100%;
+            background: #64748b;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .start-back-btn:hover {
+            background: #475569;
         }
     </style>
     <script>
@@ -436,34 +687,30 @@
                     Archivos</strong>. Abre el archivo desde la app "Archivos".
             </div>
         </noscript>
-        <h1 class="hides-on-minimize" style="font-size:1.2rem; margin:0; margin-right:15px;">🧩 MasterPuzzle</h1>
-        <button id="btn-multi" class="hides-on-minimize" onclick="showMultiplayerModal()"
-            style="margin-bottom:5px; background: #8b5cf6;">👥
-            Multijugador</button>
-        <span id="room-display"
-            style="display:none; font-weight:bold; margin-right:10px; color:#6d28d9; background:#ede9fe; padding:4px 8px; border-radius:6px; border:1px solid #8b5cf6;">
-            Sala: <span id="room-code-display" style="font-family:monospace; font-size:1.1em;"></span>
-            <span id="my-color-dot" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#3b82f6; margin-left:6px; vertical-align:middle; border:1px solid rgba(0,0,0,0.25);" title="Tu color de jugador"></span>
+        <h1 class="hides-on-minimize" style="font-size:1.15rem; margin:0; margin-right:6px;">🧩 Rompecabezas</h1>
+        <span id="room-display" class="room-badge" onclick="copyRoomCode()" title="Toca para copiar el código de sala">
+            Sala: <span id="room-code-display" style="font-family:monospace; font-size:1.05em;"></span>
+            <span id="my-color-dot"
+                style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#3b82f6; vertical-align:middle; border:1px solid rgba(0,0,0,0.25);"
+                title="Tu color de jugador"></span>
         </span>
-        <label for="upload" class="custom-file-upload hides-on-minimize">📂 <span
-                style="display:none; @media(min-width:600px){display:inline}">Subir Img</span></label>
+        <label for="upload" class="custom-file-upload hides-on-minimize">📂 Subir foto</label>
         <input type="file" id="upload" accept="image/*" class="hides-on-minimize">
         <div class="input-group hides-on-minimize">
-            <span style="font-weight:600; font-size:0.8rem; margin-right:5px;">Alto:</span>
+            <span style="font-weight:600;">Alto:</span>
             <input type="number" id="rows" value="3" min="2" max="10" title="Filas (Alto)">
-            <span style="margin:0 5px; color:#aaa;">x</span>
-            <span style="font-weight:600; font-size:0.8rem; margin-right:5px;">Ancho:</span>
+            <span style="color:#9ca3af;">×</span>
+            <span style="font-weight:600;">Ancho:</span>
             <input type="number" id="cols" value="3" min="2" max="10" title="Columnas (Ancho)">
         </div>
-        <button class="hides-on-minimize" onclick="initGame()">Mezclar y Jugar</button>
-        <button class="secondary hides-on-minimize" onclick="resetGame()">Reiniciar Juego</button>
-        <button class="secondary" onclick="resetCamera()" title="Restablecer Vista (Zoom 100% + Centro)">🔍 Reset
-            Vista</button>
-        <button class="secondary" onclick="toggleReference()" id="btn-ref" style="display:none">Ver Referencia</button>
-        <div style="font-size:0.8rem; font-weight:bold; color:#555;">⏱️ <span id="timer">00:00</span></div>
+        <button class="hides-on-minimize" onclick="initGame()">🔀 Mezclar y Jugar</button>
+        <button class="secondary hides-on-minimize" onclick="resetGame()">🔄 Reiniciar</button>
+        <button class="secondary" onclick="resetCamera()" title="Restablecer Vista (Zoom 100% + Centro)">🔍 Reset Vista</button>
+        <button class="secondary" onclick="toggleReference()" id="btn-ref" style="display:none">🖼️ Ver referencia</button>
+        <div class="timer-pill">⏱️ <span id="timer">00:00</span></div>
         <span class="tip hides-on-minimize">💡 Doble click para rotar</span>
         <button onclick="window.location.href='https://omarsaez.github.io/ArcadeDeJuegos/'" class="hides-on-minimize"
-            style="background:#64748b; margin-left:10px;">Volver al Arcade</button>
+            style="background:#64748b;">Volver al Arcade</button>
         <button id="toggle-bar-btn" class="toggle-toolbar-btn" onclick="toggleToolbar()"
             title="Minimizar Barra">🔼</button>
     </div>
@@ -513,26 +760,22 @@
         </div>
     </div>
 
-    <div id="p2p-modal" class="modal-overlay" style="z-index: 4000;">
-        <div class="modal-content" style="max-width:350px;">
-            <h2 class="modal-title" style="font-size:1.8rem;">Jugar con Amigos</h2>
-            <div id="p2p-step-1">
-                <button class="btn-large" onclick="createRoom()" style="margin-bottom:10px;">👑 Crear Sala
-                    (Host)</button>
-                <div style="margin:15px 0; font-weight:bold; color:#aaa;">— O —</div>
-                <input type="text" id="room-code-input" placeholder="Código de Sala"
-                    style="padding:10px; font-size:1.2rem; width:60%; text-transform:uppercase; text-align:center;">
-                <button onclick="joinRoom()" style="padding:10px;">Unirse</button>
-                <button class="secondary" onclick="closeP2PModal()"
-                    style="margin-top:20px; width:100%;">Cancelar</button>
+    <div id="start-screen">
+        <div class="start-card">
+            <h1 class="start-title">🧩 Rompecabezas</h1>
+            <p class="start-subtitle">Piezas solo o multijugador</p>
+            <div class="start-actions">
+                <button id="btn-create-room" class="start-btn-create" onclick="createRoom()">👑 Crear Sala</button>
+                <div class="start-divider">O</div>
+                <div class="start-join-box">
+                    <button id="btn-join-room" class="start-btn-join" onclick="joinRoom()">🔗 Unirse a Sala</button>
+                    <input type="text" id="room-code-input" placeholder="CÓDIGO DE SALA" maxlength="6"
+                        autocomplete="off">
+                </div>
             </div>
-            <div id="p2p-step-waiting" style="display:none;">
-                <p>Tu Código de Sala:</p>
-                <h1 id="my-room-code" style="font-size:3rem; letter-spacing:5px; margin:10px 0; color:#6366f1;">...</h1>
-                <p style="font-size:0.9rem; color:#6b7280;">Comparte este código con tus amigos.<br>Esperando
-                    jugadores...</p>
-                <button class="secondary" onclick="closeP2PModal()">Cerrar (Jugar mientras esperas)</button>
-            </div>
+            <p id="start-error"></p>
+            <button class="start-back-btn"
+                onclick="window.location.href='https://omarsaez.github.io/ArcadeDeJuegos/'">Volver al Arcade</button>
         </div>
     </div>
 
@@ -1330,24 +1573,35 @@
         let myPeerId = null;
         let netThrottle = 0;
 
-        // UI para Multiplayer
-        // Inyectamos botones extra en la UI
-        // UI para Multiplayer
-        // Botón agregado directamente en el HTML para evitar problemas en Safari/Drive
-        // const controls = document.querySelector('.controls');
-        // ... (Código de inyección eliminado)
-
-        // Crear Modal P2P dinámicamente - ELIMINADO (Ahora está fijo en el HTML)
-
-        function showMultiplayerModal() {
-            // Verificación de seguridad para entornos restringidos (Drive, etc)
-            if (typeof Peer === 'undefined') {
-                alert("⚠️ El sistema Multijugador no está disponible.\n\nPosibles causas:\n1. Estás viendo esto en Google Drive o Vista Previa (Google bloquea las conexiones). DESCÁRGALO para jugar.\n2. No tienes conexión a internet.\n3. Tu navegador bloqueó el script.");
-                return;
-            }
-            document.getElementById('p2p-modal').style.display = 'flex';
+        // UI de Pantalla de Inicio P2P
+        function hideStartScreen() {
+            const screen = document.getElementById('start-screen');
+            if (screen) screen.style.display = 'none';
         }
-        function closeP2PModal() { document.getElementById('p2p-modal').style.display = 'none'; }
+
+        function setStartError(msg) {
+            const errEl = document.getElementById('start-error');
+            if (errEl) errEl.innerText = msg || '';
+        }
+
+        function setStartLoading(loading, mode) {
+            const createBtn = document.getElementById('btn-create-room');
+            const joinBtn = document.getElementById('btn-join-room');
+            const codeInput = document.getElementById('room-code-input');
+            if (createBtn) {
+                createBtn.disabled = loading;
+                createBtn.innerText = (loading && mode === 'create') ? '⏳ Creando sala...' : '👑 Crear Sala';
+            }
+            if (joinBtn) {
+                joinBtn.disabled = loading;
+                joinBtn.innerText = (loading && mode === 'join') ? '⏳ Conectando...' : '🔗 Unirse a Sala';
+            }
+            if (codeInput) codeInput.disabled = loading;
+        }
+
+        document.getElementById('room-code-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') joinRoom();
+        });
 
         // --- PEER LOGIC (ArcadeP2P Universal Module) ---
 
@@ -1359,35 +1613,43 @@
                 onPeerCreated: (p) => { peer = p; },
                 onOpen: (code) => {
                     myPeerId = code;
-                    document.getElementById('room-display').style.display = 'inline-block';
+                    document.getElementById('room-display').style.display = 'inline-flex';
                     document.getElementById('room-code-display').innerText = code;
                     const dot = document.getElementById('my-color-dot');
                     if (dot) dot.style.backgroundColor = myPlayerColor;
 
                     if (isHost) {
-                        document.getElementById('p2p-step-1').style.display = 'none';
-                        document.getElementById('p2p-step-waiting').style.display = 'block';
-                        document.getElementById('my-room-code').innerText = code;
+                        setStartLoading(false);
+                        hideStartScreen();
+                        const startMsg = document.getElementById('start-msg');
+                        if (startMsg && !isPlaying) {
+                            startMsg.innerText = `Sala creada: ${code}\nSube una imagen para comenzar.`;
+                        }
                     }
                 },
                 onIncomingConnection: (conn) => {
                     if (isHost) {
                         setupConnection(conn);
-                        closeP2PModal();
                     } else {
                         conn.close();
                     }
                 },
                 onError: (err, msg) => {
                     console.error(err);
-                    alert("Error P2P: " + msg);
+                    setStartLoading(false);
+                    setStartError("Error P2P: " + msg);
                 }
             });
             return peer;
         }
 
         function createRoom() {
-            if (typeof Peer === 'undefined') { alert('Error: La librería PeerJS no se cargó. Verifica tu conexión o las restricciones de seguridad (Google Drive puede bloquear scripts externos).'); return; }
+            if (typeof Peer === 'undefined') {
+                setStartError('⚠️ La librería PeerJS no se cargó. Verifica tu conexión o las restricciones del navegador.');
+                return;
+            }
+            setStartError('');
+            setStartLoading(true, 'create');
             isHost = true;
             myPlayerColor = PLAYER_COLORS[0];
             nextColorIndex = 1;
@@ -1397,30 +1659,38 @@
         }
 
         function joinRoom() {
-            if (typeof Peer === 'undefined') { alert('Error: La librería PeerJS no se cargó.'); return; }
-            const code = document.getElementById('room-code-input').value.trim().toUpperCase();
-            if (!code) return;
+            if (typeof Peer === 'undefined') {
+                setStartError('⚠️ La librería PeerJS no se cargó.');
+                return;
+            }
+            const input = document.getElementById('room-code-input');
+            const code = input.value.trim().toUpperCase();
+            if (!code) {
+                setStartError('Ingresa un código de sala.');
+                input.focus();
+                return;
+            }
+            setStartError('');
+            setStartLoading(true, 'join');
             isHost = false;
-
-            document.getElementById('room-display').style.display = 'inline-block';
-            document.getElementById('room-code-display').innerText = code;
-            const dot = document.getElementById('my-color-dot');
-            if (dot) dot.style.backgroundColor = myPlayerColor;
 
             ArcadeP2P.joinRoom(code, {
                 game: 'ROMPECABEZA',
                 peer: peer,
                 onPeerCreated: (p) => { peer = p; },
                 onConnecting: (conn) => {
-                    setupConnection(conn);
+                    setupConnection(conn, code);
                 },
-                onError: (err, msg) => alert("No se pudo conectar a la sala " + code + ": " + msg)
+                onError: (err, msg) => {
+                    setStartLoading(false);
+                    setStartError("No se pudo conectar a la sala " + code + ": " + msg);
+                }
             });
         }
 
         let retryIntervals = {};
 
-        function setupConnection(conn) {
+        function setupConnection(conn, joinedCode = '') {
             conn.on('open', () => {
                 console.log("Conexión abierta con", conn.peer);
                 if (isHost) {
@@ -1436,8 +1706,19 @@
                     startSyncWithPeer(conn);
                 } else {
                     myConn = conn;
-                    closeP2PModal();
-                    console.log("Enviando HELO..."); // Typp fixed
+                    setStartLoading(false);
+                    hideStartScreen();
+                    if (joinedCode) {
+                        document.getElementById('room-display').style.display = 'inline-flex';
+                        document.getElementById('room-code-display').innerText = joinedCode;
+                    }
+                    const dot = document.getElementById('my-color-dot');
+                    if (dot) dot.style.backgroundColor = myPlayerColor;
+                    const startMsg = document.getElementById('start-msg');
+                    if (startMsg && !isPlaying) {
+                        startMsg.innerText = `Conectado a la sala ${joinedCode}.\nEsperando que el anfitrión inicie el puzzle...`;
+                    }
+                    console.log("Enviando HELO...");
                     conn.send({ type: 'HELLO' });
                 }
             });
@@ -1737,7 +2018,7 @@
                 if (remoteConfig.img) {
                     imgUrl = remoteConfig.img;
                     document.getElementById('ref-image').src = imgUrl;
-                    document.getElementById('btn-ref').style.display = 'inline-block';
+                    document.getElementById('btn-ref').style.display = 'inline-flex';
                 }
                 startGameLogic(initialPieces);
                 return;
@@ -1753,7 +2034,7 @@
                 resizeImage(file, (resizedUrl) => {
                     imgUrl = resizedUrl;
                     document.getElementById('ref-image').src = imgUrl;
-                    document.getElementById('btn-ref').style.display = 'inline-block';
+                    document.getElementById('btn-ref').style.display = 'inline-flex';
                     startGameLogic();
                     if (isHost) setTimeout(broadcastFullState, 500);
                 });
@@ -2527,7 +2808,27 @@
 
         const refContainer = document.getElementById('reference-container');
         let refVisible = false;
-        function toggleReference() { refVisible = !refVisible; refContainer.style.display = refVisible ? 'block' : 'none'; }
+        function toggleReference() {
+            refVisible = !refVisible;
+            refContainer.style.display = refVisible ? 'block' : 'none';
+            const btnRef = document.getElementById('btn-ref');
+            if (btnRef) {
+                btnRef.innerText = refVisible ? '🙈 Ocultar referencia' : '🖼️ Ver referencia';
+                btnRef.classList.toggle('btn-ref-active', refVisible);
+            }
+        }
+
+        function copyRoomCode() {
+            const codeEl = document.getElementById('room-code-display');
+            const code = codeEl ? codeEl.innerText.trim() : '';
+            if (!code || code === '¡Copiado!') return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(() => {
+                    codeEl.innerText = '¡Copiado!';
+                    setTimeout(() => { codeEl.innerText = code; }, 1200);
+                }).catch(() => {});
+            }
+        }
 
         // Resize Logic
         let currentRefWidth = 200;
