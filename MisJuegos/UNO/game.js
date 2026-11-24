@@ -790,8 +790,8 @@ class Game {
     executeUnoCallDirectly(action, senderId) {
         const now = Date.now();
         
-        // 1. If within the 1-second grace period of a successful call, ignore to prevent late-reaction penalties
-        if (this.lastValidUnoTime && (now - this.lastValidUnoTime < 1000)) {
+        // 1. If within the 5-second grace period of a successful call, ignore to prevent late-reaction penalties
+        if (this.lastValidUnoTime && (now - this.lastValidUnoTime < 5000)) {
             return;
         }
 
