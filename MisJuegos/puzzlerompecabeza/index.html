@@ -1812,6 +1812,7 @@
 
                 case 'FULL_STATE':
                     // Cliente recibe estado
+                    document.getElementById('win-modal').style.display = 'none';
                     if (isPlaying && imgUrl === data.config.img && rows === data.config.rows && cols === data.config.cols) {
                         applyPieceState(data.pieces);
                     } else {
@@ -1834,7 +1835,10 @@
                 case 'reset':
                 case 'RESET':
                     console.log("Recibido RESET remoto. Reiniciando...");
-                    startGameLogic();
+                    if (isHost && imgUrl) {
+                        startGameLogic();
+                        broadcastFullState();
+                    }
                     break;
 
                 case 'SYNC_STATS':
@@ -2042,8 +2046,10 @@
             const fileInput = document.getElementById('upload');
             const file = fileInput.files[0];
 
-            rows = parseInt(document.getElementById('rows').value);
-            cols = parseInt(document.getElementById('cols').value);
+            rows = Math.min(10, Math.max(2, parseInt(document.getElementById('rows').value) || 3));
+            cols = Math.min(10, Math.max(2, parseInt(document.getElementById('cols').value) || 3));
+            document.getElementById('rows').value = rows;
+            document.getElementById('cols').value = cols;
 
             if (file) {
                 resizeImage(file, (resizedUrl) => {
@@ -2053,9 +2059,12 @@
                     startGameLogic();
                     if (isHost) setTimeout(broadcastFullState, 500);
                 });
-            } else {
+            } else if (imgUrl) {
                 startGameLogic();
-                if (isHost && imgUrl) setTimeout(broadcastFullState, 500);
+                if (isHost) setTimeout(broadcastFullState, 500);
+            } else {
+                alert('Primero sube una foto para comenzar.');
+                fileInput.click();
             }
         }
 
@@ -2544,8 +2553,9 @@
                 // DROP IN SLOT (Any slot allowed)
                 const existingPiece = slot.querySelector('.piece');
                 if (existingPiece && existingPiece !== draggedPiece) {
-                    // Kick existing piece out nearby
-                    movePieceToTable(existingPiece, 0, 0);
+                    const kickPos = getKickCoords();
+                    movePieceToTable(existingPiece, kickPos.x, kickPos.y);
+                    dropData.kicked = { id: existingPiece.dataset.correctPos, x: kickPos.x, y: kickPos.y };
                 }
 
                 slot.appendChild(draggedPiece);
@@ -2688,7 +2698,11 @@
                 const slot = document.querySelector(`.slot[data-pos="${data.slotId}"]`);
                 if (slot) {
                     const existing = slot.querySelector('.piece');
-                    if (existing && existing !== p) movePieceToTable(existing, 0, 0);
+                    if (existing && existing !== p) {
+                        const kx = data.kicked ? data.kicked.x : (cols * LOGICAL_TILE) / 2 + 115;
+                        const ky = data.kicked ? data.kicked.y : 0;
+                        movePieceToTable(existing, kx, ky);
+                    }
                     slot.appendChild(p);
                     p.classList.add('in-slot');
 
@@ -2781,17 +2795,27 @@
             return state;
         }
 
+        function getKickCoords() {
+            const hw = (cols * LOGICAL_TILE) / 2;
+            const hh = (rows * LOGICAL_TILE) / 2;
+            const side = Math.floor(Math.random() * 4);
+            if (side === 0) return { x: -(hw + 115), y: (Math.random() - 0.5) * hh * 1.6 };
+            if (side === 1) return { x: hw + 115, y: (Math.random() - 0.5) * hh * 1.6 };
+            if (side === 2) return { x: (Math.random() - 0.5) * hw * 1.6, y: -(hh + 115) };
+            return { x: (Math.random() - 0.5) * hw * 1.6, y: hh + 115 };
+        }
+
         function movePieceToTable(piece, x, y) {
             piece.classList.remove('in-slot');
             gameWorld.appendChild(piece);
             piece.style.position = 'absolute';
-            const rot = piece.dataset.currentRotation;
+            const rot = piece.dataset.currentRotation || 0;
             piece.style.transform = `rotate(${rot}deg)`;
 
-            // Random scatter near center if kicked
-            const lx = (Math.random() - 0.5) * 400;
-            const ly = (Math.random() - 0.5) * 400;
-            piece.style.left = `${lx}px`; piece.style.top = `${ly}px`;
+            const halfW = parseFloat(piece.dataset.halfSize) || (parseFloat(piece.style.width) / 2) || (piece.offsetWidth / 2) || 0;
+            const halfH = parseFloat(piece.dataset.halfSize) || (parseFloat(piece.style.height) / 2) || (piece.offsetHeight / 2) || 0;
+            piece.style.left = `${x - halfW}px`;
+            piece.style.top = `${y - halfH}px`;
         }
 
         function checkWinCondition() {
@@ -2832,10 +2856,16 @@
         }
 
         function resetGame() {
-            // Send Reset Command
-            sendData({ type: 'RESET' });
-            // Execute locally too
-            startGameLogic();
+            if (!imgUrl) {
+                alert('Primero sube una foto para comenzar.');
+                return;
+            }
+            if (isHost || !myConn) {
+                startGameLogic();
+                if (isHost) broadcastFullState();
+            } else {
+                sendData({ type: 'RESET' });
+            }
         }
 
         const refContainer = document.getElementById('reference-container');
