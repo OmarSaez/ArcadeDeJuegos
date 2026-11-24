@@ -589,7 +589,6 @@ class Game {
     tryPlayCard(cardIdx) {
         if (this.gameover) return;
         if (String(this.players[this.currentPlayerIdx].id) !== String(net.myId)) return;
-        if (this.justDrawnCardIdx !== -1 && cardIdx !== this.justDrawnCardIdx) return;
 
         const card = this.players[this.currentPlayerIdx].hand[cardIdx];
         if (this.canPlay(card)) {
