@@ -446,14 +446,7 @@ class Game {
                 // Only create new card if it doesn't exist
                 if (!cardEl) {
                     cardEl = card.render();
-                    cardEl.dataset.cardId = `${card.color}-${card.tipo}-${card.value}`;
-
-                    // Animate if it's a newly drawn card
-                    if (this.hasAnimated && (cardIdx >= prevSize)) {
-                        cardEl.classList.add('drawing');
-                        cardEl.style.animationDelay = `${(cardIdx - prevSize) * 0.1}s`;
-                        if (window.ArcadeAudio && cardIdx === prevSize) ArcadeAudio.card();
-                    }
+                    cardEl.dataset.cardId = `${card.color}-${card.tipo}-${card.value}-${card.accion}`;
 
                     if (!player.isMe) {
                         cardEl.classList.add('back');
@@ -462,6 +455,27 @@ class Game {
                         cardEl.onclick = () => this.tryPlayCard(cardIdx);
                     }
                     handEl.appendChild(cardEl);
+
+                    // Animate if it's a newly drawn card
+                    if (this.hasAnimated && (cardIdx >= prevSize)) {
+                        const drawPileEl = document.getElementById('draw-pile');
+                        if (drawPileEl) {
+                            const drawRect = drawPileEl.getBoundingClientRect();
+                            const cardRect = cardEl.getBoundingClientRect();
+                            if (drawRect.width > 0 && cardRect.width > 0) {
+                                const screenDx = (drawRect.left + drawRect.width / 2) - (cardRect.left + cardRect.width / 2);
+                                const screenDy = (drawRect.top + drawRect.height / 2) - (cardRect.top + cardRect.height / 2);
+                                const rad = -angle * Math.PI / 180;
+                                const localDx = screenDx * Math.cos(rad) - screenDy * Math.sin(rad);
+                                const localDy = screenDx * Math.sin(rad) + screenDy * Math.cos(rad);
+                                cardEl.style.setProperty('--draw-from-x', `${localDx}px`);
+                                cardEl.style.setProperty('--draw-from-y', `${localDy}px`);
+                            }
+                        }
+                        cardEl.classList.add('drawing');
+                        cardEl.style.animationDelay = `${(cardIdx - prevSize) * 0.1}s`;
+                        if (window.ArcadeAudio && cardIdx === prevSize) ArcadeAudio.card();
+                    }
                 } else {
                     // Update existing card index if it's me (for onclick)
                     if (player.isMe) {
@@ -476,13 +490,14 @@ class Game {
         const topCard = this.discardPile[this.discardPile.length - 1];
 
         if (topCard) {
-            const cardEl = topCard.render();
-            const currentCardId = `${topCard.color}-${topCard.tipo}-${topCard.value}`;
+            const currentCardId = `${topCard.color}-${topCard.tipo}-${topCard.value}-${topCard.accion}`;
+            const currentDiscardLen = String(this.discardPile.length);
 
-            // Compare IDs ignoring classes to prevent redundant animations when drawing
             const lastCardId = lastCardInDOM ? (lastCardInDOM.dataset.cardId || "") : "";
+            const lastDiscardLen = lastCardInDOM ? (lastCardInDOM.dataset.discardLen || "") : "";
 
-            if (lastCardId !== currentCardId) {
+            if (lastCardId !== currentCardId || lastDiscardLen !== currentDiscardLen) {
+                const cardEl = topCard.render();
                 if (this.lastPlayedByPlayerId) {
                     const playerEl = document.getElementById(`player-area-${this.lastPlayedByPlayerId}`);
                     if (playerEl) {
@@ -510,15 +525,24 @@ class Game {
                 }
                 cardEl.classList.add('playing');
                 if (window.ArcadeAudio) ArcadeAudio.card();
-            }
-            cardEl.dataset.cardId = currentCardId;
+                cardEl.dataset.cardId = currentCardId;
+                cardEl.dataset.discardLen = currentDiscardLen;
 
-            if (this.selectedColor) {
-                cardEl.style.borderColor = `var(--uno-${this.selectedColor})`;
-                cardEl.style.boxShadow = `0 0 15px var(--uno-${this.selectedColor})`;
+                if (this.selectedColor) {
+                    cardEl.style.borderColor = `var(--uno-${this.selectedColor})`;
+                    cardEl.style.boxShadow = `0 0 15px var(--uno-${this.selectedColor})`;
+                }
+                discardEl.innerHTML = '';
+                discardEl.appendChild(cardEl);
+            } else if (lastCardInDOM) {
+                if (this.selectedColor) {
+                    lastCardInDOM.style.borderColor = `var(--uno-${this.selectedColor})`;
+                    lastCardInDOM.style.boxShadow = `0 0 15px var(--uno-${this.selectedColor})`;
+                } else {
+                    lastCardInDOM.style.borderColor = '';
+                    lastCardInDOM.style.boxShadow = '';
+                }
             }
-            discardEl.innerHTML = '';
-            discardEl.appendChild(cardEl);
         }
 
         document.getElementById('current-player-name').innerText = this.players[this.currentPlayerIdx].nickname;

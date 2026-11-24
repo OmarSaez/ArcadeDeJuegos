@@ -287,9 +287,9 @@ body {
 
 @keyframes card-draw-anim {
     0% {
-        transform: translate(-100px, -200px) scale(0) rotate(-45deg);
+        transform: translate(var(--draw-from-x, -100px), var(--draw-from-y, -200px)) scale(0.4) rotate(-25deg);
         opacity: 0;
-        filter: blur(10px);
+        filter: blur(4px);
     }
 
     1% {
