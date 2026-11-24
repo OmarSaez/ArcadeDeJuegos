@@ -557,6 +557,10 @@ class Game {
         const currentTurnPlayer = this.players[this.currentPlayerIdx];
         const isMyTurn = (me && currentTurnPlayer && String(me.id) === String(currentTurnPlayer.id));
 
+        if (!isMyTurn || this.gameover) {
+            this.closeColorPicker();
+        }
+
         const drawBtn = document.getElementById('draw-btn');
         if (drawBtn) {
             drawBtn.disabled = !isMyTurn || this.gameover;
@@ -654,6 +658,7 @@ class Game {
                 if (window.ArcadeAudio) ArcadeAudio.click();
                 document.getElementById('color-picker').classList.remove('hidden');
             } else {
+                this.closeColorPicker();
                 this.sendAction({ type: 'PLAY', cardIdx: cardIdx });
             }
         } else {
@@ -661,9 +666,20 @@ class Game {
         }
     }
 
+    closeColorPicker() {
+        const picker = document.getElementById('color-picker');
+        if (picker) picker.classList.add('hidden');
+        this.pendingWildCardIdx = null;
+    }
+
     selectColor(color) {
-        document.getElementById('color-picker').classList.add('hidden');
-        this.sendAction({ type: 'PLAY', cardIdx: this.pendingWildCardIdx, color: color });
+        if (this.pendingWildCardIdx === null || this.pendingWildCardIdx === undefined) {
+            this.closeColorPicker();
+            return;
+        }
+        const cardIdx = this.pendingWildCardIdx;
+        this.closeColorPicker();
+        this.sendAction({ type: 'PLAY', cardIdx: cardIdx, color: color });
     }
 
     canPlay(card) {
@@ -1139,6 +1155,7 @@ document.getElementById('btn-join-action').onclick = () => {
 document.getElementById('btn-start-game').onclick = () => { if (net.isHost) { window.game = new Game(net.playersReady); } };
 document.getElementById('draw-btn').onclick = () => {
     if (!window.game) return;
+    window.game.closeColorPicker();
     if (window.game.justDrawnCardIdx !== -1) window.game.sendAction({ type: 'PASS' });
     else window.game.sendAction({ type: 'DRAW' });
 };
@@ -1159,6 +1176,8 @@ document.getElementById('btn-back-arcade-init').onclick = () => location.href = 
 
 const colorOpts = document.querySelectorAll('.color-opt');
 colorOpts.forEach(opt => { opt.onclick = () => { window.game.selectColor(opt.getAttribute('data-color')); }; });
+const cancelColorBtn = document.getElementById('btn-cancel-color');
+if (cancelColorBtn) { cancelColorBtn.onclick = () => { if (window.game) window.game.closeColorPicker(); }; }
 
 document.getElementById('btn-back-menu-join').onclick = () => showScreen('screen-menu');
 document.getElementById('btn-leave-lobby').onclick = () => location.reload();
