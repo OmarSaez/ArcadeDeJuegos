@@ -752,7 +752,8 @@
                     <p>Movimientos</p>
                 </div>
             </div>
-            <button class="btn-large" onclick="closeModal()">¡Jugar otra vez!</button>
+            <button class="btn-large" onclick="playAgainFromWin()">¡Jugar otra vez!</button>
+            <button class="btn-large secondary" onclick="closeModal()" style="margin-top:10px;">👀 Ver resultado</button>
             <button class="btn-large" onclick="window.location.href='https://omarsaez.github.io/ArcadeDeJuegos/'"
                 style="margin-top:10px; background: #94a3b8; box-shadow:none; border:1px solid #64748b;">
                 VOLVER AL ARCADE
@@ -1732,6 +1733,21 @@
                         clearInterval(retryIntervals[conn.peer]);
                         delete retryIntervals[conn.peer];
                     }
+                } else if (conn === myConn) {
+                    myConn = null;
+                    const roomDisplay = document.getElementById('room-display');
+                    const roomCodeEl = document.getElementById('room-code-display');
+                    if (roomCodeEl) roomCodeEl.innerText = 'Desconectado';
+                    if (roomDisplay) {
+                        roomDisplay.style.background = '#fee2e2';
+                        roomDisplay.style.color = '#dc2626';
+                        roomDisplay.style.borderColor = '#fca5a5';
+                    }
+                    const startMsg = document.getElementById('start-msg');
+                    if (startMsg && !isPlaying) {
+                        startMsg.innerText = 'El anfitrión cerró la sala.';
+                    }
+                    alert('⚠️ El anfitrión se ha desconectado de la sala.');
                 }
                 // Limpiar resaltado de piezas si un jugador se desconecta
                 document.querySelectorAll('.piece').forEach(p => {
@@ -1849,7 +1865,8 @@
                     break;
 
                 case 'GAME_CONFIG':
-                    initGame(data.config);
+                    document.getElementById('win-modal').style.display = 'none';
+                    initGame(data.config, data.pieces || null);
                     if (isHost) broadcastData(data, senderConn);
                     break;
                 case 'GRAB':
@@ -2029,11 +2046,43 @@
         }
         setupZoomEvents();
 
+        function syncStartedGame() {
+            if (isHost) {
+                setTimeout(broadcastFullState, 300);
+            } else if (myConn && myConn.open) {
+                sendData({
+                    type: 'GAME_CONFIG',
+                    config: { rows, cols, img: imgUrl },
+                    pieces: gatherPieceState()
+                });
+            }
+        }
+
+        document.getElementById('upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            rows = Math.min(10, Math.max(2, parseInt(document.getElementById('rows').value) || 3));
+            cols = Math.min(10, Math.max(2, parseInt(document.getElementById('cols').value) || 3));
+            document.getElementById('rows').value = rows;
+            document.getElementById('cols').value = cols;
+
+            resizeImage(file, (resizedUrl) => {
+                imgUrl = resizedUrl;
+                e.target.value = '';
+                document.getElementById('ref-image').src = imgUrl;
+                document.getElementById('btn-ref').style.display = 'inline-flex';
+                startGameLogic();
+                syncStartedGame();
+            });
+        });
+
         function initGame(remoteConfig = null, initialPieces = null) {
             if (remoteConfig) {
                 console.log("Iniciando juego remoto...");
                 rows = remoteConfig.rows;
                 cols = remoteConfig.cols;
+                document.getElementById('rows').value = rows;
+                document.getElementById('cols').value = cols;
                 if (remoteConfig.img) {
                     imgUrl = remoteConfig.img;
                     document.getElementById('ref-image').src = imgUrl;
@@ -2054,14 +2103,15 @@
             if (file) {
                 resizeImage(file, (resizedUrl) => {
                     imgUrl = resizedUrl;
+                    fileInput.value = '';
                     document.getElementById('ref-image').src = imgUrl;
                     document.getElementById('btn-ref').style.display = 'inline-flex';
                     startGameLogic();
-                    if (isHost) setTimeout(broadcastFullState, 500);
+                    syncStartedGame();
                 });
             } else if (imgUrl) {
                 startGameLogic();
-                if (isHost) setTimeout(broadcastFullState, 500);
+                syncStartedGame();
             } else {
                 alert('Primero sube una foto para comenzar.');
                 fileInput.click();
@@ -2853,6 +2903,11 @@
 
         function closeModal() {
             document.getElementById('win-modal').style.display = 'none';
+        }
+
+        function playAgainFromWin() {
+            closeModal();
+            resetGame();
         }
 
         function resetGame() {
