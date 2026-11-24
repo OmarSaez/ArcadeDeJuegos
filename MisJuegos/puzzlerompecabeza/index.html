@@ -2510,17 +2510,31 @@
             draggedPiece.style.left = `${localX - cachedPieceHalfW}px`;
             draggedPiece.style.top = `${localY - cachedPieceHalfH}px`;
 
-            // Network Sync (throttled to ~12fps to reduce overhead on mid-range devices)
+            // Network Sync (throttled to ~12fps with trailing send so holding still never lags)
+            const movePayload = {
+                type: 'MOVE',
+                id: draggedPiece.dataset.correctPos,
+                x: localX,
+                y: localY,
+                color: myPlayerColor
+            };
             const now = Date.now();
             if (now - netThrottle > 80) {
-                sendData({
-                    type: 'MOVE',
-                    id: draggedPiece.dataset.correctPos,
-                    x: localX,
-                    y: localY,
-                    color: myPlayerColor
-                });
+                if (window._pendingMoveTimer) {
+                    clearTimeout(window._pendingMoveTimer);
+                    window._pendingMoveTimer = null;
+                }
+                sendData(movePayload);
                 netThrottle = now;
+            } else {
+                if (window._pendingMoveTimer) clearTimeout(window._pendingMoveTimer);
+                window._pendingMoveTimer = setTimeout(() => {
+                    window._pendingMoveTimer = null;
+                    if (isDragging && draggedPiece) {
+                        sendData(movePayload);
+                        netThrottle = Date.now();
+                    }
+                }, 85);
             }
         }
 
@@ -2553,6 +2567,10 @@
             if (grabHoldTimer) {
                 clearTimeout(grabHoldTimer);
                 grabHoldTimer = null;
+            }
+            if (window._pendingMoveTimer) {
+                clearTimeout(window._pendingMoveTimer);
+                window._pendingMoveTimer = null;
             }
             if (!draggedPiece) return;
 
@@ -2727,9 +2745,10 @@
                     }
                     p.classList.add('remote-moving');
 
-                    if (p.parentElement !== gameWorld) {
+                    if (p.parentElement !== gameWorld || p.classList.contains('in-slot')) {
                         gameWorld.appendChild(p);
                         p.classList.remove('in-slot');
+                        setPieceRotation(p, p.dataset.currentRotation || 0);
                     }
                 }
             }
