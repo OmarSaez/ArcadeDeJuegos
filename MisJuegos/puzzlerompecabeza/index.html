@@ -1917,8 +1917,23 @@
             gameWorld.style.transform = `translate(calc(-50% + ${zoomState.x}px), calc(-50% + ${zoomState.y}px)) scale(${zoomState.scale})`;
         }
 
+        const LOGICAL_TILE = 100;
+
+        function getFitScale() {
+            if (!isPlaying || !cols || !rows) return 1;
+            const rect = gameSurface.getBoundingClientRect();
+            if (!rect.width || !rect.height) return 1;
+            const totalW = cols * LOGICAL_TILE + 380;
+            const totalH = rows * LOGICAL_TILE + 380;
+            const fit = Math.min(
+                (rect.width * 0.92) / totalW,
+                (rect.height * 0.90) / totalH
+            );
+            return Math.min(Math.max(0.15, fit), 1.5);
+        }
+
         function resetCamera() {
-            zoomState = { scale: 1, x: 0, y: 0 };
+            zoomState = { scale: getFitScale(), x: 0, y: 0 };
             updateTransform();
         }
 
@@ -2056,10 +2071,8 @@
             board.innerHTML = '';
             document.querySelectorAll('.piece').forEach(p => p.remove());
 
-            const maxWidth = window.innerWidth * 0.8;
-            const maxHeight = window.innerHeight * 0.6;
-            const tileW = Math.floor(Math.min(maxWidth / cols, maxHeight / rows, 130));
-            const tileH = tileW;
+            const tileW = LOGICAL_TILE;
+            const tileH = LOGICAL_TILE;
             const tabSize = tileW * 0.25;
             const pieceSize = tileW + (tabSize * 2);
 
@@ -2067,6 +2080,7 @@
             board.style.height = `${tileH * rows}px`;
             board.style.gridTemplateColumns = `repeat(${cols}, ${tileW}px)`;
             board.style.gridTemplateRows = `repeat(${rows}, ${tileH}px)`;
+            resetCamera();
 
             let seed = rows * cols;
             const pseudoRandom = () => { var x = Math.sin(seed++) * 10000; return x - Math.floor(x); }
@@ -2234,19 +2248,37 @@
         }
 
         function scatterPieces(piecesArray, w, h) {
-            // Local Scatter (will be overwritten if Client joins Host)
-            piecesArray.forEach(p => {
+            // Local Scatter around the logical board (will be overwritten if Client joins Host)
+            const hw = (cols * LOGICAL_TILE) / 2;
+            const hh = (rows * LOGICAL_TILE) / 2;
+            const halfW = w / 2;
+            const halfH = h / 2;
+            const margin = 20;
+            const band = 75;
+
+            piecesArray.forEach((p, idx) => {
                 const rot = Math.floor(Math.random() * 4) * 90;
                 setPieceRotation(p, rot);
-                gameWorld.appendChild(p); // Append to World
+                gameWorld.appendChild(p);
 
-                // Keep close to center initially
-                // Since world is 0x0 centered, we scatter around -300 to +300
-                const left = (Math.random() - 0.5) * 600;
-                const top = (Math.random() - 0.5) * 600;
+                const side = idx % 4;
+                let cx, cy;
+                if (side === 0) { // Izquierda
+                    cx = -(hw + margin + halfW + Math.random() * band);
+                    cy = (Math.random() - 0.5) * (hh * 2 + band);
+                } else if (side === 1) { // Derecha
+                    cx = hw + margin + halfW + Math.random() * band;
+                    cy = (Math.random() - 0.5) * (hh * 2 + band);
+                } else if (side === 2) { // Arriba
+                    cx = (Math.random() - 0.5) * (hw * 2 + band);
+                    cy = -(hh + margin + halfH + Math.random() * band);
+                } else { // Abajo
+                    cx = (Math.random() - 0.5) * (hw * 2 + band);
+                    cy = hh + margin + halfH + Math.random() * band;
+                }
 
-                p.style.left = `${left}px`;
-                p.style.top = `${top}px`;
+                p.style.left = `${cx - halfW}px`;
+                p.style.top = `${cy - halfH}px`;
             });
         }
 
