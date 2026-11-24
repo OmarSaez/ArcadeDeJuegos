@@ -2245,6 +2245,7 @@
                             p.style.transform = `rotate(${pData.rot || 0}deg)`;
                         }
                         p.dataset.currentRotation = pData.rot || 0;
+                        p.dataset.visualRotation = pData.rot || 0;
                     } else {
                         // Fallback si falta data
                         gameWorld.appendChild(p);
@@ -2347,12 +2348,28 @@
 
         // --- EVENTS & SYNC ---
 
+        function getVisualRotation(piece) {
+            const vis = parseInt(piece.dataset.visualRotation);
+            return isNaN(vis) ? (parseInt(piece.dataset.currentRotation) || 0) : vis;
+        }
+
         function setPieceRotation(piece, deg) {
-            piece.dataset.currentRotation = deg;
+            const logicalDeg = ((parseInt(deg) || 0) % 360 + 360) % 360;
+            piece.dataset.currentRotation = logicalDeg;
+
+            let visualDeg = logicalDeg;
+            const prevVis = parseInt(piece.dataset.visualRotation);
+            if (!isNaN(prevVis)) {
+                const prevMod = ((prevVis % 360) + 360) % 360;
+                const delta = (logicalDeg - prevMod + 360) % 360;
+                visualDeg = prevVis + delta;
+            }
+            piece.dataset.visualRotation = visualDeg;
+
             if (piece.classList.contains('in-slot')) {
-                piece.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+                piece.style.transform = `translate(-50%, -50%) rotate(${visualDeg}deg)`;
             } else {
-                piece.style.transform = `rotate(${deg}deg)`;
+                piece.style.transform = `rotate(${visualDeg}deg)`;
             }
         }
 
@@ -2363,7 +2380,7 @@
             } else {
                 currentRot = parseInt(piece.dataset.currentRotation || 0);
                 currentRot = (currentRot + 90) % 360;
-                sendData({ type: 'ROTATE', id: piece.dataset.correctPos, rot: currentRot });
+                sendData({ type: 'ROTATE', id: piece.dataset.correctPos, rot: currentRot, color: myPlayerColor });
             }
             setPieceRotation(piece, currentRot);
             if (window.ArcadeAudio) ArcadeAudio.place();
@@ -2451,7 +2468,7 @@
             draggedPiece.style.position = 'absolute';
             draggedPiece.style.zIndex = 5000;
 
-            const rot = draggedPiece.dataset.currentRotation || 0;
+            const rot = getVisualRotation(draggedPiece);
             draggedPiece.style.transform = `rotate(${rot}deg) scale(1.1)`;
 
             // Reset netThrottle to 0 to send the initial grab MOVE immediately
@@ -2590,7 +2607,7 @@
 
             if (isDragging) {
                 draggedPiece.classList.remove('dragging');
-                draggedPiece.style.transform = `rotate(${draggedPiece.dataset.currentRotation}deg)`; // Remove scale
+                draggedPiece.style.transform = `rotate(${getVisualRotation(draggedPiece)}deg)`; // Remove scale
                 finalizeDrop(e.clientX, e.clientY);
             }
 
@@ -2613,6 +2630,7 @@
             const pid = draggedPiece.dataset.correctPos;
             const dropData = { type: 'DROP', id: pid, inSlot: false, slotId: null, x: null, y: null };
             const rot = draggedPiece.dataset.currentRotation;
+            const visRot = getVisualRotation(draggedPiece);
 
             draggedPiece.style.zIndex = '';
             moves++;
@@ -2631,7 +2649,7 @@
 
                 draggedPiece.style.position = '';
                 draggedPiece.style.left = ''; draggedPiece.style.top = '';
-                draggedPiece.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+                draggedPiece.style.transform = `translate(-50%, -50%) rotate(${visRot}deg)`;
 
                 dropData.inSlot = true;
                 dropData.slotId = slot.dataset.pos;
@@ -2667,7 +2685,7 @@
                 draggedPiece.style.position = 'absolute';
                 draggedPiece.style.left = `${localX - cachedPieceHalfW}px`;
                 draggedPiece.style.top = `${localY - cachedPieceHalfH}px`;
-                draggedPiece.style.transform = `rotate(${rot}deg)`;
+                draggedPiece.style.transform = `rotate(${visRot}deg)`;
 
                 dropData.x = localX;
                 dropData.y = localY;
@@ -2799,6 +2817,18 @@
             const p = document.getElementById(`piece-${data.id}`);
             if (p) {
                 rotatePiece(p, data.rot);
+                if (data.color && !p.classList.contains('dragging')) {
+                    setPieceHighlight(p, data.color);
+                    p.classList.add('remote-moving');
+                    if (p._rotateHighlightTimer) clearTimeout(p._rotateHighlightTimer);
+                    p._rotateHighlightTimer = setTimeout(() => {
+                        p._rotateHighlightTimer = null;
+                        if (!p.classList.contains('dragging')) {
+                            p.classList.remove('remote-moving');
+                            clearPieceHighlight(p);
+                        }
+                    }, 600);
+                }
                 if (isPlaying) moves++;
             }
         }
@@ -2878,7 +2908,7 @@
             piece.classList.remove('in-slot');
             gameWorld.appendChild(piece);
             piece.style.position = 'absolute';
-            const rot = piece.dataset.currentRotation || 0;
+            const rot = getVisualRotation(piece);
             piece.style.transform = `rotate(${rot}deg)`;
 
             const halfW = parseFloat(piece.dataset.halfSize) || (parseFloat(piece.style.width) / 2) || (piece.offsetWidth / 2) || 0;
