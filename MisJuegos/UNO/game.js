@@ -185,6 +185,11 @@ class Game {
         this.pendingUnoCalls = [];
         this.unoBufferTimeout = null;
         this.lastPlayedByPlayerId = null;
+        this.effectSeq = 0;
+        this.lastActionEffect = null;
+        this.lastShownEffectId = 0;
+        this.specialEffectTimeout = null;
+        this.prevDrawAccumulator = 0;
         this.shuffled = true;
         this.shufflerId = null;
         this.shuffleProgress = 0;
@@ -257,6 +262,7 @@ class Game {
             startTime: this.startTime,
             lastValidUnoTime: this.lastValidUnoTime,
             lastPlayedByPlayerId: this.lastPlayedByPlayerId,
+            lastActionEffect: this.lastActionEffect,
             shuffled: this.shuffled,
             shufflerId: this.shufflerId,
             shuffleProgress: this.shuffleProgress,
@@ -282,6 +288,7 @@ class Game {
         this.startTime = state.startTime || Date.now();
         this.lastValidUnoTime = state.lastValidUnoTime || 0;
         this.lastPlayedByPlayerId = state.lastPlayedByPlayerId || null;
+        this.lastActionEffect = state.lastActionEffect || null;
         this.shuffled = state.shuffled !== undefined ? state.shuffled : true;
         this.shufflerId = state.shufflerId || null;
         this.shuffleProgress = state.shuffleProgress || 0;
@@ -560,6 +567,32 @@ class Game {
             drawBtn.innerText = text;
         }
 
+        const accBadge = document.getElementById('draw-accumulator-badge');
+        const accValue = document.getElementById('draw-accumulator-value');
+        if (accBadge && accValue) {
+            if (this.drawAccumulator > 0) {
+                accBadge.classList.remove('hidden');
+                accValue.innerText = `+${this.drawAccumulator}`;
+                if (this.drawAccumulator !== this.prevDrawAccumulator) {
+                    accBadge.classList.remove('bump');
+                    void accBadge.offsetWidth;
+                    accBadge.classList.add('bump');
+                }
+            } else {
+                accBadge.classList.add('hidden');
+                accBadge.classList.remove('bump');
+            }
+            this.prevDrawAccumulator = this.drawAccumulator;
+        }
+
+        if (this.lastActionEffect && this.lastActionEffect.id !== this.lastShownEffectId) {
+            this.lastShownEffectId = this.lastActionEffect.id;
+            const effect = this.lastActionEffect;
+            if (effect.type === 'REVERSE' || (effect.type === 'SKIP' && me && String(me.id) === String(effect.targetPlayerId))) {
+                this.showSpecialEffect(effect);
+            }
+        }
+
         // UNO Button Logic: High tension
         const unoBtn = document.getElementById('uno-btn');
         if (unoBtn) {
@@ -737,15 +770,26 @@ class Game {
             }
 
             let skipNext = false;
-            if (card.accion === ACTIONS.SKIP) skipNext = true;
-            else if (card.accion === ACTIONS.REVERSE) {
-                if (this.players.length === 2) skipNext = true;
-                else this.direction *= -1;
+            let nextEffect = null;
+            if (card.accion === ACTIONS.SKIP) {
+                skipNext = true;
+                const skippedPlayer = this.players[this.nextPlayerIdx()];
+                nextEffect = { id: ++this.effectSeq, type: 'SKIP', targetPlayerId: skippedPlayer.id, color: card.color };
+            } else if (card.accion === ACTIONS.REVERSE) {
+                if (this.players.length === 2) {
+                    skipNext = true;
+                    const skippedPlayer = this.players[this.nextPlayerIdx()];
+                    nextEffect = { id: ++this.effectSeq, type: 'REVERSE', direction: this.direction, targetPlayerId: skippedPlayer.id, color: card.color };
+                } else {
+                    this.direction *= -1;
+                    nextEffect = { id: ++this.effectSeq, type: 'REVERSE', direction: this.direction, color: card.color };
+                }
             } else if (card.accion === ACTIONS.DRAW2) {
                 this.drawAccumulator += 2;
             } else if (card.accion === ACTIONS.WILD_DRAW4) {
                 this.drawAccumulator += 4;
             }
+            this.lastActionEffect = nextEffect;
 
             this.moveTurn();
             if (skipNext) this.moveTurn();
@@ -874,6 +918,45 @@ class Game {
                 }
             }, 3000);
         }
+    }
+
+    showSpecialEffect(effect) {
+        const overlay = document.getElementById('special-effect-overlay');
+        const card = document.getElementById('special-effect-card');
+        const symbolEl = document.getElementById('special-effect-symbol');
+        const textEl = document.getElementById('special-effect-text');
+        if (!overlay || !card || !symbolEl || !textEl) return;
+
+        if (this.specialEffectTimeout) {
+            clearTimeout(this.specialEffectTimeout);
+            this.specialEffectTimeout = null;
+        }
+
+        card.className = 'special-effect-card';
+        if (effect.color && effect.color !== 'black') {
+            card.style.setProperty('--effect-color', `var(--uno-${effect.color})`);
+        } else {
+            card.style.setProperty('--effect-color', 'var(--uno-yellow)');
+        }
+
+        if (effect.type === 'SKIP') {
+            symbolEl.innerText = '⊘';
+            textEl.innerText = '¡BLOQUEADO!';
+            card.classList.add('effect-skip');
+        } else if (effect.type === 'REVERSE') {
+            symbolEl.innerText = '⇄';
+            textEl.innerText = '¡REVERSA!';
+            card.classList.add(effect.direction === -1 ? 'effect-reverse-ccw' : 'effect-reverse-cw');
+        }
+
+        overlay.classList.remove('hidden');
+        void card.offsetWidth;
+        card.classList.add('animate');
+
+        this.specialEffectTimeout = setTimeout(() => {
+            overlay.classList.add('hidden');
+            this.specialEffectTimeout = null;
+        }, 1400);
     }
 
     showWinScreen(winner) {

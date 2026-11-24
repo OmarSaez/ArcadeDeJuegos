@@ -893,3 +893,150 @@ body {
         transform: translate(calc(25px - var(--i) * 12px), calc(var(--i) * 10px - 20px)) rotate(calc(15deg - var(--i) * 7deg));
     }
 }
+
+/* Draw Accumulator Counter next to Deck/Discard */
+.draw-accumulator-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ff3b30, #ff9500);
+    color: white;
+    box-shadow: 0 0 22px rgba(255, 59, 48, 0.7), inset 0 1px 4px rgba(255, 255, 255, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    z-index: 20;
+    user-select: none;
+    pointer-events: none;
+}
+
+.draw-accumulator-badge #draw-accumulator-value {
+    font-size: 1.8rem;
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.draw-accumulator-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    opacity: 0.95;
+    margin-top: 2px;
+}
+
+.draw-accumulator-badge.bump {
+    animation: acc-bump 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+@keyframes acc-bump {
+    0% { transform: scale(0.7); }
+    50% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+}
+
+/* Special Card Effects Overlay (Skip & Reverse) */
+.special-effect-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 900;
+}
+
+.special-effect-card {
+    --effect-color: var(--uno-red);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 26px 42px;
+    border-radius: 24px;
+    background: rgba(18, 18, 36, 0.9);
+    border: 4px solid var(--effect-color);
+    box-shadow: 0 0 40px var(--effect-color), 0 12px 35px rgba(0, 0, 0, 0.65);
+    color: white;
+    backdrop-filter: blur(8px);
+    opacity: 0;
+}
+
+.special-effect-symbol {
+    font-size: 5rem;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--effect-color);
+    text-shadow: 0 0 20px var(--effect-color);
+}
+
+.special-effect-text {
+    margin-top: 10px;
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.special-effect-card.effect-skip.animate {
+    animation: special-skip-anim 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.special-effect-card.effect-reverse-cw.animate .special-effect-symbol {
+    animation: reverse-spin-cw 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.special-effect-card.effect-reverse-ccw.animate .special-effect-symbol {
+    animation: reverse-spin-ccw 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.special-effect-card.effect-reverse-cw.animate,
+.special-effect-card.effect-reverse-ccw.animate {
+    animation: special-reverse-card 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes special-skip-anim {
+    0% { opacity: 0; transform: scale(0.4); }
+    15% { opacity: 1; transform: scale(1.12) rotate(-4deg); }
+    25% { transform: scale(1) rotate(4deg); }
+    35% { transform: scale(1.04) rotate(-3deg); }
+    45% { transform: scale(1) rotate(0deg); }
+    80% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.9); }
+}
+
+@keyframes special-reverse-card {
+    0% { opacity: 0; transform: scale(0.5); }
+    18% { opacity: 1; transform: scale(1.08); }
+    80% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.9); }
+}
+
+@keyframes reverse-spin-cw {
+    0% { transform: rotate(0deg) scale(0.7); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes reverse-spin-ccw {
+    0% { transform: rotate(0deg) scale(0.7); }
+    100% { transform: rotate(-360deg) scale(1); }
+}
+
+@media (max-width: 768px) {
+    .draw-accumulator-badge {
+        padding: 7px 11px;
+    }
+    .draw-accumulator-badge #draw-accumulator-value {
+        font-size: 1.3rem;
+    }
+    .special-effect-card {
+        padding: 20px 30px;
+    }
+    .special-effect-symbol {
+        font-size: 3.8rem;
+    }
+    .special-effect-text {
+        font-size: 1.1rem;
+    }
+}

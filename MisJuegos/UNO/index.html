@@ -91,6 +91,10 @@
                     </div>
                 </div>
             </div>
+            <div id="draw-accumulator-badge" class="draw-accumulator-badge hidden">
+                <span id="draw-accumulator-value">+2</span>
+                <span class="draw-accumulator-label">A COMER</span>
+            </div>
             <!-- Turn Indicator Moved Here -->
             <div class="current-turn-info">
                 Turno de: <span id="current-player-name">Jugador 1</span>
@@ -104,6 +108,13 @@
         <div id="ui-layer">
             <button id="draw-btn" class="btn">Robar Carta</button>
             <button id="uno-btn" class="btn uno-btn hidden">¡UNO!</button>
+        </div>
+
+        <div id="special-effect-overlay" class="special-effect-overlay hidden">
+            <div id="special-effect-card" class="special-effect-card">
+                <div id="special-effect-symbol" class="special-effect-symbol">⊘</div>
+                <div id="special-effect-text" class="special-effect-text">¡BLOQUEADO!</div>
+            </div>
         </div>
     </div>
 
